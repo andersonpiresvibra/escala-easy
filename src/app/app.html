@@ -1,0 +1,1453 @@
+<!-- MAIN WRAPPER: BOLD TYPOGRAPHY LIGHT ACCENTED MODE -->
+<div class="min-h-screen bg-[#F1F5F9] font-sans text-slate-800 flex flex-col antialiased selection:bg-blue-600 selection:text-white" id="main_app_layout">
+
+  <!-- TOAST ALERTS BANNER -->
+  @if (toastMessage()) {
+    <div class="fixed top-4 right-4 z-50 bg-slate-900 text-white p-4 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce max-w-sm border border-slate-700" id="toast_notification">
+      <span class="material-icons select-none text-blue-400 text-xl">verified</span>
+      <span class="text-sm font-bold tracking-wide">{{ toastMessage() }}</span>
+    </div>
+  }
+
+  <!-- GLOBAL UNIFIED TABS BAR (home / matrix / staff + dropdown options) -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 select-none px-6 pt-4 pb-2" id="global_master_tabs">
+    <div class="flex items-center gap-2 select-none">
+      <span class="material-icons text-blue-600 text-lg">flight_takeoff</span>
+      <span class="text-base font-black tracking-tighter text-slate-900 leading-none">ESCALA<span class="text-blue-600">.</span>EASY</span>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-1 p-1 border border-slate-200 w-full md:w-auto bg-white rounded-[5px]">
+      <button (click)="activeSubTab.set('home')"
+              class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-pointer rounded-[5px]"
+              [class.bg-slate-100]="activeSubTab() === 'home'"
+              [class.text-slate-900]="activeSubTab() === 'home'"
+              [class.shadow-sm]="activeSubTab() === 'home'"
+              [class.text-slate-500]="activeSubTab() !== 'home'">
+        <span class="material-icons text-xs font-bold text-blue-600">home</span>
+        Home
+      </button>
+      <button (click)="activeSubTab.set('matrix')"
+              class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-pointer rounded-[5px]"
+              [class.bg-slate-100]="activeSubTab() === 'matrix'"
+              [class.text-slate-900]="activeSubTab() === 'matrix'"
+              [class.shadow-sm]="activeSubTab() === 'matrix'"
+              [class.text-slate-500]="activeSubTab() !== 'matrix'">
+        <span class="material-icons text-xs font-bold text-blue-600">grid_on</span>
+        Matriz Geral
+      </button>
+      <button (click)="activeSubTab.set('staff')"
+              class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-pointer rounded-[5px]"
+              [class.bg-slate-100]="activeSubTab() === 'staff'"
+              [class.text-slate-900]="activeSubTab() === 'staff'"
+              [class.shadow-sm]="activeSubTab() === 'staff'"
+              [class.text-slate-500]="activeSubTab() !== 'staff'">
+        <span class="material-icons text-xs text-blue-600 font-bold">group</span>
+        Gestão de Staff
+      </button>
+    </div>
+
+    <!-- GROUPED dropdown options button -->
+    <div class="relative inline-block text-left" id="options_dropdown_container">
+      <button (click)="isDropdownOpen.set(!isDropdownOpen())"
+              class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase bg-slate-900 hover:bg-slate-800 text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm select-none"
+              style="border-radius: 5px;"
+              id="btn_options_dropdown">
+        <span class="material-icons text-xs">settings_applications</span>
+        Opções & Ferramentas
+        <span class="material-icons text-xs transition-transform duration-200" [class.rotate-180]="isDropdownOpen()">expand_more</span>
+      </button>
+
+      @if (isDropdownOpen()) {
+        <div class="absolute right-0 mt-2 w-56 rounded-xl bg-white border border-slate-200 shadow-xl z-50 divide-y divide-slate-100 animate-fade-in" id="dropdown_options_menu">
+          <!-- Section 0: Perfis de Visão / Frente de Acesso -->
+          <div class="py-1.5 bg-slate-50 rounded-t-xl">
+            <span class="block px-4 py-1 text-[8px] font-black uppercase text-slate-400 tracking-wider">Perfis de Acesso</span>
+            
+            <button (click)="changeRole('SUPERVISOR'); isDropdownOpen.set(false)"
+                    class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center justify-between cursor-pointer"
+                    [class.bg-emerald-50]="scaleService.currentRole() === 'SUPERVISOR'"
+                    [class.text-emerald-700]="scaleService.currentRole() === 'SUPERVISOR'"
+                    [class.text-slate-700]="scaleService.currentRole() !== 'SUPERVISOR'">
+              <span class="flex items-center gap-2">
+                <span class="material-icons text-slate-500 text-sm">security</span>
+                Governança
+              </span>
+              @if (scaleService.currentRole() === 'SUPERVISOR') {
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              }
+            </button>
+
+            <button (click)="changeRole('LIDER'); isDropdownOpen.set(false)"
+                    class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center justify-between cursor-pointer"
+                    [class.bg-emerald-50]="scaleService.currentRole() === 'LIDER'"
+                    [class.text-emerald-700]="scaleService.currentRole() === 'LIDER'"
+                    [class.text-slate-700]="scaleService.currentRole() !== 'LIDER'">
+              <span class="flex items-center gap-2">
+                <span class="material-icons text-slate-500 text-sm">assignment_ind</span>
+                Gerencial (Líder)
+              </span>
+              @if (scaleService.currentRole() === 'LIDER') {
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              }
+            </button>
+
+            <button (click)="changeRole('OPERADOR'); isDropdownOpen.set(false)"
+                    class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center justify-between cursor-pointer"
+                    [class.bg-emerald-50]="scaleService.currentRole() === 'OPERADOR'"
+                    [class.text-emerald-700]="scaleService.currentRole() === 'OPERADOR'"
+                    [class.text-slate-700]="scaleService.currentRole() !== 'OPERADOR'">
+              <span class="flex items-center gap-2">
+                <span class="material-icons text-slate-500 text-sm">person_outline</span>
+                Colaborador
+              </span>
+              @if (scaleService.currentRole() === 'OPERADOR') {
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              }
+            </button>
+          </div>
+
+          <!-- Section 1: Páginas operacionais -->
+          <div class="py-1.5">
+            @if (scaleService.currentRole() !== 'OPERADOR') {
+              <button (click)="activeSubTab.set('matrix'); togglePaintbrushPanel(); isDropdownOpen.set(false)"
+                      class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center gap-2 cursor-pointer"
+                      [class]="showPaintbrushPanel() ? 'text-amber-600 bg-amber-50 hover:bg-amber-100/50' : 'text-slate-700 hover:bg-slate-50'">
+                <span class="material-icons text-sm" [class]="showPaintbrushPanel() ? 'text-amber-500' : 'text-slate-500'">edit_calendar</span>
+                {{ showPaintbrushPanel() ? 'Fechar Edição em Massa' : 'Editar Escala em Massa' }}
+              </button>
+              <button (click)="scaleService.clearAllScales(); isDropdownOpen.set(false)"
+                      class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-red-600 hover:bg-red-50 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-t border-slate-100">
+                <span class="material-icons text-red-500 text-sm">cleaning_services</span>
+                Limpar Toda a Escala
+              </button>
+              <button (click)="scaleService.generateAutoScale(); isDropdownOpen.set(false)"
+                      class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-purple-600 hover:bg-purple-50 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-b border-purple-100 bg-purple-50/50">
+                <span class="material-icons text-purple-500 text-sm">auto_awesome</span>
+                Gerar Escala (IA)
+              </button>
+            }
+            <button (click)="activeSubTab.set('shifts'); isDropdownOpen.set(false)"
+                    class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-slate-700 hover:bg-slate-50 transition-colors tracking-wider flex items-center gap-2 cursor-pointer">
+              <span class="material-icons text-slate-500 text-sm">tune</span>
+              Turnos & Siglas
+            </button>
+            <button (click)="activeSubTab.set('backups'); isDropdownOpen.set(false)"
+                    class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-slate-700 hover:bg-slate-50 transition-colors tracking-wider flex items-center gap-2 cursor-pointer">
+              <span class="material-icons text-slate-500 text-sm">cloud_sync</span>
+              Salvar / Carregar
+            </button>
+          </div>
+
+          <!-- Section 2: Relatórios & Dados -->
+          <div class="py-1.5">
+            <button (click)="exportToCSV(); isDropdownOpen.set(false)"
+                    class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-slate-700 hover:bg-slate-50 transition-colors tracking-wider flex items-center gap-2 cursor-pointer">
+              <span class="material-icons text-slate-500 text-sm">table_chart</span>
+              Exportar CSV
+            </button>
+            <button (click)="exportToPDF(); isDropdownOpen.set(false)"
+                    class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-slate-700 hover:bg-slate-50 transition-colors tracking-wider flex items-center gap-2 cursor-pointer">
+              <span class="material-icons text-slate-500 text-sm">picture_as_pdf</span>
+              Imprimir / PDF
+            </button>
+          </div>
+        </div>
+      }
+      </div>
+    </div>
+
+  <!-- MAIN CONTAINER GRID -->
+  <main class="flex-1 w-full flex flex-col gap-6 transition-all duration-200" [class.p-4]="activeSubTab() !== 'matrix'" [class.sm:p-6]="activeSubTab() !== 'matrix'" [class.lg:p-8]="activeSubTab() !== 'matrix'" [class.p-0]="activeSubTab() === 'matrix'" [class.md:py-6]="activeSubTab() === 'matrix'" id="app_content">
+
+    <!-- 1. UNIFIED HOME TAB WORKSPACE -->
+    @if (activeSubTab() === 'home') {
+      <div class="grid grid-cols-1 gap-6 animate-fade-in" id="unified_home_dashboard">
+        
+        <!-- HERO WELCOME GRID CARD -->
+        <header class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-6 sm:p-8 rounded-2xl border border-slate-700/50 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6 relative shadow-xl overflow-hidden select-none">
+          <div class="space-y-2 z-10 flex-1">
+            <div class="flex items-center gap-2 text-emerald-400 font-mono text-[10px] font-bold uppercase tracking-widest">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              PÁTIO VIBRA JETFUEL • TERMINAL DE OPERAÇÕES ATIVAS
+            </div>
+            <h2 class="text-xl sm:text-2xl font-black uppercase tracking-tight font-sans">CENTRAL DE ESCALAS INTELECTUAL</h2>
+            <p class="text-slate-400 text-xs font-medium font-sans max-w-xl">Bem-vindo ao cockpit de regulação de fadiga e faturamento de equipes de combustível de aviação. Monitore, edite e valide turnos com inteligência regulatória.</p>
+          </div>
+          
+          <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-700/50 w-full lg:w-80 flex flex-col justify-between z-10">
+            <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 font-mono">SIMULADOR INTEGRAL DE VISÕES</span>
+            <div class="flex gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+              <button (click)="scaleService.currentRole.set('SUPERVISOR')"
+                      class="flex-1 py-1.5 rounded text-[9px] font-black uppercase tracking-wide transition-all cursor-pointer"
+                      [class.bg-blue-600]="scaleService.currentRole() === 'SUPERVISOR'"
+                      [class.text-white]="scaleService.currentRole() === 'SUPERVISOR'"
+                      [class.text-slate-400]="scaleService.currentRole() !== 'SUPERVISOR'">
+                SUP
+              </button>
+              <button (click)="scaleService.currentRole.set('LIDER')"
+                      class="flex-1 py-1.5 rounded text-[9px] font-black uppercase tracking-wide transition-all cursor-pointer"
+                      [class.bg-blue-600]="scaleService.currentRole() === 'LIDER'"
+                      [class.text-white]="scaleService.currentRole() === 'LIDER'"
+                      [class.text-slate-400]="scaleService.currentRole() !== 'LIDER'">
+                LÍDER
+              </button>
+              <button (click)="scaleService.currentRole.set('OPERADOR')"
+                      class="flex-1 py-1.5 rounded text-[9px] font-black uppercase tracking-wide transition-all cursor-pointer"
+                      [class.bg-blue-600]="scaleService.currentRole() === 'OPERADOR'"
+                      [class.text-white]="scaleService.currentRole() === 'OPERADOR'"
+                      [class.text-slate-400]="scaleService.currentRole() !== 'OPERADOR'">
+                OPERADOR
+              </button>
+            </div>
+            <div class="text-[9px] text-slate-500 font-mono font-bold mt-2 text-center uppercase tracking-wider bg-slate-900/50 py-1 rounded">
+              Acesso: {{ scaleService.currentRole() }}
+            </div>
+          </div>
+        </header>
+
+        <!-- SUB PANEL: ROLE SPECIFIC CONTENT -->
+        @if (scaleService.currentRole() === 'SUPERVISOR' || scaleService.currentRole() === 'LIDER') {
+          
+          <!-- QUICK COCKPIT METRICS CARDS -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <!-- CARD 1: AUTO GENERATOR / MOTOR -->
+            <article class="bg-white border border-slate-200 rounded-2xl p-6 shadow-md flex flex-col justify-between" id="home_rules_card">
+              <div class="space-y-4">
+                <div class="flex items-center gap-2">
+                  <span class="material-icons select-none text-blue-600 font-bold">toys</span>
+                  <h3 class="text-slate-900 font-black uppercase tracking-tight text-sm">MOTOR DE FADIGA & REGRAS</h3>
+                </div>
+                <p class="text-xs text-slate-500 leading-relaxed font-sans font-medium">Recompile todas as regras com 1 clique, preservando furos de contingente e assegurando repouso pátio.</p>
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2 text-xs">
+                  <div class="flex items-center justify-between font-sans">
+                    <span class="text-slate-500 font-bold text-[9px] uppercase tracking-wider">Limite Consecutivo:</span>
+                    <select [value]="scaleService.antiFatigueLimit()" (change)="scaleService.antiFatigueLimit.set(+$any($event.target).value)"
+                            class="bg-white border border-slate-250 text-blue-600 rounded px-1.5 py-0.5 text-[10px] font-black">
+                      <option [value]="5">5 Dias seguidos</option>
+                      <option [value]="4">4 Dias seguidos</option>
+                      <option [value]="6">6 Dias seguidos</option>
+                    </select>
+                  </div>
+                  <div class="flex items-center justify-between font-sans">
+                    <span class="text-slate-500 font-bold text-[9px] uppercase tracking-wider">Coesão Tecnológica:</span>
+                    <span class="text-emerald-600 font-black text-[10px]">Ativa (94%)</span>
+                  </div>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2 pt-4 border-t border-slate-100 mt-4">
+                <button (click)="triggerAutoGenerator(); activeSubTab.set('matrix')"
+                        class="bg-blue-600 hover:bg-blue-500 text-white font-black py-2 rounded-xl text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer">
+                  <span class="material-icons text-xs">flash_on</span> Gerar Escala
+                </button>
+                <button (click)="triggerReset()"
+                        class="bg-slate-100 hover:bg-slate-200 text-rose-600 font-black py-2 rounded-xl text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer border border-slate-200">
+                  <span class="material-icons text-xs">replay</span> Resetar
+                </button>
+              </div>
+            </article>
+
+            <!-- CARD 2: EMPATHY AND COMPLIANCE -->
+            <article class="bg-white border border-slate-200 rounded-2xl p-6 shadow-md flex flex-col justify-between" id="home_empathy_card">
+              <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="material-icons select-none text-emerald-600 font-bold">favorite_border</span>
+                    <h3 class="text-slate-900 font-black uppercase tracking-tight text-sm">PAINEL DE EMPATIA</h3>
+                  </div>
+                  <span class="text-[8px] bg-blue-100 text-blue-700 font-black px-2 py-0.5 rounded uppercase tracking-wider">Março/2026</span>
+                </div>
+                <div class="space-y-2">
+                  <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-start gap-2 text-[10px]">
+                    <span class="material-icons text-amber-500 text-sm">cake</span>
+                    <div>
+                      <h4 class="font-black text-slate-800 uppercase text-[9px]">MILTON • Operador de Pátio</h4>
+                      <p class="text-slate-500 mt-0.5">Aniversário em 05 de Março. Folga garantida.</p>
+                    </div>
+                  </div>
+                  <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-start gap-2 text-[10px]">
+                    <span class="material-icons text-blue-500 text-sm">child_care</span>
+                    <div>
+                      <h4 class="font-black text-slate-800 uppercase text-[9px]">NORMAN • Operador de Pátio</h4>
+                      <p class="text-slate-500 mt-0.5">Aniversário do Filho em 12 de Março. Folga assistida.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="pt-4 border-t border-slate-100 mt-4 flex items-center justify-between">
+                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Igualdade: 94%</span>
+                <button (click)="activeSubTab.set('matrix')" class="text-blue-600 hover:text-blue-500 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                  Ver Grade Matriz <span class="material-icons text-xs">arrow_forward</span>
+                </button>
+              </div>
+            </article>
+
+            <!-- CARD 3: HOMOLOGAÇÃO -->
+            <article class="bg-white border border-slate-200 rounded-2xl p-6 shadow-md flex flex-col justify-between" id="home_governance_card">
+              <div class="space-y-4">
+                <div class="flex items-center gap-2">
+                  <span class="material-icons select-none text-emerald-600 font-bold">verified_user</span>
+                  <h3 class="text-slate-900 font-black uppercase tracking-tight text-sm">HOMOLOGAÇÃO DE GOVERNANÇA</h3>
+                </div>
+                <p class="text-xs text-slate-500 leading-relaxed font-sans font-medium">Assine digitalmente a escala final para consolidar os dados de faturamento do Banco de Horas.</p>
+                <div class="space-y-1.5">
+                  <label for="homeSignatureInput" class="block text-[8px] font-black text-slate-500 uppercase tracking-widest select-none">Assinatura Eletrônica:</label>
+                  <div class="flex gap-1.5">
+                    <input id="homeSignatureInput" [value]="supervisorSignature()" (input)="supervisorSignature.set($any($event.target).value)"
+                           [disabled]="scaleHomologated()"
+                           type="text" placeholder="Assine: EX: SUP-ANDERSON"
+                           class="w-full bg-slate-50 border border-slate-250 text-slate-800 text-[11px] font-mono px-3 py-1.5 rounded-xl outline-none focus:border-blue-600 disabled:opacity-50" />
+                    <button (click)="homologateCurrentScale()"
+                            [disabled]="scaleHomologated() || !supervisorSignature().trim()"
+                            class="bg-slate-900 hover:bg-slate-800 hover:scale-102 text-white font-black text-[10px] px-3.5 py-1.5 rounded-xl uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer">
+                      Assinar
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="pt-4 border-t border-slate-100 mt-4 flex items-center justify-between text-[9px] font-mono font-bold text-slate-400">
+                <span>ESTADO: {{ scaleHomologated() ? 'HOMOLOGADA' : 'EM RASCUNHO' }}</span>
+                <span class="text-emerald-600">{{ scaleHomologated() ? 'CHAVE SEGURA ATIVA' : 'AGUARDANDO ASSINATURA' }}</span>
+              </div>
+            </article>
+
+          </div>
+
+        } @else {
+          
+          <!-- COOPERATOR QUICK PROFILE HIGHLIGHT FOR HOME -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- PROFILE BOX SELECTOR -->
+            <article class="bg-white border border-slate-200 rounded-2xl p-6 shadow-md space-y-4">
+              <div class="flex items-center gap-2">
+                <span class="material-icons text-blue-600 font-bold">contact_page</span>
+                <h3 class="text-slate-900 font-black uppercase text-sm font-sans">Selecione Seu Perfil Operador</h3>
+              </div>
+              
+              <div class="space-y-2">
+                <label for="homeOperatorSelect" class="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 select-none font-mono">Identidade Atual:</label>
+                <select id="homeOperatorSelect" [value]="scaleService.selectedOperatorId()" (change)="scaleService.selectedOperatorId.set($any($event.target).value)"
+                        class="w-full bg-slate-50 border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 font-bold shadow-sm font-sans">
+                  @for (op of scaleService.collaborators(); track op.id) {
+                    <option [value]="op.id">{{ op.name }} (ID: {{ op.id }})</option>
+                  }
+                </select>
+              </div>
+
+              <!-- Quick info -->
+              <div class="bg-blue-50/50 rounded-xl p-4 border border-blue-100 flex items-center gap-3">
+                <span class="material-icons text-blue-600 text-2xl font-bold">badge</span>
+                <div class="text-xs">
+                  <div class="font-black text-slate-900 uppercase">Acesso Autorizado Pátio</div>
+                  <div class="text-slate-500 mt-0.5">Sua escala pessoal está disponível para consulta e propostas de permutas com colegas no painel.</div>
+                </div>
+              </div>
+            </article>
+
+            <!-- INDIVIDUAL SCHEDULE HIGHLIGHT -->
+            <article class="bg-white border border-slate-200 rounded-2xl p-6 shadow-md flex flex-col justify-between">
+              <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="material-icons text-blue-600 font-bold">calendar_month</span>
+                    <h3 class="text-slate-900 font-black uppercase text-sm font-sans">Sua Escala de Trabalho</h3>
+                  </div>
+                  <span class="text-[9px] bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded uppercase font-mono">MARÇO/2026</span>
+                </div>
+                
+                <p class="text-xs text-slate-500 leading-normal">
+                  Consulte seus turnos de pátio ou solicite datas magnas garantidas e trocas com seus colegas de Madrugada no menu.
+                </p>
+              </div>
+
+              <div class="pt-4 border-t border-slate-100 mt-4 flex justify-end">
+                <button (click)="activeSubTab.set('matrix')"
+                        class="bg-slate-900 hover:bg-slate-800 text-white font-black text-[10px] px-4 py-2 rounded-xl uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all">
+                  Abrir Meu Painel Operador <span class="material-icons text-xs">arrow_forward</span>
+                </button>
+              </div>
+            </article>
+
+          </div>
+
+        }
+
+        <!-- METRICS & GRAPHIC REPRESENTATION -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-inner space-y-4" id="home_audit_logs">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="material-icons text-slate-600">history</span>
+              <h3 class="text-slate-900 font-black uppercase tracking-tight text-xs font-mono">Timeline de Auditoria de Ações</h3>
+            </div>
+            <span class="text-[9px] font-mono font-bold text-slate-400">Tempo Real</span>
+          </div>
+
+          <div class="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+            @for (log of scaleService.logs().slice(0, 6); track log.id) {
+              <div class="bg-white p-3 rounded-xl border border-slate-200/80 flex items-center justify-between gap-4 hover:border-slate-300 transition-all shadow-sm">
+                <div class="flex items-center gap-2.5 text-xs text-slate-750">
+                  <span class="material-icons text-slate-400 text-sm">radio_button_checked</span>
+                  <div class="font-sans">
+                    <p class="font-bold text-slate-900">{{ log.action }}</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5 font-medium font-sans">Efetuado por: {{ log.actor }} • {{ log.id }}</p>
+                  </div>
+                </div>
+                <span class="text-[9px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{{ log.timestamp | date:'shortTime' }}</span>
+              </div>
+            } @empty {
+              <p class="text-slate-400 text-center py-4 text-xs italic bg-white rounded-xl border border-dashed border-slate-250 font-sans font-bold">Nenhum evento registrado no pátio neste turno.</p>
+            }
+          </div>
+        </div>
+
+      </div>
+    }
+
+    <!-- 2. OPERATIONAL WORKSPACES (Renders when activeSubTab() !== 'home') -->
+    @if (activeSubTab() !== 'home') {
+    
+    <!-- PERSPECTIVE A & B: SPREADSHEET MAIN VIEWS (SUPERVISOR & LÍDER OF TURNO) -->
+    @if (scaleService.currentRole() === 'SUPERVISOR' || scaleService.currentRole() === 'LIDER') {
+      
+      <!-- GRID WORKSPACE CARD -->
+      <section class="bg-white rounded-none border-y border-slate-200 shadow-sm flex flex-col w-full animate-fade-in" id="admin_matrix_workspace">
+
+        @if (activeSubTab() === 'matrix') {
+          <header class="px-6 bg-white border-b border-slate-200 flex items-center justify-between gap-4" style="height: 55px;">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="material-icons select-none text-blue-600 font-bold">grid_on</span>
+                <h2 class="font-black tracking-tighter text-slate-900 uppercase" style="font-size: 14px;">MARÇO/2026 — TURNO {{ selectedGroupFilter() | uppercase }}</h2>
+              </div>
+            </div>
+          </header>
+
+        <!-- FERRAMENTA PINCEL (EDICAO RAPIDA DE ESCALA - PAINEL DE PINTURA) -->
+        @if (showPaintbrushPanel()) {
+          <div class="bg-slate-955 border-b border-amber-500/20 px-4 py-2 flex flex-wrap items-center justify-between gap-3 shadow-inner">
+            <div class="flex items-center gap-3">
+              <span class="text-[10px] font-black text-slate-300 uppercase tracking-tight flex items-center gap-1.5 shrink-0">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                Pincel em Massa:
+              </span>
+
+              <div class="flex flex-wrap items-center gap-1 bg-slate-900 p-0.5 rounded border border-slate-850">
+                <!-- Regular work -->
+                <button (click)="selectPaintbrush('')" 
+                        [class]="selectedPaintbrush() === '' ? 'border-amber-500 ring-2 ring-amber-500/40 bg-slate-800 text-white font-black' : 'border-transparent text-slate-400 hover:text-slate-200'"
+                        class="h-7 w-9 rounded text-[10px] font-mono font-black border transition-all cursor-pointer flex items-center justify-center"
+                        title="Turno Regular (Trabalho Ativo)">
+                  T
+                </button>
+
+                <!-- Active shift types -->
+                @for (sigla of scaleService.shiftTypes(); track sigla.code) {
+                  <button (click)="selectPaintbrush(sigla.code)" 
+                          [class]="selectedPaintbrush() === sigla.code ? 'border-amber-500 ring-2 ring-amber-500/40 bg-slate-850 font-extrabold scale-[1.03]' : 'border-transparent text-slate-400 hover:scale-[1.01]'"
+                          class="h-7 px-2 rounded text-[10px] font-bold border transition-all cursor-pointer flex items-center justify-center"
+                          [title]="sigla.label">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-black" [class]="sigla.color" [title]="sigla.label">
+                      {{ sigla.code }}
+                    </span>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <button (click)="togglePaintbrushPanel()" 
+                    class="h-7 px-3.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer">
+              <span class="material-icons text-xs">close</span> Fechar
+            </button>
+          </div>
+        }
+
+        @if (editingCollaboratorRow(); as col) {
+          <!-- CABEÇALHO DINÂMICO DE EDIÇÃO DE LINHA (EXCLUSIVO MALHA/JETFUEL DESIGN) -->
+          <div class="bg-slate-955 border-b border-emerald-500/20 px-4 py-2 flex flex-wrap items-center justify-between gap-3 shadow-inner">
+            <!-- Left: Operator ID and the button lineup -->
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="text-[10px] font-black text-slate-200 uppercase tracking-tight flex items-center gap-1.5 shrink-0">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Linha de {{ col.name }}:
+              </span>
+
+              <!-- Align Left: Minimal Buttons list -->
+              <div class="flex flex-wrap items-center gap-1 bg-slate-900 p-0.5 rounded border border-slate-850" style="height: 34px; padding-left: 6px; padding-right: 6px;">
+                <!-- Trabalho Regular -->
+                <button (click)="rowEditorSelectedSigla.set('')"
+                        [class]="rowEditorSelectedSigla() === '' ? 'border-emerald-500 ring-2 ring-emerald-500/40 bg-slate-800 text-white font-black' : 'border-transparent text-slate-400 hover:text-slate-200'"
+                        class="h-7 w-9 rounded text-[10px] font-mono font-black border transition-all cursor-pointer flex items-center justify-center"
+                        title="Turno Regular (Trabalho Ativo)">
+                  T
+                </button>
+
+                @for (sig of scaleService.shiftTypes(); track sig.code) {
+                  <button (click)="rowEditorSelectedSigla.set(sig.code)"
+                          [class]="rowEditorSelectedSigla() === sig.code ? 'border-emerald-500 ring-2 ring-emerald-500/40 bg-slate-855 font-bold text-white' : 'border-transparent text-slate-400 hover:scale-[1.03]'"
+                          class="h-7 px-2 rounded text-[10px] font-bold border transition-all cursor-pointer flex items-center justify-center"
+                          [title]="sig.label">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-black font-semibold" [class]="sig.color" [title]="sig.label">{{ sig.code }}</span>
+                  </button>
+                }
+              </div>
+
+              <!-- Compact Custom shift time input -->
+              <div class="flex items-center gap-1.5 border-l border-slate-800 pl-3">
+                <input id="customEditValueInputId"
+                       #customEditValueInput
+                       placeholder="Ex: 06:00"
+                       class="bg-slate-900 text-white font-mono text-[10px] rounded border border-slate-800 focus:border-emerald-500 outline-none"
+                       style="padding-left: 6px; padding-right: 6px; width: 70px; height: 30px;">
+                <button (click)="rowEditorSelectedSigla.set(customEditValueInput.value); customEditValueInput.value = ''"
+                        class="h-7 w-7 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded flex items-center justify-center transition-all cursor-pointer"
+                        title="Aplicar personalizado">
+                  <span class="material-icons text-xs">done</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Right side: Done Action & Clear Action -->
+            <div class="flex items-center gap-2">
+              @if (!confirmingClearRow()) {
+                <button (click)="confirmingClearRow.set(true)"
+                        class="h-7 px-3 rounded bg-red-650 hover:bg-red-600 text-white font-bold text-[10px] uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer border border-red-700/40"
+                        title="Limpar escala completa deste colaborador">
+                  <span class="material-icons text-xs">cleaning_services</span> Limpar
+                </button>
+              } @else {
+                <div class="flex items-center gap-2 bg-red-955 py-0.5 px-2 rounded border border-red-900">
+                  <span class="text-[9px] font-black text-rose-250 uppercase tracking-tighter">Limpar escala de {{ col.name }}?</span>
+                  <div class="flex gap-1">
+                    <button (click)="clearSelectedRow()"
+                            class="h-5 px-2 bg-red-605 hover:bg-red-505 text-white font-black text-[9px] rounded uppercase cursor-pointer transition-all">
+                      Confirmar
+                    </button>
+                    <button (click)="confirmingClearRow.set(false)"
+                            class="h-5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-350 font-medium text-[9px] rounded uppercase cursor-pointer transition-all">
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <button (click)="closeRowEditor()"
+                      class="h-7 px-3.5 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer">
+                <span class="material-icons text-xs">done_all</span> Concluir
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- SPREADSHEET DESIGN CONTAINER -->
+        <div class="overflow-x-auto overflow-y-hidden max-w-full bg-white" id="spreadsheet_holder">
+          <table class="w-full border-collapse text-left select-none table-fixed border-slate-200">
+            <thead>
+              <!-- CALENDAR DAYS ROW -->
+              <tr class="bg-slate-50 border-b border-slate-200">
+                <th class="p-1 w-48 font-black text-slate-400 text-[10px] uppercase tracking-widest sticky left-0 bg-slate-50 z-10 border-r border-slate-200 font-mono">
+                  COLABORADOR / ESCALA
+                </th>
+                @for (day of daysList; track day) {
+                  <th class="p-0.5 py-1 border-r border-slate-100 text-center font-mono" 
+                      style="font-size: 16px;"
+                      [class.highlighted-column-header]="isColumnHighlighted(day)"
+                      [class.cursor-help]="isColumnHighlighted(day)"
+                      [title]="getDayTooltip(day)">
+                    <div style="font-size: 11px; font-family: 'Inter', sans-serif; text-align: center;" class="font-bold uppercase tracking-wider text-slate-400" [class.text-amber-800]="isColumnHighlighted(day)">
+                      {{ getDayOfWeekLabel(day) }}
+                    </div>
+                    <div style="font-size: 10px; font-family: 'Inter', sans-serif; text-align: center;" class="font-black text-slate-800 mt-0.5" [class.text-amber-900]="isColumnHighlighted(day)">
+                      {{ day }}
+                    </div>
+                  </th>
+                }
+                <th class="p-1 w-20 font-black text-slate-400 text-[10px] uppercase tracking-wider text-center sticky right-0 bg-slate-50 z-10 border-l border-slate-200 shadow-[-2px_0_5px_rgba(0,0,0,0.015)]">
+                  AÇÃO
+                </th>
+              </tr>
+            </thead>
+            
+            <tbody class="divide-y divide-slate-100">
+              @for (col of filteredCollaborators(); track col.id) {
+                <tr [class]="editingCollaboratorRow()?.id === col.id 
+                            ? 'border-b-2 border-emerald-500/50 bg-emerald-50/40 hover:bg-emerald-50/50 transition-all text-slate-900' 
+                            : 'border-b border-slate-100 hover:bg-slate-50/50 transition-colors'">
+                  
+                  <!-- COLLABORATOR NAME STICKY HEADER WITH RECTANGULAR AVATAR PHOTO -->
+                  <td [class]="editingCollaboratorRow()?.id === col.id ? 'bg-emerald-50 border-r-2 border-r-emerald-500 font-bold' : 'bg-white border-r border-slate-200'"
+                      class="p-1 text-xs sticky left-0 z-10 flex items-center gap-2 select-none shadow-[2px_0_5px_rgba(0,0,0,0.015)]">
+                    <!-- Rectangular photo/avatar placeholder -->
+                    <div [class]="editingCollaboratorRow()?.id === col.id ? 'from-emerald-500 to-emerald-600 border-emerald-400 ring-2 ring-emerald-500/20' : 'from-blue-500 to-blue-600 border-blue-400'"
+                         class="w-6 h-6 rounded bg-gradient-to-br text-white flex items-center justify-center flex-shrink-0 border text-[8px] font-black uppercase tracking-wider shadow-sm transition-all">
+                      {{ col.name.substring(0, 2) }}
+                    </div>
+                    <div class="flex flex-col justify-center truncate min-w-0">
+                      <span class="text-xs font-bold text-slate-900 truncate tracking-wide pr-1">{{ col.name }}</span>
+                    </div>
+                  </td>
+ 
+                  <!-- SHIFT CELL -->
+                  @for (day of daysList; track day) {
+                    <td (click)="clickCell(col.id, day)" 
+                        [title]="getToolTipLabel(col.id, day)"
+                        class="p-0.5 border-r border-slate-100 transition-all cursor-pointer text-center relative font-mono text-xs overflow-hidden"
+                        [class.highlighted-column-cell]="isColumnHighlighted(day)">
+                      
+                      <!-- Cell inside block representing exact schedule state -->
+                      <div class="w-full h-6 flex items-center justify-center font-black rounded border text-[9px] tracking-tight transition-all duration-150 hover:scale-105"
+                           [class]="getCellBgColor(col.id, day)">
+                        <span>{{ getCellValue(col.id, day) }}</span>
+                      </div>
+ 
+                    </td>
+                  }
+
+                  <!-- ACTION CELL FOR QUICK ROW EDIT -->
+                  <td [class]="editingCollaboratorRow()?.id === col.id ? 'bg-emerald-50 border-l-2 border-l-emerald-500' : 'bg-white border-l border-slate-200'"
+                      class="p-1 text-center sticky right-0 z-10 shadow-[-2px_0_5px_rgba(0,0,0,0.015)] align-middle">
+                    <button (click)="openRowEditor(col)"
+                            [class]="editingCollaboratorRow()?.id === col.id ? 'bg-amber-500 text-slate-950 font-black border-amber-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 hover:text-slate-900'"
+                            class="h-7 px-2.0 rounded-lg border transition-all text-[9.5px] font-black uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer shadow-sm mx-auto">
+                      <span class="material-icons text-[12px] font-bold">edit_calendar</span>
+                      Editar
+                    </button>
+                  </td>
+                </tr>
+              }
+
+              <!-- BOTTOM CONTINGENTE MATRIX SECURITY FOOTER / BARRA DE SEGURANÇA -->
+              <tr class="bg-slate-50 font-mono border-t border-slate-200">
+                <td class="p-4 text-xs font-bold text-slate-700 sticky left-0 bg-slate-50 z-10 border-r border-slate-200">
+                  <div class="font-black text-[9px] text-slate-400 uppercase tracking-widest">CONTINGENTE MIN.</div>
+                  <div class="text-[10px] text-blue-600 font-black mt-1">Madrugada (Min: 6/5)</div>
+                </td>
+
+                @for (day of daysList; track day) {
+                  <td class="p-2 border-r border-slate-100 text-center transition-all" [class]="getContingentFooterCellClass(day)">
+                    <div class="text-xs font-black">{{ getActiveCount(day) }}</div>
+                    <div class="text-[8px] font-bold uppercase tracking-tighter opacity-70">Req: {{ getRequiredCount(day) }}</div>
+                  </td>
+                }
+                
+                <td class="p-2 bg-slate-50 sticky right-0 z-10 border-l border-slate-200 shadow-[-2px_0_5px_rgba(0,0,0,0.015)]"></td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        <!-- GRID INFOBAR LEGEND -->
+        <footer class="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4 text-xs font-sans">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span class="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Legenda de Acrônimos:</span>
+            <div class="flex flex-wrap gap-4">
+              @for (sig of scaleService.shiftTypes(); track sig.code) {
+                <div class="flex items-center gap-1.5 animate-fade-in">
+                  <span class="px-2 py-1 rounded font-black text-[11px] border hover:scale-105 transition-all shadow-sm block text-center min-w-[24px]" [class]="sig.color">
+                    {{ sig.code }}
+                  </span>
+                  <span class="text-[10px] font-bold text-slate-600">{{ sig.label }}</span>
+                </div>
+              }
+              <div class="flex items-center gap-1.5 animate-fade-in">
+                <span class="px-2 py-1 rounded font-black text-[11px] bg-white text-slate-400 border border-slate-200 shadow-sm block text-center min-w-[24px]">
+                  _
+                </span>
+                <span class="text-[10px] font-bold text-slate-600">Trabalho Regular</span>
+              </div>
+            </div>
+          </div>
+        </footer>
+        }
+
+        <!-- SALVAR / CARREGAR TAB WORKSPACE -->
+        @if (activeSubTab() === 'backups') {
+          <div class="p-6 space-y-6 animate-fade-in font-sans" id="backups_tab_content">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              
+              <!-- LEFT PART: SLOT PERSISTENCE -->
+              <div class="space-y-4">
+                <div class="flex items-center gap-2">
+                  <span class="material-icons select-none text-blue-600 font-bold">memory</span>
+                  <h3 class="font-black text-sm uppercase tracking-tight text-slate-900">Salvar Grade Atual em Slot Interno</h3>
+                </div>
+                <p class="text-xs text-slate-500 leading-relaxed font-sans">
+                  Salve pontos de restauração expressos na memória local do seu navegador (<span class="font-mono bg-slate-100 px-1 rounded font-bold">localStorage</span>). Ideal para rascunhar variações de plantão.
+                </p>
+
+                <!-- Input form -->
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3 shadow-inner">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label for="profileNameInput" class="block text-[9px] font-black text-slate-500 uppercase mb-1 font-sans">Identificador do Slot:</label>
+                      <input id="profileNameInput" [value]="newProfileName()" (input)="newProfileName.set($any($event.target).value)"
+                             type="text" placeholder="Ex: Rascunho Fim de Ano v1" 
+                             class="w-full bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 shadow-sm font-sans font-bold" />
+                    </div>
+                    <div>
+                      <label for="profileDescInput" class="block text-[9px] font-black text-slate-500 uppercase mb-1 font-sans">Observações (Meta):</label>
+                      <input id="profileDescInput" [value]="newProfileDescription()" (input)="newProfileDescription.set($any($event.target).value)"
+                             type="text" placeholder="Ex: Ajustando trocas e folgas extras" 
+                             class="w-full bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 shadow-sm font-sans" />
+                    </div>
+                  </div>
+                  <button (click)="saveActiveBackupSlot()"
+                          [disabled]="!newProfileName().trim()"
+                          class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-black py-2.5 rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-md">
+                    <span class="material-icons text-sm">bookmark_add</span>
+                    Comitar Escala para Memória
+                  </button>
+                </div>
+
+                <!-- Saved Slots Listing -->
+                <div class="space-y-2">
+                  <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">Backups Rápidos Conservados</h4>
+                  
+                  @if (scaleService.savedProfiles().length) {
+                    <div class="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                      @for (p of scaleService.savedProfiles(); track p.id) {
+                        <div class="bg-white border border-slate-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-blue-300 transition-all shadow-sm">
+                          <div>
+                            <div class="flex items-center gap-2">
+                              <span class="font-bold text-xs text-slate-800 font-sans">{{ p.name }}</span>
+                              <span class="text-[8px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-mono font-black border border-blue-100">{{ p.timestamp | date:'HH:mm • dd/MMM' }}</span>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1 italic font-sans">{{ p.description || 'Sem descrição' }}</p>
+                          </div>
+                          
+                          <div class="flex items-center gap-1.5 self-end sm:self-auto uppercase font-sans font-black">
+                            <button (click)="loadActiveBackupSlot(p.id)"
+                                    class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[9px] px-2.5 py-1.5 rounded-lg tracking-wider transition-all flex items-center gap-1 cursor-pointer">
+                              <span class="material-icons text-[10px]">restore</span>
+                              Restaurar
+                            </button>
+                            <button (click)="deleteBackupSlot(p.id)"
+                                    class="bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 font-bold text-[9px] p-1.5 rounded-lg transition-all border border-slate-200 hover:border-rose-200 cursor-pointer"
+                                    title="Excluir slot">
+                              <span class="material-icons text-sm">delete_outline</span>
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 font-bold text-xs bg-slate-50/50">
+                      Nenhum slot interno de rascunhos salvo na memória.
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- RIGHT PART: OFFLINE FILE MANAGEMENT (JSON) -->
+              <div class="space-y-4">
+                <div class="flex items-center gap-2">
+                  <span class="material-icons select-none text-blue-600 font-bold">folder_zip</span>
+                  <h3 class="font-black text-sm uppercase tracking-tight text-slate-900">Importação / Exportação Física (Off-SaaS)</h3>
+                </div>
+                <p class="text-xs text-slate-500 leading-relaxed font-sans">
+                  Baixe de forma estrita o pacote bruto da escala completa para arquivos no formato estruturado <span class="font-mono bg-slate-100 px-1 rounded font-bold">.json</span>. Transfira de terminal de modo totalmente autônomo.
+                </p>
+
+                <!-- Trigger slots drag system -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  
+                  <!-- DOWNLOAD CARD -->
+                  <div class="bg-white border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-4 flex flex-col justify-between h-48 text-center transition-all bg-slate-50/20 shadow-sm animate-item">
+                    <div class="space-y-2">
+                      <span class="material-icons select-none text-blue-600 text-3xl">download</span>
+                      <h4 class="text-xs font-black text-slate-800 uppercase tracking-tight">Baixar Backup Bruto</h4>
+                      <p class="text-[10px] text-slate-400 leading-normal font-sans">Empacota todo o ecossistema (Plantonistas, Permutas, Roteamento e Regras de Negócio).</p>
+                    </div>
+                    <button (click)="exportBackupJSON()"
+                            class="bg-slate-900 hover:bg-slate-800 text-white font-black text-[10px] py-1/5 rounded-xl transition-colors uppercase tracking-wider cursor-pointer shadow-sm min-h-[36px]">
+                      Gerar Arquivo JSON
+                    </button>
+                  </div>
+
+                  <!-- UPLOAD CARD -->
+                  <div class="bg-white border-2 border-dashed border-slate-200 hover:border-emerald-400 rounded-2xl p-4 flex flex-col justify-between h-48 text-center transition-all bg-slate-50/20 shadow-sm relative overflow-hidden animate-item">
+                    <div class="space-y-2 pointer-events-none">
+                      <span class="material-icons select-none text-emerald-600 text-3xl">cloud_upload</span>
+                      <h4 class="text-xs font-black text-slate-800 uppercase tracking-tight">Restaurar .JSON</h4>
+                      <p class="text-[10px] text-slate-400 leading-normal font-sans">Carrega no estado ativo do app o rascunho de qualquer arquivo anteriormente exportado.</p>
+                    </div>
+                    <div>
+                      <input id="jsonFileUpload_backup" type="file" (change)="onJsonUpload($event)" accept=".json"
+                             class="absolute inset-x-0 bottom-0 top-0 opacity-0 cursor-pointer w-full h-full z-10" />
+                      <button class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] py-2.5 rounded-xl transition-colors uppercase tracking-wider relative z-0 pointer-events-none shadow-sm animate-button">
+                        Procurar Arquivo
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div class="bg-amber-50 border border-amber-250 rounded-xl p-4 text-xs text-amber-800 leading-relaxed font-sans shadow-sm">
+                  <div class="flex items-center gap-1.5 font-black text-[10px] uppercase tracking-wider text-amber-900 mb-1">
+                    <span class="material-icons select-none text-xs">shield</span>
+                    Aviso de Integridade do Modelo
+                  </div>
+                  A exportação física e a importação de arquivos não dependem de canais ou APIs externas. O motor do sistema valida a estrutura do arquivo JSON com tratamento defensivo antes de aplicá-lo à persistência, prevenindo quebras de integridade da planilha.
+                </div>
+              </div>
+
+            </div>
+          </div>
+        }
+
+        <!-- GESTÃO DE TURNOS TAB WORKSPACE -->
+        @if (activeSubTab() === 'shifts') {
+          <div class="p-6 space-y-6 animate-fade-in font-sans" id="shifts_tab_content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              <!-- GRID SHIFTS LIST (SPAN 2) -->
+              <div class="lg:col-span-2 space-y-4">
+                <div class="flex items-center gap-2">
+                  <span class="material-icons select-none text-blue-600 font-bold">tune</span>
+                  <h3 class="font-black text-sm uppercase tracking-tight text-slate-900">Catálogo de Turnos e Siglas Operacionais</h3>
+                </div>
+                
+                <div class="overflow-x-auto bg-white rounded-xl border border-slate-200">
+                  <table class="w-full text-left text-xs text-slate-700 font-sans">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th class="p-3 font-black text-slate-500 uppercase tracking-widest text-[9px]">Acrônimo (Sigla)</th>
+                        <th class="p-3 font-black text-slate-500 uppercase tracking-widest text-[9px]">Descrição Operacional</th>
+                        <th class="p-3 font-black text-slate-500 uppercase tracking-widest text-[9px]">Amostra / Preview</th>
+                        <th class="p-3 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Desconta Contingente</th>
+                        <th class="p-3 font-black text-slate-400 uppercase tracking-widest text-[9px] text-right">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 font-medium">
+                      @for (s of scaleService.shiftTypes(); track s.code) {
+                        <tr class="hover:bg-slate-50/40">
+                          <td class="p-3 font-mono font-black text-slate-950 text-sm">
+                            <span class="px-2.5 py-1 rounded border shadow-sm" [class]="s.color">
+                              {{ s.code }}
+                            </span>
+                          </td>
+                          <td class="p-3 text-slate-700 font-bold text-xs flex flex-col gap-0.5">
+                            <span>{{ s.label }}</span>
+                            @if (s.category) {
+                              <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                                @if (s.category === 'FOLGAS') { Folgas }
+                                @else if (s.category === 'FERIAS') { Férias }
+                                @else if (s.category === 'CURSOS_TREINAMENTO') { Cursos e Treinamento }
+                                @else if (s.category === 'REUNIOES') { Reuniões }
+                                @else if (s.category === 'AFASTAMENTO_SAUDE') { Afastamento/Saude }
+                                @else if (s.category === 'AUSENCIA_INJUSTIFICADA') { Ausencias Injustificadas }
+                                @else if (s.category === 'TURNO') { Turno Regular }
+                              </span>
+                            }
+                          </td>
+                          <td class="p-3 font-mono text-[9px] text-slate-400 truncate max-w-[120px]" [title]="s.color">
+                            {{ s.color }}
+                          </td>
+                          <td class="p-3 text-center">
+                            @if (s.discounts) {
+                              <span class="inline-flex items-center gap-0.5 text-[9px] bg-rose-50 text-rose-700 font-black border border-rose-100 px-2 py-0.5 rounded uppercase">SIM (Reduz Cobertura)</span>
+                            } @else {
+                              <span class="inline-flex items-center gap-0.5 text-[9px] bg-slate-100 text-slate-500 font-black px-2 py-0.5 rounded uppercase">NÃO</span>
+                            }
+                          </td>
+                          <td class="p-3 text-right flex justify-end gap-1.5">
+                            <button (click)="editShiftType(s.code)"
+                                    class="bg-slate-100 hover:bg-amber-50 text-slate-400 hover:text-amber-600 p-1.5 rounded-lg transition-colors border border-slate-200 hover:border-amber-200 cursor-pointer"
+                                    title="Editar definição de turno">
+                              <span class="material-icons text-xs">edit</span>
+                            </button>
+                            @if (!s.cannotDelete) {
+                              <button (click)="removeShiftType(s.code)"
+                                      class="bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition-colors border border-slate-200 hover:border-rose-200 cursor-pointer"
+                                      title="Remover definição de turno">
+                                <span class="material-icons text-xs">delete_outline</span>
+                              </button>
+                            } @else {
+                              <button [disabled]="true"
+                                      class="bg-slate-50 text-slate-350 p-1.5 rounded-lg border border-slate-150 cursor-not-allowed"
+                                      title="Sigla operacional padrão (Não removível)">
+                                <span class="material-icons text-xs">lock_outline</span>
+                              </button>
+                            }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- CONFIG NEW SHIFT MODEL -->
+              <div class="space-y-4">
+                <article class="bg-slate-50 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 font-sans border-t-4"
+                         [class.border-t-blue-600]="!editingShiftCode()"
+                         [class.border-t-amber-500]="editingShiftCode()">
+                  <div class="flex items-center gap-2 border-b border-slate-200 pb-3">
+                    <span class="material-icons select-none font-bold text-sm text-slate-800"
+                          [class.text-blue-600]="!editingShiftCode()"
+                          [class.text-amber-505]="editingShiftCode()">
+                      {{ editingShiftCode() ? 'edit' : 'add_task' }}
+                    </span>
+                    <h4 class="font-black text-xs uppercase tracking-wider text-slate-800">
+                      {{ editingShiftCode() ? 'Editar Sigla Operacional [' + editingShiftCode() + ']' : 'Cadastrar Nova Sigla de Turno' }}
+                    </h4>
+                  </div>
+
+                  <div class="space-y-3">
+                    <div>
+                      <label for="newShiftCode" class="block text-[9px] font-black text-slate-500 uppercase mb-1">Acrônimo da Sigla:</label>
+                      <input id="newShiftCode" [value]="newShiftCode()" (input)="newShiftCode.set($any($event.target).value)"
+                             type="text" placeholder="Ex: TA, MT" 
+                             class="w-full bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 shadow-sm font-mono font-black placeholder:font-sans uppercase" />
+                    </div>
+                    <div>
+                      <label for="newShiftLabel" class="block text-[9px] font-black text-slate-500 uppercase mb-1">Finalidade / Descrição:</label>
+                      <input id="newShiftLabel" [value]="newShiftLabel()" (input)="newShiftLabel.set($any($event.target).value)"
+                             type="text" placeholder="Ex: Treinamento Avançado" 
+                             class="w-full bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 shadow-sm" />
+                    </div>
+                    <div>
+                      <label for="newShiftCategory" class="block text-[9px] font-black text-slate-500 uppercase mb-1">Categoria da Sigla:</label>
+                      <select id="newShiftCategory" [value]="newShiftCategory()" (change)="changeShiftCategory($any($event.target).value)"
+                              class="w-full bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-2.5 py-2 outline-none focus:border-blue-600 shadow-sm font-sans font-bold">
+                        <option value="TURNO">Turno Regular</option>
+                        <option value="FOLGAS">Folgas</option>
+                        <option value="FERIAS">Férias</option>
+                        <option value="CURSOS_TREINAMENTO">Cursos e Treinamento</option>
+                        <option value="REUNIOES">Reuniões</option>
+                        <option value="AFASTAMENTO_SAUDE">Afastamento/Saude</option>
+                        <option value="AUSENCIA_INJUSTIFICADA">Ausencias Injustificadas</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label for="newShiftColorSelect" class="block text-[9px] font-black text-slate-500 uppercase mb-1">Cor de Destaque da Sigla:</label>
+                      <select id="newShiftColorSelect" [value]="newShiftColorName()" (change)="changeShiftColorName($any($event.target).value)"
+                              class="w-full bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-2.5 py-2 outline-none focus:border-blue-600 shadow-sm font-sans font-bold">
+                        <option value="branco">Branco</option>
+                        <option value="verde">Verde</option>
+                        <option value="cinza-escuro">Cinza Escuro</option>
+                        <option value="azul">Azul</option>
+                        <option value="amarelo">Amarelo</option>
+                        <option value="vermelho">Vermelho</option>
+                        <option value="lilaz">Liláz</option>
+                        <option value="rosa">Rosa</option>
+                        <option value="marrom">Marrom</option>
+                        <option value="laranja">Laranja</option>
+                        <option value="esmeralda">Esmeralda</option>
+                      </select>
+                    </div>
+
+                  <!-- PREVIEW CELL UNIT -->
+                  <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between select-none shadow-inner my-2">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Amostra Real na Grade:</span>
+                    <div class="px-3 py-1.5 rounded font-black text-xs border text-center min-w-[36px] shadow-sm uppercase pointer-events-none transition-all duration-150"
+                         [class]="newShiftColor() || 'bg-slate-100'">
+                      {{ newShiftCode() || 'T' }}
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2 py-1 select-none opacity-90 my-2">
+                    <input id="newShiftDiscounts" type="checkbox" [checked]="newShiftDiscounts()" [disabled]="newShiftCategory() !== 'CURSOS_TREINAMENTO'" (change)="newShiftDiscounts.set($any($event.target).checked)"
+                           class="w-4 h-4 rounded border-slate-250 text-blue-600 focus:ring-blue-500" 
+                           [class.cursor-pointer]="newShiftCategory() === 'CURSOS_TREINAMENTO'" [class.cursor-not-allowed]="newShiftCategory() !== 'CURSOS_TREINAMENTO'" />
+                    <label for="newShiftDiscounts" class="text-xs font-bold text-slate-600" [class.cursor-pointer]="newShiftCategory() === 'CURSOS_TREINAMENTO'" [class.cursor-not-allowed]="newShiftCategory() !== 'CURSOS_TREINAMENTO'">
+                      Desconta cobertura de segurança (Fixo p/ folgas/afastamentos/faltas, Alterável para Cursos)
+                    </label>
+                  </div>
+                  </div>
+
+                  @if (editingShiftCode()) {
+                    <div class="grid grid-cols-2 gap-2">
+                      <button (click)="saveShiftTypeEdit()"
+                              [disabled]="!newShiftCode().trim() || !newShiftLabel().trim()"
+                              class="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-xs font-black py-2.5 rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer shadow-md font-sans">
+                        <span class="material-icons text-sm">save</span>
+                        Salvar
+                      </button>
+                      <button (click)="cancelShiftTypeEdit()"
+                              class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-black py-2.5 rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer font-sans">
+                        <span class="material-icons text-sm">close</span>
+                        Cancelar
+                      </button>
+                    </div>
+                  } @else {
+                    <button (click)="addNewShiftType()"
+                            [disabled]="!newShiftCode().trim() || !newShiftLabel().trim()"
+                            class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-black py-2.5 rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-md select-none font-sans">
+                      <span class="material-icons text-sm">library_add</span>
+                      Comitar Nova Sigla
+                    </button>
+                  }
+                </article>
+              </div>
+
+            </div>
+          </div>
+        }
+
+        <!-- GESTÃO DE STAFF TAB WORKSPACE -->
+        @if (activeSubTab() === 'staff') {
+          <div class="p-6 space-y-6 animate-fade-in font-sans" id="staff_tab_content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              <!-- STAFF LISTING (SPAN 2) -->
+              <div class="lg:col-span-2 space-y-4">
+                <div class="flex items-center gap-2">
+                  <span class="material-icons select-none text-blue-600 font-bold">group</span>
+                  <h3 class="font-black text-sm uppercase tracking-tight text-slate-900">Membros da Frota / Plantonistas Ativos</h3>
+                </div>
+
+                <div class="overflow-x-auto bg-white rounded-xl border border-slate-200">
+                  <table class="w-full text-left text-xs text-slate-700 font-sans">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th class="p-3 font-black text-slate-500 uppercase tracking-widest text-[9px]">Plantonista / ID</th>
+                        <th class="p-3 font-black text-slate-500 uppercase tracking-widest text-[9px]">Função</th>
+                        <th class="p-3 font-black text-slate-500 uppercase tracking-widest text-[9px]">Grupo</th>
+                        <th class="p-3 font-black text-slate-500 uppercase tracking-widest text-[9px]">Clipped Escala</th>
+                        <th class="p-3 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Saldo BH</th>
+                        <th class="p-3 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Score</th>
+                        <th class="p-3 font-black text-slate-450 uppercase tracking-widest text-[9px] text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 font-medium">
+                      @for (c of scaleService.collaborators(); track c.id) {
+                        <tr class="hover:bg-slate-50/40">
+                          <td class="p-3">
+                            <div class="font-black text-slate-900 text-sm tracking-tight">{{ c.name }}</div>
+                            <div class="text-[9px] font-black text-slate-400 font-mono mt-0.5">ID: {{ c.id }}</div>
+                          </td>
+                          <td class="p-3">
+                            <span class="text-[9px] bg-blue-50 text-blue-700 font-black px-2 py-0.5 rounded border border-blue-100 uppercase">
+                              {{ c.role }}
+                            </span>
+                          </td>
+                          <td class="p-3">
+                            <span class="text-[9px] bg-slate-100 text-slate-700 font-black px-2.5 py-0.5 rounded border border-slate-200 uppercase">
+                              {{ c.group }}
+                            </span>
+                          </td>
+                          <td class="p-3 font-mono font-bold text-slate-600">{{ c.schedule }}</td>
+                          <td class="p-3 text-center font-mono font-black text-xs">
+                            <span [class]="c.bhBalance < 0 ? 'text-rose-600' : 'text-emerald-600'">
+                              {{ c.bhBalance > 0 ? '+' : '' }}{{ c.bhBalance }} h
+                            </span>
+                          </td>
+                          <td class="p-3 text-center font-mono font-bold text-xs text-indigo-600">{{ c.score }} pts</td>
+                          <td class="p-3 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                              <button (click)="startEditCollaborator(c)"
+                                      class="bg-slate-105 hover:bg-slate-200 text-slate-500 p-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                                      title="Editar cadastrado">
+                                <span class="material-icons text-xs">edit</span>
+                              </button>
+                              <button (click)="removeCollaborator(c.id)"
+                                      class="bg-slate-100 hover:bg-rose-50 text-slate-450 hover:text-rose-650 p-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                                      title="Deletar / Remover voluntário">
+                                <span class="material-icons text-xs">person_remove</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- EDITING FORM CONTAINER -->
+              <div class="space-y-4">
+                <article class="bg-slate-50 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 font-sans border-t-4 border-t-blue-600">
+                  <div class="flex items-center gap-2 border-b border-slate-200 pb-3">
+                    <span class="material-icons select-none text-blue-600 font-bold text-sm">
+                      {{ editingCollabId() ? 'how_to_reg' : 'person_add' }}
+                    </span>
+                    <h4 class="font-black text-xs uppercase tracking-wider text-slate-800">
+                      {{ editingCollabId() ? 'Editar Cadastro' : 'Efetivar Admissão Staff' }}
+                    </h4>
+                  </div>
+
+                  <div class="space-y-3 font-sans">
+                    <div>
+                      <label for="newCollabName" class="block text-[9px] font-black text-slate-500 uppercase mb-1">Nome Completo do Operador:</label>
+                      <input id="newCollabName" [value]="newCollabName()" (input)="newCollabName.set($any($event.target).value)"
+                             type="text" placeholder="Ex: CARLOS ALBERTO SILVA" 
+                             class="w-full bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 shadow-sm font-bold uppercase placeholder:font-normal placeholder:capitalize" />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label for="newCollabRole" class="block text-[9px] font-black text-slate-500 uppercase mb-1 font-sans">Escopo Cargo:</label>
+                        <select id="newCollabRole" [value]="newCollabRole()" (change)="newCollabRole.set($any($event.target).value)"
+                                class="w-full bg-white border border-slate-250 text-slate-850 text-xs rounded-xl px-2 py-2 outline-none focus:border-blue-600 shadow-sm font-bold text-blue-600">
+                          <option value="OPERADOR">Operador</option>
+                          <option value="LIDER">Líder Turno</option>
+                          <option value="SUPERVISOR">Supervisor</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label for="newCollabGroup" class="block text-[9px] font-black text-slate-500 uppercase mb-1 font-sans">Grupo Alocado:</label>
+                        <select id="newCollabGroup" [value]="newCollabGroup()" (change)="newCollabGroup.set($any($event.target).value)"
+                                class="w-full bg-white border border-slate-250 text-slate-850 text-xs rounded-xl px-2 py-2 outline-none focus:border-blue-600 shadow-sm">
+                          <option value="Madrugada">Madrugada</option>
+                          <option value="Manhã">Manhã</option>
+                          <option value="Tarde">Tarde</option>
+                          <option value="VIP">VIP</option>
+                          <option value="Treinamento">Treinamento</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label for="newCollabSchedule" class="block text-[9px] font-black text-slate-500 uppercase mb-1">Horário da Janela Turno:</label>
+                      <input id="newCollabSchedule" [value]="newCollabSchedule()" (input)="newCollabSchedule.set($any($event.target).value)"
+                             type="text" placeholder="Ex: 21:12 - 06:00" 
+                             class="w-full bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 shadow-sm font-mono font-bold" />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label for="newCollabBh" class="block text-[9px] font-black text-slate-500 uppercase mb-1">Saldo de BH (h):</label>
+                        <input id="newCollabBh" [value]="newCollabBhBalance()" (change)="newCollabBhBalance.set(+$any($event.target).value)"
+                               type="number" 
+                               class="w-full bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 shadow-sm font-mono font-black" />
+                      </div>
+
+                      <div>
+                        <label for="newCollabScore" class="block text-[9px] font-black text-slate-500 uppercase mb-1">Meta Score:</label>
+                        <input id="newCollabScore" [value]="newCollabScore()" (change)="newCollabScore.set(+$any($event.target).value)"
+                               type="number" 
+                               class="w-full bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 shadow-sm font-mono font-black text-indigo-600" />
+                      </div>
+                    </div>
+                  </div>
+
+                  @if (editingCollabId()) {
+                    <div class="flex gap-2 pt-1 font-sans">
+                      <button (click)="saveEditedCollaborator()"
+                              class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black py-2.5 rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-md select-none font-sans">
+                        <span class="material-icons text-sm">done</span>
+                        Salvar
+                      </button>
+                      <button (click)="cancelEditCollaborator()"
+                              class="bg-slate-205 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2.5 px-3 rounded-xl transition-all uppercase cursor-pointer">
+                        Cancelar
+                      </button>
+                    </div>
+                  } @else {
+                    <button (click)="addNewCollaborator()"
+                            [disabled]="!newCollabName().trim()"
+                            class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-black py-2.5 rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-md select-none font-sans">
+                      <span class="material-icons text-sm">person_add_alt_1</span>
+                      Efetivar Admissão
+                    </button>
+                  }
+                </article>
+              </div>
+
+            </div>
+          </div>
+        }
+
+      </section>
+
+
+
+
+
+
+
+    <!-- PERSPECTIVE C: COLABORADOR INTERACTIVE PORTAL (FRENTE C) -->
+    } @else if (scaleService.currentRole() === 'OPERADOR') {
+      
+      <!-- LOGGED OPERATOR SELECTOR FOR MULTI-PERSON SIMULATION -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl" id="operator_identity_selection">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center border border-blue-200">
+            <span class="material-icons select-none text-blue-600 text-xl font-bold">account_circle</span>
+          </div>
+          <div>
+            <h3 class="text-slate-900 font-black text-sm uppercase">Simulando Colaborador no Aplicativo Móvel</h3>
+            <p class="text-slate-500 text-xs mt-0.5">Mude de identidade abaixo para simular as permutas e datas fáceis de cada um dos 9 integrantes piloto.</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Operador Ativo:</span>
+          <select [value]="scaleService.selectedOperatorId()" 
+                  (change)="scaleService.selectedOperatorId.set($any($event.target).value)" 
+                  class="bg-slate-50 text-blue-600 font-black border border-slate-250 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-600 shadow-sm">
+            @for (op of getOnShiftOperators(); track op.id) {
+              <option [value]="op.id">{{ op.name }} (Score: {{ op.score }}%)</option>
+            }
+          </select>
+        </div>
+      </section>
+
+      <!-- COLABORADOR WORKSPACE BENTO GRID -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6" id="operator_workspace_grid">
+        
+        <!-- CALENDARIO INTERATIVO (SPAN 7) -->
+        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-6 shadow-xl flex flex-col" id="colab_calendar_portal">
+          <header class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+            <div class="flex items-center gap-2">
+              <span class="material-icons select-none text-blue-600 font-bold">calendar_month</span>
+              <h3 class="text-sm font-black uppercase text-slate-900">CALENDÁRIO DE TRABALHO</h3>
+            </div>
+            <span class="text-xs bg-slate-100 text-blue-600 font-bold px-3 py-1 rounded border border-slate-200">MARÇO DE 2026</span>
+          </header>
+
+          <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+            Selecione qualquer dia e observe abaixo sua escala de folgas e turnos. Veja o status das suas solicitações aprovadas para este mês.
+          </p>
+
+          <!-- 31 DAY PORTUGUESE CALENDAR GRID -->
+          <div class="grid grid-cols-7 gap-2.5" id="colab_days_grid">
+            
+            <!-- Weekday headers -->
+            @for (wkDay of ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']; track wkDay) {
+              <div class="text-center font-mono text-[9px] text-slate-400 font-black uppercase py-1">{{ wkDay }}</div>
+            }
+
+            <!-- 31 Days loop -->
+            @for (day of daysList; track day) {
+              
+              <!-- Check what schedule code applies here for selected operator -->
+              @let cellValue = getCellValue(scaleService.selectedOperatorId(), day);
+              @let bgClass = cellValue === 'X' ? 'bg-slate-200 text-slate-800 hover:bg-slate-300 border-slate-300' : cellValue === 'F' ? 'bg-amber-100 text-amber-805 hover:bg-amber-200 border-amber-300' : cellValue === 'BH' ? 'bg-sky-100 text-sky-850 hover:bg-sky-200 border-sky-300' : cellValue === 'AT' ? 'bg-rose-100 text-rose-800 hover:bg-rose-200 border-rose-300' : 'bg-white text-slate-700 hover:bg-slate-25/50 border-slate-200';
+
+              <div [class]="'p-2 rounded-xl border text-center relative flex flex-col justify-between h-16 transition-all duration-200 cursor-help hover:scale-105 shadow-sm ' + bgClass">
+                <span class="text-[9px] font-black text-left opacity-60 leading-none">{{ day }}</span>
+                
+                <span class="text-[10px] font-black block truncate mt-1">
+                  {{ cellValue || 'TRABALHO' }}
+                </span>
+
+                <div class="text-[8px] font-mono opacity-80 truncate block text-left font-bold">
+                  {{ cellValue ? getToolTipLabel(scaleService.selectedOperatorId(), day).substring(0,10) : '21:12-06:00' }}
+                </div>
+              </div>
+
+            }
+
+          </div>
+
+          <!-- Calendar visual guide -->
+          <div class="mt-4 flex flex-wrap gap-2 text-[9px] justify-between border-t border-slate-100 pt-3 text-slate-500 font-bold uppercase tracking-wider">
+            <span>Legenda:</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-slate-200 border border-slate-300"></span> Folga (X)</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-amber-100 border border-amber-300"></span> Férias (F)</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-sky-100 border border-sky-300"></span> Banco de Horas (BH)</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-white border border-slate-200 font-bold"></span> Trabalho Estável</span>
+          </div>
+
+        </div>
+
+        <!-- OUTROS DETALHES DO COLABORADOR: DATAS MAGNAS & PERMUTAS (SPAN 5) -->
+        <div class="lg:col-span-5 space-y-6" id="colab_side_tools">
+          
+          <!-- DATAS MAGNAS COMPACT BUILDER -->
+          <article class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl space-y-4" id="datas_magnas_section">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="material-icons select-none text-blue-600 font-bold">hotel_class</span>
+                <h3 class="text-slate-900 font-black uppercase tracking-tight text-sm">CADASTRO DE DATAS MAGNAS</h3>
+              </div>
+              <span class="text-[9px] bg-blue-100 text-blue-700 font-black border border-blue-200 px-2 py-0.5 rounded uppercase">EXCLUSIVO</span>
+            </div>
+
+            <p class="text-xs text-slate-500 leading-relaxed">
+              Reserve até **5 datas cruciais** anuais para você (aniversários familiares, casamentos). O motor de regras as garantirá preventivamente na escala oficial.
+            </p>
+
+            <!-- Listed maganas -->
+            <div class="space-y-2">
+              @if (loggedOperator()?.importantDates?.length) {
+                <div class="space-y-1.5 font-sans">
+                  @for (date of loggedOperator()?.importantDates; track date.label) {
+                    <div class="bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700">
+                      <div class="flex items-center gap-2">
+                        <span class="material-icons select-none text-blue-600 text-xs">done_outline</span>
+                        <span class="tracking-wide text-slate-800">{{ date.label }}</span>
+                      </div>
+                      <div class="flex items-center gap-2 font-mono">
+                        <span class="text-blue-600 font-black">{{ date.date | date:'dd/MMM' }}</span>
+                        <span class="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-black">Prio {{ date.priority }}</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-slate-400 font-bold text-[10px] text-center bg-slate-50 py-3 rounded-xl border border-slate-200">Nenhuma data magna cadastrada no seu perfil.</p>
+              }
+            </div>
+
+            <!-- Add new date -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <h4 class="text-[10px] font-black text-slate-600 uppercase tracking-wider font-mono">Nova Data Solicitada</h4>
+              <div class="grid grid-cols-2 gap-2">
+                <input id="magnaLabelInput" [value]="magnaLabel()" (input)="magnaLabel.set($any($event.target).value)" 
+                       type="text" placeholder="Casamento, Aniversário..." 
+                       aria-label="Motivo da data magna"
+                       class="bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 col-span-2 shadow-sm" />
+                
+                <div>
+                  <label for="magnaDateInput" class="block text-[9px] font-bold text-slate-500 uppercase mb-1 select-none">Dia em Março:</label>
+                  <input id="magnaDateInput" [value]="magnaDate()" (change)="magnaDate.set($any($event.target).value)" 
+                         type="date" min="2026-03-01" max="2026-03-31" 
+                         class="bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 w-full shadow-sm" />
+                </div>
+
+                <div>
+                  <label for="magnaPrioritySelect" class="block text-[9px] font-bold text-slate-500 uppercase mb-1 select-none">Grau:</label>
+                  <select id="magnaPrioritySelect" [value]="magnaPriority()" (change)="magnaPriority.set(+$any($event.target).value)" 
+                          class="bg-white border border-slate-250 text-blue-600 text-xs rounded-xl px-2 py-2 outline-none focus:border-blue-600 w-full font-black shadow-sm">
+                    <option [value]="1">P1 (Crítica)</option>
+                    <option [value]="2">P2 (Alta)</option>
+                    <option [value]="3">P3 (Média)</option>
+                    <option [value]="4">P4 (Baixa)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button (click)="submitMagnaDate()" 
+                      class="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-black py-2 rounded-xl transition-colors uppercase tracking-wider">
+                Registrar Data Garantiva
+              </button>
+            </div>
+          </article>
+
+          <!-- CENTRAL DE PERMUTAS (TRADE HUB) -->
+          <article class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl space-y-4" id="central_permutas_section">
+            <div class="flex items-center gap-2">
+              <span class="material-icons select-none text-blue-600 font-bold">swap_horiz</span>
+              <h3 class="text-slate-900 font-black uppercase tracking-tight text-sm">CENTRAL DE PERMUTAS DE FLUXO</h3>
+            </div>
+
+            <!-- PROPOSE SWAP FORM -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-wider font-mono">Propor Troca Direta</h4>
+              
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label for="tradeSourceDaySelect" class="block text-[9px] font-bold text-slate-500 uppercase mb-1 select-none">Meus Dias:</label>
+                  <select id="tradeSourceDaySelect" [value]="tradeSourceDay()" (change)="tradeSourceDay.set(+$any($event.target).value)" 
+                          class="bg-white border border-slate-250 text-slate-800 text-xs rounded-xl p-2 outline-none focus:border-blue-600 w-full font-mono shadow-sm">
+                    @for (d of daysList; track d) {
+                      <option [value]="d">Dia {{ d }}</option>
+                    }
+                  </select>
+                </div>
+
+                <div>
+                  <label for="tradeTargetCollabSelect" class="block text-[9px] font-bold text-slate-500 uppercase mb-1 select-none">Com Quem:</label>
+                  <select id="tradeTargetCollabSelect" [value]="tradeTargetCollabId()" (change)="tradeTargetCollabId.set($any($event.target).value)" 
+                          class="bg-white border border-slate-250 text-slate-800 text-xs rounded-xl p-2 outline-none focus:border-blue-600 w-full shadow-sm">
+                    @for (op of getOnShiftOperators(); track op.id) {
+                      @if (op.id !== scaleService.selectedOperatorId()) {
+                        <option [value]="op.id">{{ op.name }}</option>
+                      }
+                    }
+                  </select>
+                </div>
+
+                <div>
+                  <label for="tradeTargetDaySelect" class="block text-[9px] font-bold text-slate-500 uppercase mb-1 select-none">Dia do Colega:</label>
+                  <select id="tradeTargetDaySelect" [value]="tradeTargetDay()" (change)="tradeTargetDay.set(+$any($event.target).value)" 
+                          class="bg-white border border-slate-250 text-slate-800 text-xs rounded-xl p-2 outline-none focus:border-blue-600 w-full font-mono shadow-sm">
+                    @for (d of daysList; track d) {
+                      <option [value]="d">Dia {{ d }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <button (click)="submitTradeRequest()" 
+                      class="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-black py-2.5 rounded-xl transition-all uppercase tracking-wider">
+                Enviar Proposta de Permuta
+              </button>
+            </div>
+
+            <!-- TRADE LOG HISTORY / AUDIT PIPELINE -->
+            <div class="space-y-3">
+              <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest font-mono">Status de Solicitações</h4>
+              
+              <div class="space-y-2.5" id="trades_log">
+                @for (tr of scaleService.trades(); track tr.id) {
+                  <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-xs text-slate-700">
+                    <div class="flex items-center justify-between font-mono text-[10px] font-bold">
+                      <span class="text-blue-600">&#123; {{ tr.requesterName }} ⇄ {{ tr.targetName }} &#125;</span>
+                      <span class="text-slate-400 font-sans font-normal">{{ tr.timestamp | date:'shortDate' }}</span>
+                    </div>
+
+                    <p class="text-slate-800 text-xs leading-relaxed">
+                      Troca do dia <strong class="text-slate-900 font-black">Dia {{ tr.requestedDay }}</strong> com o dia <strong class="text-slate-900 font-black">Dia {{ tr.targetDay }}</strong> do colega.
+                    </p>
+
+                    <!-- STEP STATUS PATH TIMELINE -->
+                    <div class="flex items-center justify-between gap-1 pt-1 font-mono text-[8px] text-slate-400">
+                      <span class="px-2 py-0.5 rounded-full font-black border" 
+                            [class.bg-blue-100]="tr.status === 'SOLICITADO'" [class.text-blue-800]="tr.status === 'SOLICITADO'" [class.border-blue-200]="tr.status === 'SOLICITADO'"
+                            [class.bg-white]="tr.status !== 'SOLICITADO'" [class.text-slate-400]="tr.status !== 'SOLICITADO'" [class.border-transparent]="tr.status !== 'SOLICITADO'">Solicitado</span>
+                      <span class="material-icons select-none text-[8px]">chevron_right</span>
+                      <span class="px-2 py-0.5 rounded-full font-black border" 
+                            [class.bg-amber-100]="tr.status === 'COLEGA_ACEITOU'" [class.text-amber-805]="tr.status === 'COLEGA_ACEITOU'" [class.border-amber-200]="tr.status === 'COLEGA_ACEITOU'"
+                            [class.bg-white]="tr.status !== 'COLEGA_ACEITOU'" [class.text-slate-400]="tr.status !== 'COLEGA_ACEITOU'" [class.border-transparent]="tr.status !== 'COLEGA_ACEITOU'">Colega Aceitou</span>
+                      <span class="material-icons select-none text-[8px]">chevron_right</span>
+                      <span class="px-2 py-0.5 rounded-full font-black border" 
+                            [class.bg-purple-100]="tr.status === 'LT_VALIDOU'" [class.text-purple-850]="tr.status === 'LT_VALIDOU'" [class.border-purple-200]="tr.status === 'LT_VALIDOU'"
+                            [class.bg-white]="tr.status !== 'LT_VALIDOU'" [class.text-slate-400]="tr.status !== 'LT_VALIDOU'" [class.border-transparent]="tr.status !== 'LT_VALIDOU'">Líder Validou</span>
+                      <span class="material-icons select-none text-[8px]">chevron_right</span>
+                      <span class="px-2 py-0.5 rounded-full font-black border uppercase" 
+                            [class.bg-emerald-100]="tr.status === 'SUPERVISOR_HOMOLOGADO'" [class.text-emerald-800]="tr.status === 'SUPERVISOR_HOMOLOGADO'" [class.border-emerald-200]="tr.status === 'SUPERVISOR_HOMOLOGADO'"
+                            [class.bg-white]="tr.status !== 'SUPERVISOR_HOMOLOGADO'" [class.text-slate-400]="tr.status !== 'SUPERVISOR_HOMOLOGADO'" [class.border-transparent]="tr.status !== 'SUPERVISOR_HOMOLOGADO'">Ok</span>
+                    </div>
+
+                    <!-- INTERACTION ACCORDING TO SIMULATED TARGET OR ROLE -->
+                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-200/60 font-sans">
+                      <!-- Colega can accept swap if they are target -->
+                      @if (tr.status === 'SOLICITADO' && tr.targetId === scaleService.selectedOperatorId()) {
+                        <button (click)="scaleService.updateTradeStatus(tr.id, 'COLEGA_ACEITOU')" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-xl text-[10px] tracking-wide uppercase">
+                          Aceitar
+                        </button>
+                        <button (click)="scaleService.updateTradeStatus(tr.id, 'REJEITADO')" class="px-3 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 font-black rounded-xl text-[10px] border border-rose-200 uppercase">
+                          Rejeitar
+                        </button>
+                      }
+
+                      <!-- LT can validate if they switch to LT status -->
+                      @if (tr.status === 'COLEGA_ACEITOU') {
+                        <span class="text-[10px] text-slate-400 italic font-sans font-bold">Aguardando validação do Líder de Turno</span>
+                      }
+                    </div>
+
+                  </div>
+                } @empty {
+                  <p class="text-slate-400 text-center py-3 text-[10px] italic font-sans bg-slate-50 rounded-xl border border-slate-200 font-bold">Nenhuma permuta ativa.</p>
+                }
+              </div>
+            </div>
+          </article>
+          
+        </div>
+
+      </div>
+
+    }
+
+    }
+
+  </main>
+
+  <!-- CONTROL TOWER FOOTER -->
+  <footer class="bg-white border-t border-slate-200 p-8 mt-12 text-center text-slate-400 font-bold" id="global_footer">
+    <div class="max-w-none w-full space-y-2 text-xs">
+      <p class="font-mono text-slate-500">Escala Easy VIBRA © 2026. Todos os direitos reservados.</p>
+      <p class="text-slate-400 font-sans font-normal max-w-2xl mx-auto">Desenvolvido pelo Engenheiro-Chefe da Malha para operações aeronáuticas de alta segurança e conformidade de fadiga pátio.</p>
+    </div>
+  </footer>
+
+</div>
