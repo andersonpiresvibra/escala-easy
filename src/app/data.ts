@@ -12,6 +12,8 @@ export interface Collaborator {
 export interface ShiftCell {
   collaboratorId: string;
   day: number;
+  month: number;
+  year: number;
   value: string; // '' for work, 'X', 'F', 'BH', 'AT', 'FO', 'CP', 'TA', 'LI', 'W', 'CV', 'EX', or numbers like '5', '7', '21'
 }
 
@@ -158,12 +160,20 @@ export const SIGLAS: ShiftType[] = [
   { code: 'BH', label: 'Banco de Horas', color: 'bg-green-600 text-white border-green-700 font-bold hover:bg-green-700', discounts: true, category: 'FOLGAS', cannotDelete: true, colorName: 'verde' },
   { code: 'AT', label: 'Atestado Médico', color: 'bg-slate-700 text-white border-slate-800 font-bold hover:bg-slate-800', discounts: true, category: 'AFASTAMENTO_SAUDE', cannotDelete: true, colorName: 'cinza-escuro' },
   { code: 'FO', label: 'Folga Operacional', color: 'bg-green-600 text-white border-green-700 font-bold hover:bg-green-700', discounts: true, category: 'FOLGAS', cannotDelete: true, colorName: 'verde' },
-  { code: 'CP', label: 'CIPA (Obrigatório)', color: 'bg-yellow-500 text-slate-900 border-yellow-655 font-bold hover:bg-yellow-600', discounts: false, category: 'REUNIOES', cannotDelete: true, colorName: 'amarelo' },
-  { code: 'TA', label: 'Trabalho em Altura', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: false, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
-  { code: 'LI', label: 'Líquido Inflamável', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: false, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
-  { code: 'W', label: 'Workshop', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: false, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
-  { code: 'CV', label: 'Circulação Veículos', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: false, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
-  { code: 'EX', label: 'Exame / Extra', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: false, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' }
+  { code: 'CP', label: 'CIPA (Obrigatório)', color: 'bg-yellow-500 text-slate-900 border-yellow-655 font-bold hover:bg-yellow-600', discounts: true, category: 'REUNIOES', cannotDelete: true, colorName: 'amarelo' },
+  { code: 'TA', label: 'Trabalho em Altura', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: true, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
+  { code: 'LI', label: 'Líquido Inflamável', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: true, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
+  { code: 'W', label: 'Workshop', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: true, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
+  { code: 'CV', label: 'Circulação Veículos', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: true, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
+  {
+    code: 'EX',
+    label: 'Exame Periódico Obrigatório',
+    color: 'bg-orange-500 text-white border-orange-600 font-bold hover:bg-orange-600',
+    discounts: true,
+    category: 'AFASTAMENTO_SAUDE',
+    cannotDelete: true,
+    colorName: 'laranja'
+  }
 ];
 
 export function getSiglaColor(code: string): string {
@@ -195,14 +205,17 @@ export function getSiglaLabel(code: string): string {
   return code;
 }
 
-// Generate complete empty shift table for Mar 2026 (31 days)
-export function generateInitialGrid(collaborators: Collaborator[]): ShiftCell[] {
+// Generate complete empty shift table for a specific month/year
+export function generateInitialGrid(collaborators: Collaborator[], year = 2026, month = 3): ShiftCell[] {
   const g: ShiftCell[] = [];
+  const daysInMonth = new Date(year, month, 0).getDate();
   collaborators.forEach(col => {
-    for (let day = 1; day <= 31; day++) {
+    for (let day = 1; day <= daysInMonth; day++) {
       g.push({
         collaboratorId: col.id,
         day,
+        month,
+        year,
         value: ''
       });
     }
@@ -211,51 +224,112 @@ export function generateInitialGrid(collaborators: Collaborator[]): ShiftCell[] 
   return g;
 }
 
-export function isWeekday(day: number): boolean {
-  // Mar 1, 2026 is Sunday (0). Mar 2 is Monday (1), Mar 3 Tuesday, etc.
-  const date = new Date(2026, 2, day); // 2 is March
+export function isWeekday(day: number, month = 3, year = 2026): boolean {
+  const date = new Date(year, month - 1, day);
   const dayOfWeek = date.getDay();
   return dayOfWeek !== 0 && dayOfWeek !== 6; // true if Monday to Friday
 }
 
-export function isHoliday(day: number): boolean {
-  const holidays = [6, 25]; // March 6 (Data Magna PE) & March 25 (Data Magna CE)
-  return holidays.includes(day);
+export function isHoliday(day: number, month = 3, year = 2026): boolean {
+  if (month === 3 && year === 2026) {
+    const holidays = [6, 25]; // March 6 (Data Magna PE) & March 25 (Data Magna CE)
+    return holidays.includes(day);
+  }
+  // Simplified holidays for other months (just returning false or basic mapping could be added)
+  return false;
 }
 
-export function getHolidayName(day: number): string | null {
-  if (day === 6) return 'Feriado: Data Magna (PE)';
-  if (day === 25) return 'Feriado: Data Magna (CE)';
+export function getHolidayName(day: number, month = 3, year = 2026): string | null {
+  if (month === 3 && year === 2026) {
+    if (day === 6) return 'Feriado: Data Magna (PE)';
+    if (day === 25) return 'Feriado: Data Magna (CE)';
+  }
   return null;
 }
 
-// Check minimum staffing constraint for Pilot Turn (Madrugada):
-// Weekday (2a-6a): min 6 active. Weekend (Sab/Dom) and Holidays: min 5 active.
-export function checkContingentViolation(day: number, grid: ShiftCell[], collaborators: Collaborator[], shiftTypes?: ShiftType[]): { activeCount: number; required: number; isViolated: boolean } {
-  // Filter for 'Madrugada' operators
+export function normalizeCellValue(value: string | null | undefined): string {
+  return (value || '').trim().toUpperCase();
+}
+
+export function isAlternativeWorkHour(value: string | null | undefined): boolean {
+  const val = normalizeCellValue(value);
+  return ['5', '7', '21'].includes(val);
+}
+
+export function isRegularWork(value: string | null | undefined): boolean {
+  const val = normalizeCellValue(value);
+  return val === '' || val === 'T';
+}
+
+export function isActiveCellValue(value: string | null | undefined): boolean {
+  const val = normalizeCellValue(value);
+
+  // Na planilha VIBRA, célula vazia significa TRABALHO REGULAR.
+  if (val === '' || val === 'T') return true;
+
+  // Códigos numéricos indicam entrada em horário alternativo.
+  // O colaborador trabalha normalmente e conta como presente.
+  if (['5', '7', '21'].includes(val)) return true;
+
+  // Qualquer outra sigla significa ausência física do pátio
+  // ou atividade fora da cobertura operacional direta.
+  return false;
+}
+
+export function isFixedAbsenceValue(value: string | null | undefined): boolean {
+  const val = normalizeCellValue(value);
+
+  // Valores que o gerador automático não deve sobrescrever.
+  // X é folga gerada/regular e pode ser recalculada pelo gerador.
+  const fixed = ['F', 'AT', 'EX', 'FO', 'CP', 'TA', 'LI', 'W', 'CV'];
+
+  if (fixed.includes(val)) return true;
+
+  // Combinações como "BH X", "X BH", "CP EX", "LI TA"
+  // devem ser preservadas se já existirem manualmente.
+  if (val.includes(' ')) return true;
+
+  // Códigos de horário alternativo também devem ser preservados.
+  if (['5', '7', '21'].includes(val)) return true;
+
+  return false;
+}
+
+export function isRestDayForTarget(value: string | null | undefined): boolean {
+  const val = normalizeCellValue(value);
+  // Conta como folga usufruída todas essas siglas:
+  if (['X', 'F', 'AT', 'FO', 'BH', 'EX'].includes(val)) return true;
+  // Combinações que indicam ausência no pátio como folga
+  if (val.includes('X') || val.includes('FO') || val.includes('BH') || val.includes('AT') || val.includes('F')) return true;
+  return false;
+}
+
+export function isWorkDayForFatigue(value: string | null | undefined): boolean {
+  return isActiveCellValue(value);
+}
+
+export function checkContingentViolation(
+  day: number,
+  month: number,
+  year: number,
+  grid: ShiftCell[],
+  collaborators: Collaborator[]
+): { activeCount: number; required: number; isViolated: boolean } {
+
   const pilotOps = collaborators.filter(c => c.group === 'Madrugada');
   const pilotOpsIds = new Set(pilotOps.map(c => c.id));
 
-  // Count active operators for this day
   let activeCount = 0;
+
   grid.forEach(cell => {
-    if (cell.day === day && pilotOpsIds.has(cell.collaboratorId)) {
-      // It counts as active if it DOES NOT discount from contingent.
-      // Siglas 'X', 'F', 'BH', 'AT', 'FO' discount.
-      // Blank (Work), 'CP', 'TA', 'LI', 'W', 'CV', and shifted hours (numbers) do NOT discount.
-      const val = cell.value;
-      const list = shiftTypes || SIGLAS;
-      const sigla = list.find(s => s.code === val);
-      const discounts = sigla ? sigla.discounts : false;
-      
-      // If of regular type work or non-discount shift
-      if (!val || discounts === false) {
+    if (cell.day === day && cell.month === month && cell.year === year && pilotOpsIds.has(cell.collaboratorId)) {
+      if (isActiveCellValue(cell.value)) {
         activeCount++;
       }
     }
   });
 
-  const weekday = isWeekday(day) && !isHoliday(day);
+  const weekday = isWeekday(day, month, year) && !isHoliday(day, month, year);
   const required = weekday ? 6 : 5;
   const isViolated = activeCount < required;
 

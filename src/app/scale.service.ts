@@ -6,8 +6,13 @@ import {
   AuditLog,
   INITIAL_COLLABORATORS,
   generateInitialGrid,
-  checkContingentViolation,
   isWeekday,
+  isHoliday,
+  isActiveCellValue,
+  isFixedAbsenceValue,
+  isWorkDayForFatigue,
+  isRestDayForTarget,
+  normalizeCellValue,
   JetFuelOperation,
   GOL_AIRCRAFT_737_7,
   GOL_AIRCRAFT_737_8,
@@ -46,6 +51,10 @@ export class ScaleService {
 
   // Real-time Flight Fuel Operations (Simulated JetFuel)
   operations = signal<JetFuelOperation[]>([]);
+
+  // Current Date context mapping
+  currentMonth = signal<number>(3); // Default to 3 (March)
+  currentYear = signal<number>(2026); // Default year
 
   constructor() {
     this.loadState();
@@ -229,13 +238,18 @@ export class ScaleService {
 
     this.collaborators.update(current => [...current, newCollab]);
 
-    // Populate matrix cells for March (31 days)
+    // Populate matrix cells for selected month
     this.grid.update(currentGrid => {
       const newCells: ShiftCell[] = [];
-      for (let day = 1; day <= 31; day++) {
+      const month = this.currentMonth();
+      const year = this.currentYear();
+      const numDays = new Date(year, month, 0).getDate();
+      for (let day = 1; day <= numDays; day++) {
         newCells.push({
           collaboratorId: newId,
           day,
+          month,
+          year,
           value: '' // Work day
         });
       }
@@ -369,397 +383,364 @@ export class ScaleService {
   }
 
   generateAutoScale() {
-    const daysInMonth = 31;
-    const requiredFolgas = daysInMonth <= 30 ? 8 : 9;
+    const month = this.currentMonth();
+    const year = this.currentYear();
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const maxConsecutiveWork = this.antiFatigueLimit ? this.antiFatigueLimit() : 5;
 
     this.grid.update(currentGrid => {
-        const collabIds = [...new Set(currentGrid.map(c => c.collaboratorId))];
-        const numCollabs = collabIds.length;
-        const newGrid = [...currentGrid];
+      const collabs = this.collaborators();
+      const madrugadaOps = collabs.filter(c => c.group === 'Madrugada' && c.role === 'OPERADOR');
+
+      const newGrid: ShiftCell[] = currentGrid.map(cell => ({ ...cell }));
+
+      const getCellIndex = (collaboratorId: string, day: number): number => {
+        return newGrid.findIndex(c => c.collaboratorId === collaboratorId && c.day === day && c.month === month && c.year === year);
+      };
+
+      const getCellValue = (collaboratorId: string, day: number): string => {
+        const idx = getCellIndex(collaboratorId, day);
+        if (idx === -1) return '';
+        return normalizeCellValue(newGrid[idx].value);
+      };
+
+      const setCellValue = (collaboratorId: string, day: number, value: string): void => {
+        const idx = getCellIndex(collaboratorId, day);
+        if (idx !== -1) {
+          newGrid[idx] = {
+            ...newGrid[idx],
+            value
+          };
+        } else {
+          newGrid.push({ collaboratorId, day, month, year, value });
+        }
+      };
+
+      const requiredForDay = (day: number): number => {
+        const weekday = isWeekday(day, month, year) && !isHoliday(day, month, year);
+        return weekday ? 6 : 5;
+      };
+
+      const activeCountForDay = (day: number): number => {
+        let count = 0;
+        for (const op of madrugadaOps) {
+          const value = getCellValue(op.id, day);
+          if (isActiveCellValue(value)) {
+            count++;
+          }
+        }
+        return count;
+      };
+
+      const canGiveDayOff = (collaboratorId: string, day: number): boolean => {
+        const currentValue = getCellValue(collaboratorId, day);
+
+        if (isFixedAbsenceValue(currentValue)) return false;
+        if (currentValue === 'X') return false;
+
+        const beforeActive = activeCountForDay(day);
+        const required = requiredForDay(day);
+
+        if (beforeActive <= required) return false;
+
+        return true;
+      };
+
+      const giveDayOff = (collaboratorId: string, day: number): boolean => {
+        if (!canGiveDayOff(collaboratorId, day)) return false;
+        setCellValue(collaboratorId, day, 'X');
+        const afterActive = activeCountForDay(day);
+        const required = requiredForDay(day);
+
+        if (afterActive < required) {
+          setCellValue(collaboratorId, day, '');
+          return false;
+        }
+
+        return true;
+      };
+
+      // Remaining code after canGiveDayOff
+      const offCountSoFar = (collaboratorId: string, untilDay: number): number => {
+        let count = 0;
+        for (let d = 1; d <= untilDay; d++) {
+          const val = getCellValue(collaboratorId, d);
+          if (isRestDayForTarget(val)) count++;
+        }
+        return count;
+      };
+
+      const consecutiveWorkBefore = (collaboratorId: string, day: number): number => {
+        let count = 0;
+        for (let d = day - 1; d >= 1; d--) {
+          const val = getCellValue(collaboratorId, d);
+          if (isWorkDayForFatigue(val)) {
+            count++;
+          } else {
+            break;
+          }
+        }
+        return count;
+      };
+
+      const getDynamicWeekendPairs = (): [number, number][] => {
+        const pairs: [number, number][] = [];
+        for (let d = 1; d <= daysInMonth - 1; d++) {
+          const date = new Date(year, month - 1, d);
+          if (date.getDay() === 6) { // Saturday
+            pairs.push([d, d + 1]);
+          }
+        }
+        return pairs;
+      };
+
+      const dynamicWeekendPairs = getDynamicWeekendPairs();
+
+      const hasDoubleWeekendOff = (collaboratorId: string): boolean => {
+        return dynamicWeekendPairs.some(([sat, sun]) => {
+          return getCellValue(collaboratorId, sat) === 'X' && getCellValue(collaboratorId, sun) === 'X';
+        });
+      };
+
+      // =========================================================================
+      // ETAPA 1 — Limpar somente folgas X geradas anteriormente no grupo Madrugada.
+      // =========================================================================
+      for (const op of madrugadaOps) {
+        for (let day = 1; day <= daysInMonth; day++) {
+          if (getCellValue(op.id, day) === 'X') {
+            setCellValue(op.id, day, '');
+          }
+        }
+      }
+
+      // =========================================================================
+      // ETAPA 2 — Aplicar Datas Magnas, mas somente se não quebrar contingente.
+      // =========================================================================
+      for (const op of madrugadaOps) {
+        for (const magna of op.importantDates || []) {
+          const dayPart = parseInt(magna.date.split('-')[2], 10);
+          if (!dayPart || dayPart < 1 || dayPart > daysInMonth) continue;
+
+          const success = giveDayOff(op.id, dayPart);
+          if (success) {
+            this.addLog('MOTOR DE REGRAS', 'DATA MAGNA', `Folga de Data Magna aplicada para ${op.name} no dia ${dayPart}.`);
+          } else {
+            this.addLog('MOTOR DE REGRAS', 'CONFLITO DATA MAGNA', `Data Magna de ${op.name} no dia ${dayPart} não aplicada automaticamente para não violar o contingente mínimo.`);
+          }
+        }
+      }
+
+      // =========================================================================
+      // ETAPA 2.5 — Distribuir Dobradinhas Sábado e Domingo
+      // Todos os colaboradores devem receber obrigatoriamente UMA dobradinha de FDS.
+      // =========================================================================
+      const basePairs = dynamicWeekendPairs;
+
+      for (let i = 0; i < madrugadaOps.length; i++) {
+        const op = madrugadaOps[i];
+        if (hasDoubleWeekendOff(op.id)) continue;
+
+        // Tenta alocar a dobradinha prevista
+        const attemptPair = basePairs[i % basePairs.length];
+        const [d1, d2] = attemptPair;
         
-        let bestSchedule: string[][] = [];
-        const maxFolgasPerDay = Math.max(0, numCollabs - 5);
+        let assigned = false;
+        const canD1 = activeCountForDay(d1) > requiredForDay(d1) && canGiveDayOff(op.id, d1);
+        const canD2 = activeCountForDay(d2) > requiredForDay(d2) && canGiveDayOff(op.id, d2);
+        
+        if (canD1 && canD2) {
+          setCellValue(op.id, d1, 'X');
+          setCellValue(op.id, d2, 'X');
+          this.addLog('MOTOR DE REGRAS', 'DOBRADINHA', `Dobradinha FDS sequencial p/ ${op.name}: dias ${d1} e ${d2}.`);
+          assigned = true;
+        } else {
+          // Fallback se contingente bater
+          for (let j = 1; j < basePairs.length; j++) {
+            const fallbackPair = basePairs[(i + j) % basePairs.length];
+            const [fd1, fd2] = fallbackPair;
+            if (activeCountForDay(fd1) > requiredForDay(fd1) && canGiveDayOff(op.id, fd1) && 
+                activeCountForDay(fd2) > requiredForDay(fd2) && canGiveDayOff(op.id, fd2)) {
+                
+                setCellValue(op.id, fd1, 'X');
+                setCellValue(op.id, fd2, 'X');
+                this.addLog('MOTOR DE REGRAS', 'DOBRADINHA', `Dobradinha FDS fallback p/ ${op.name}: dias ${fd1} e ${fd2}.`);
+                assigned = true;
+                break;
+            }
+          }
+        }
+        
+        if (!assigned) {
+           this.addLog('MOTOR DE REGRAS', 'FALHA DOBRADINHA', `Atenção: Não houve contingente para a dobradinha FDS de ${op.name}.`);
+        }
+      }
 
-        // Finais de semana (indices 0-based para sábado e domingo)
-        // Sabados e domingos: 7/8 (idx 6/7), 14/15 (idx 13/14), 21/22 (idx 20/21), 28/29 (idx 27/28)
-        const weekends = [[6,7], [13,14], [20,21], [27,28]]; 
-        const allWeekendDays = [0, 6, 7, 13, 14, 20, 21, 27, 28]; // Inclui dia 1 (domingo)
+      // =========================================================================
+      // ETAPA 3 — Distribuição Sequencial Dia a Dia com trava absoluta de folgas
+      // Limite cravado: 9 para 31 dias, 8 para 30 dias, 7 para 28 dias.
+      // =========================================================================
+      const targetOffs = daysInMonth <= 28 ? 7 : (daysInMonth <= 30 ? 8 : 9);
 
-        // Função para calcular a penalidade total de uma escala candidata
-        const calculatePenalty = (sched: string[][]): number => {
-            let penalty = 0;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const required = requiredForDay(day);
+        let availableSlots = activeCountForDay(day) - required;
+        if (availableSlots <= 0) continue;
+
+        const candidates = madrugadaOps.map(op => {
+          const consecutive = consecutiveWorkBefore(op.id, day);
+          const totalOffsAssigned = offCountSoFar(op.id, daysInMonth);
+          const isOffToday = getCellValue(op.id, day) === 'X' || isFixedAbsenceValue(getCellValue(op.id, day));
+          return { op, consecutive, totalOffsAssigned, isOffToday, score: 0 };
+        });
+
+        // Só consideramos quem AINDA não bateu a cota limite!
+        const needOff = candidates.filter(c => !c.isOffToday && c.totalOffsAssigned < targetOffs);
+
+        needOff.forEach(c => {
+          let score = c.consecutive * 1000;
+          const remainingDays = (daysInMonth - day) + 1;
+          const remainingOffs = targetOffs - c.totalOffsAssigned;
+          const pressure = remainingOffs / remainingDays;
+          score += pressure * 500;
+          c.score = score;
+        });
+
+        // Ordenamos prioritariamente por risco de fadiga
+        needOff.sort((a, b) => {
+           if (a.consecutive !== b.consecutive) return b.consecutive - a.consecutive;
+           return b.score - a.score;
+        });
+
+        for (const c of needOff) {
+          if (availableSlots <= 0) break;
+
+          if (canGiveDayOff(c.op.id, day)) {
+            setCellValue(c.op.id, day, 'X');
+            c.totalOffsAssigned++; // local pointer increment
+            availableSlots--;
+          }
+        }
+      }
+
+      // =========================================================================
+      // ETAPA 4 — Top Up: Passagem de Ajuste (Do fim pro começo e do meio)
+      // Garante que TODOS atingirão exatamente a cota (8 ou 9) se houver espaço no mês
+      // =========================================================================
+      for (let pass = 0; pass < 2; pass++) {
+        for (let day = daysInMonth; day >= 1; day--) {
+          let availableSlots = activeCountForDay(day) - requiredForDay(day);
+          if (availableSlots <= 0) continue;
+
+          const candidates = madrugadaOps.map(op => ({
+            op,
+            totalOffsAssigned: offCountSoFar(op.id, daysInMonth),
+            isOffToday: getCellValue(op.id, day) === 'X' || isFixedAbsenceValue(getCellValue(op.id, day))
+          })).filter(c => !c.isOffToday && c.totalOffsAssigned < targetOffs);
+
+          // Quem tem menos folgas tem preferência para bater a cota logo
+          candidates.sort((a, b) => a.totalOffsAssigned - b.totalOffsAssigned);
+
+          for (const c of candidates) {
+            if (availableSlots <= 0) break;
             
-            // 1. Cobertura diária: no máximo de folgas permitidas por dia (garante mínimo de 5 no FDS, 6 de Segunda a Sexta)
-            const dailyOff = Array(daysInMonth).fill(0);
-            for (let d = 0; d < daysInMonth; d++) {
-                for (let c = 0; c < numCollabs; c++) {
-                    if (sched[c][d] === 'X') {
-                        dailyOff[d]++;
-                    }
-                }
-                const isWeekend = allWeekendDays.includes(d);
-                const minReq = isWeekend ? 5 : 6;
-                const maxAllowedFolgas = Math.max(0, numCollabs - minReq);
-                
-                if (dailyOff[d] > maxAllowedFolgas) {
-                    // Penalidade extrema para garantir a cobertura operacional
-                    penalty += Math.pow(dailyOff[d] - maxAllowedFolgas, 2) * 20000;
-                }
+            if (canGiveDayOff(c.op.id, day)) {
+              setCellValue(c.op.id, day, 'X');
+              c.totalOffsAssigned++;
+              availableSlots--;
             }
+          }
+        }
+      }
 
-            for (let c = 0; c < numCollabs; c++) {
-                // 2. Dias consecutivos de trabalho: no máximo 5 dias seguidos trabalhando
-                let consecutiveWork = 0;
-                for (let d = 0; d < daysInMonth; d++) {
-                    if (sched[c][d] !== 'X') {
-                        consecutiveWork++;
-                        if (consecutiveWork > 5) {
-                            penalty += Math.pow(consecutiveWork - 5, 2) * 5000;
-                        }
-                    } else {
-                        consecutiveWork = 0;
-                    }
-                }
+      // =========================================================================
+      // ETAPA 5 — Validação final restrita.
+      // Loga erros de regras para intervenção manual se necessário, mas SALVA o que conseguiu.
+      // =========================================================================
+      const errors: string[] = [];
 
-                // 3. Pelo menos um final de semana de dobradinha completa (Sábado e Domingo de folga juntos)
-                let hasDoubleWeekend = false;
-                for (const wknd of weekends) {
-                    if (sched[c][wknd[0]] === 'X' && sched[c][wknd[1]] === 'X') {
-                        hasDoubleWeekend = true;
-                        break;
-                    }
-                }
-                if (!hasDoubleWeekend) {
-                    penalty += 15000; // Obrigatório
-                }
+      for (let day = 1; day <= daysInMonth; day++) {
+        const active = activeCountForDay(day);
+        const required = requiredForDay(day);
+        if (active < required) {
+          errors.push(`Dia ${day}: contingente restou ${active}/${required}`);
+        }
+      }
 
-                // 4. Pelo menos um Sábado ou Domingo extra além da dobradinha (total de fds folga >= 3)
-                let weekendOffsCount = 0;
-                for (const wd of allWeekendDays) {
-                    if (sched[c][wd] === 'X') {
-                        weekendOffsCount++;
-                    }
-                }
-                if (weekendOffsCount < 3) {
-                    penalty += (3 - weekendOffsCount) * 8000;
-                }
+      for (const op of madrugadaOps) {
+        let consecutive = 0;
+        const totalOffs = offCountSoFar(op.id, daysInMonth);
 
-                // 5. Preferência por folgas agrupadas (evitar folgas soltas com escala picada)
-                for (let d = 0; d < daysInMonth; d++) {
-                    if (sched[c][d] === 'X') {
-                        const hasPrevOff = d > 0 && sched[c][d - 1] === 'X';
-                        const hasNextOff = d < daysInMonth - 1 && sched[c][d + 1] === 'X';
-                        if (!hasPrevOff && !hasNextOff) {
-                            penalty += 50; 
-                        }
-                    }
-                }
-            }
-
-            return penalty;
-        };
-
-        let minPenalty = Infinity;
-
-        // Múltiplos restarts para escapar de mínimos locais complexos
-        for (let restart = 0; restart < 150; restart++) {
-            const schedule = Array.from({ length: numCollabs }, () => Array(daysInMonth).fill(''));
-
-            for (let c = 0; c < numCollabs; c++) {
-                let offAdded = 0;
-                
-                // Pré-aloca uma dobradinha aleatória em final de semana
-                const chosenWknd = weekends[Math.floor(Math.random() * weekends.length)];
-                schedule[c][chosenWknd[0]] = 'X';
-                schedule[c][chosenWknd[1]] = 'X';
-                offAdded += 2;
-
-                // Pré-aloca um final de semana extra (sábado ou domingo)
-                const remainingWkndDays = allWeekendDays.filter(d => d !== chosenWknd[0] && d !== chosenWknd[1]);
-                const extraDay = remainingWkndDays[Math.floor(Math.random() * remainingWkndDays.length)];
-                schedule[c][extraDay] = 'X';
-                offAdded++;
-
-                // Completa o restante até chegar a exactly requiredFolgas (9 ou 8 folgas)
-                while (offAdded < requiredFolgas) {
-                    const randDay = Math.floor(Math.random() * daysInMonth);
-                    if (schedule[c][randDay] !== 'X') {
-                        schedule[c][randDay] = 'X';
-                        offAdded++;
-                    }
-                }
-            }
-
-            let currentPenalty = calculatePenalty(schedule);
-            const maxIterations = 8000;
-            let noImprovementCount = 0;
-
-            for (let iter = 0; iter < maxIterations; iter++) {
-                if (currentPenalty === 0) {
-                    break;
-                }
-
-                let c = Math.floor(Math.random() * numCollabs);
-                let d1 = -1; // Dia de folga para remover
-                let d2 = -1; // Dia de trabalho para colocar folga
-
-                // Mutação Guiada: 60% chance de focar nos dias superlotados
-                if (Math.random() < 0.6) {
-                    const dailyOff = Array(daysInMonth).fill(0);
-                    for (let d = 0; d < daysInMonth; d++) {
-                        for (let t = 0; t < numCollabs; t++) {
-                            if (schedule[t][d] === 'X') dailyOff[d]++;
-                        }
-                    }
-
-                    let overloadDays = [];
-                    let underloadDays = [];
-                    for (let d = 0; d < daysInMonth; d++) {
-                        const isWeekend = allWeekendDays.includes(d);
-                        const maxF = Math.max(0, numCollabs - (isWeekend ? 5 : 6));
-                        if (dailyOff[d] > maxF) overloadDays.push(d);
-                        if (dailyOff[d] < maxF) underloadDays.push(d);
-                    }
-
-                    if (overloadDays.length > 0 && underloadDays.length > 0) {
-                        d1 = overloadDays[Math.floor(Math.random() * overloadDays.length)];
-                        d2 = underloadDays[Math.floor(Math.random() * underloadDays.length)];
-                        
-                        let possibleCollabs = [];
-                        for (let i = 0; i < numCollabs; i++) {
-                            if (schedule[i][d1] === 'X' && schedule[i][d2] !== 'X') {
-                                possibleCollabs.push(i);
-                            }
-                        }
-                        
-                        if (possibleCollabs.length > 0) {
-                            c = possibleCollabs[Math.floor(Math.random() * possibleCollabs.length)];
-                        } else {
-                            d1 = -1; 
-                        }
-                    }
-                }
-
-                // Fallback: Mutação aleatória padrão
-                if (d1 === -1 || d2 === -1) {
-                    const offDays: number[] = [];
-                    const workDays: number[] = [];
-                    for (let d = 0; d < daysInMonth; d++) {
-                        if (schedule[c][d] === 'X') offDays.push(d);
-                        else workDays.push(d);
-                    }
-                    if (offDays.length === 0 || workDays.length === 0) continue;
-                    d1 = offDays[Math.floor(Math.random() * offDays.length)];
-                    d2 = workDays[Math.floor(Math.random() * workDays.length)];
-                }
-
-                // Executa a permuta
-                schedule[c][d1] = '';
-                schedule[c][d2] = 'X';
-
-                const newPenalty = calculatePenalty(schedule);
-
-                // Aceitação (Simulated Annealing)
-                const temp = Math.max(0.01, 15 * (1 - iter / maxIterations));
-                const acceptProb = Math.exp((currentPenalty - newPenalty) / temp);
-
-                if (newPenalty < currentPenalty || Math.random() < acceptProb) {
-                    currentPenalty = newPenalty;
-                    noImprovementCount = 0;
-                } else {
-                    // Reverte a permuta se recusada
-                    schedule[c][d1] = 'X';
-                    schedule[c][d2] = '';
-                    noImprovementCount++;
-                }
-
-                if (noImprovementCount > 1200) {
-                    break;
-                }
-            }
-
-            if (currentPenalty < minPenalty) {
-                minPenalty = currentPenalty;
-                bestSchedule = schedule.map(arr => [...arr]);
-            }
-
-            if (minPenalty === 0) {
-                break; // Solução de ouro alcançada
-            }
+        // CHECAGEM RIGOROSA DO LIMITE COTA
+        if (totalOffs > targetOffs) {
+           errors.push(`Limite de folgas quebrado para ${op.name}: possui ${totalOffs}/${targetOffs}`);
         }
 
-        if (bestSchedule.length > 0) {
-            collabIds.forEach((collabId, cIndex) => {
-                for (let day = 1; day <= daysInMonth; day++) {
-                    const cellIndex = newGrid.findIndex(cell => cell.collaboratorId === collabId && cell.day === day);
-                    if (cellIndex !== -1) {
-                        newGrid[cellIndex] = { ...newGrid[cellIndex], value: bestSchedule[cIndex][day - 1] };
-                    }
-                }
-            });
-        }
+        for (let day = 1; day <= daysInMonth; day++) {
+          const val = getCellValue(op.id, day);
 
-        return newGrid;
+          if (isWorkDayForFatigue(val)) {
+            consecutive++;
+            if (consecutive > maxConsecutiveWork) {
+              errors.push(`${op.name}: ${consecutive} dias consecutivos de trabalho até o dia ${day}`);
+            }
+          } else {
+            consecutive = 0;
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        this.addLog(
+          'MOTOR DE REGRAS',
+          'ALERTA DE ESCALA',
+          `Escala gerada com pendências e exige ajuste manual: ${errors.join(' | ')}`
+        );
+        console.warn('Escala gerou infrações (entregue p/ ajuste manual):', errors);
+      } else {
+        this.addLog(
+          'MOTOR DE REGRAS',
+          'ESCALA GERADA V2',
+          `Escala automática perfeitamente distribuída: Máx ${targetOffs} folgas rigorosamente cravado.`
+        );
+      }
+
+      return newGrid;
     });
 
-    this.addLog(
-      this.currentRole() + ' ' + (this.selectedCollabName() || 'ADMIN'),
-      'GERAÇÃO IA',
-      `Escala robusta gerada via Otimização Computacional 100% perfeita (Mín 5 colaboradores/dia, Max 5 trab seguidos, DobradinhasConstitucionais).`
-    );
     this.saveState();
   }
 
   // Edit cell value directly
   updateCell(collaboratorId: string, day: number, value: string) {
     const upperValue = value.trim().toUpperCase();
+    const month = this.currentMonth();
+    const year = this.currentYear();
+
     this.grid.update(currentGrid => {
-      return currentGrid.map(cell => {
-        if (cell.collaboratorId === collaboratorId && cell.day === day) {
+      let exists = false;
+      const newGrid = currentGrid.map(cell => {
+        if (cell.collaboratorId === collaboratorId && cell.day === day && cell.month === month && cell.year === year) {
+          exists = true;
           return { ...cell, value: upperValue };
         }
         return cell;
       });
+      if (!exists) {
+        newGrid.push({ collaboratorId, day, month, year, value: upperValue });
+      }
+      return newGrid;
     });
 
     const collab = this.collaborators().find(c => c.id === collaboratorId);
     this.addLog(
       this.currentRole() + ' ' + (this.selectedCollabName() || 'ADMIN'),
       'ATUALIZAÇÃO DE CÉLULA',
-      `Alterado dia ${day} do colaborador ${collab?.name || collaboratorId} para: "${upperValue || 'TRABALHO'}"`
+      `Alterado dia ${day}/${month}/${year} do colaborador ${collab?.name || collaboratorId} para: "${upperValue || 'TRABALHO'}"`
     );
     this.saveState();
   }
 
-  // Core 1-Click Scale Generator Algorithm
-  runAutoGenerator() {
-    this.addLog(
-      this.currentRole() + ' ADMIN',
-      'GERAÇÃO DE ESCALA',
-      `Iniciando Algoritmo Escala Easy com N=${this.antiFatigueLimit()} dias de limite anti-fadiga.`
-    );
 
-    const collabs = this.collaborators();
-    const currentGrid = [...this.grid()];
-    
-    // Step 1: Pre-reserve 'Datas Magnas' of the actual pilot group if we can
-    // Let's iterate all collaborators and set up a smart distribution
-    collabs.forEach(col => {
-      // Find the cells of this collaborator
-      let consecutiveWorkDays = 0;
-      
-      for (let day = 1; day <= 31; day++) {
-        const cellIdx = currentGrid.findIndex(c => c.collaboratorId === col.id && c.day === day);
-        if (cellIdx === -1) continue;
-
-        const cell = currentGrid[cellIdx];
-        
-        // Keep hard exceptions (approved vacations F, medical AT, pre-approved trades)
-        if (cell.value === 'F' || cell.value === 'AT' || cell.value === 'FO') {
-          consecutiveWorkDays = 0;
-          continue;
-        }
-
-        // Check if day matches any registered Magna date
-        const matchesMagna = col.importantDates.find(d => {
-          const magnaDayStr = d.date.split('-')[2]; // e.g. "05" from "2026-03-05"
-          return parseInt(magnaDayStr, 10) === day;
-        });
-
-        if (matchesMagna) {
-          // Pre-test if we can put 'X' here without breaking min staffing
-          currentGrid[cellIdx] = { ...cell, value: 'X' };
-          const violation = checkContingentViolation(day, currentGrid, collabs, this.shiftTypes());
-          
-          if (violation.isViolated) {
-            // Apply rule C: Magna Date modular resolution with Consent
-            // For MVP, we alert the user / log a warning, putting 'X' but checking priority
-            this.addLog(
-              'MOTOR DE REGRAS',
-              'CONFLITO DATA MAGNA',
-              `Dia ${day} é data magna (${matchesMagna.label}) para ${col.name}. Prioridade: ${matchesMagna.priority}. Mantendo folga reservada.`
-            );
-          } else {
-            consecutiveWorkDays = 0;
-            continue;
-          }
-        }
-
-        // Anti-fatigue check
-        if (consecutiveWorkDays >= this.antiFatigueLimit()) {
-          // Force a sandwich day off
-          currentGrid[cellIdx] = { ...cell, value: 'X' };
-          consecutiveWorkDays = 0;
-          this.addLog(
-            'MOTOR DE REGRAS',
-            'ANTI-FADIGA',
-            `Aplicado folga obrigatória no dia ${day} de Março para ${col.name} para prevenir exaustão (>5 d).`
-          );
-        } else {
-          // Regular day - decide if they work or have normal rotating off day
-          // Standard schedule rota
-          const isWeekendDay = !isWeekday(day);
-          
-          // Let's create a smart alternate rotation
-          let assignOff = false;
-          // Weekend rotation
-          if (isWeekendDay) {
-            assignOff = (day % 3 === 0);
-          } else {
-            assignOff = (day % 6 === 0);
-          }
-
-          if (assignOff) {
-            currentGrid[cellIdx] = { ...cell, value: 'X' };
-            consecutiveWorkDays = 0;
-          } else {
-            currentGrid[cellIdx] = { ...cell, value: '' }; // Work day
-            consecutiveWorkDays++;
-          }
-        }
-      }
-    });
-
-    // Step 2: Post-adjust to satisfy minimum contingent per day
-    // Weekday: 6 active, Weekend: 5 active
-    for (let day = 1; day <= 31; day++) {
-      const check = checkContingentViolation(day, currentGrid, collabs, this.shiftTypes());
-      if (check.isViolated) {
-        // We lack operators! Turn some regular off-days 'X' back to work day ''
-        // Find our pilot operators who have 'X' on this day (who are not on vacations or medical leave)
-        const pilotOps = collabs.filter(c => c.group === 'Madrugada');
-        for (const op of pilotOps) {
-          const idx = currentGrid.findIndex(c => c.collaboratorId === op.id && c.day === day);
-          if (idx !== -1 && currentGrid[idx].value === 'X') {
-            // Check if it's a critical date
-            const isMagna = op.importantDates.some(d => parseInt(d.date.split('-')[2], 10) === day);
-            if (!isMagna) {
-              currentGrid[idx].value = ''; // change to work
-              
-              // Recalculate
-              const nextCheck = checkContingentViolation(day, currentGrid, collabs, this.shiftTypes());
-              if (!nextCheck.isViolated) {
-                this.addLog(
-                  'MOTOR DE REGRAS',
-                  'AJUSTE CONTINGENTE',
-                  `Reconvocado operador ${op.name} no dia ${day} de Março para garantir o nível de segurança mínimo.`
-                );
-                break; // Met requirement
-              }
-            }
-          }
-        }
-      }
-    }
-
-    this.grid.set(currentGrid);
-    this.addLog(
-      'SISTEMA',
-      'GERAÇÃO CONCLUÍDA',
-      'Escala otimizada gerada com sucesso respeitando limites operacionais.'
-    );
-    this.saveState();
-  }
 
   addTradeRequest(requestedDay: number, targetId: string, targetDay: number) {
     const requester = this.collaborators().find(c => c.id === this.selectedOperatorId());

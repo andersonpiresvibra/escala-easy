@@ -15,7 +15,7 @@ export class App {
   public scaleService = inject(ScaleService);
 
   // Track active sub-tab for granular workspace
-  public activeSubTab = signal<'home' | 'matrix' | 'backups' | 'shifts' | 'staff'>('home');
+  public activeSubTab = signal<'matrix' | 'backups' | 'shifts'>('matrix');
 
   // Track if option/tools dropdown menu is open
   public isDropdownOpen = signal<boolean>(false);
@@ -29,15 +29,6 @@ export class App {
   // New Backup Slot form signals
   newProfileName = signal<string>('');
   newProfileDescription = signal<string>('');
-
-  // Collaborator CRUD form signals
-  newCollabName = signal<string>('');
-  newCollabRole = signal<'OPERADOR' | 'LIDER' | 'SUPERVISOR'>('OPERADOR');
-  newCollabSchedule = signal<string>('21:12 - 06:00');
-  newCollabGroup = signal<'Madrugada' | 'Manhã' | 'Tarde' | 'Líderes' | 'VIP' | 'Treinamento'>('Madrugada');
-  newCollabBhBalance = signal<number>(0);
-  newCollabScore = signal<number>(100);
-  editingCollabId = signal<string | null>(null);
 
   // Custom Shift / Turn (SIGLAS) CRUD form signals
   newShiftCode = signal<string>('');
@@ -158,12 +149,83 @@ export class App {
     return this.scaleService.grid().some(cell => !cell.value || !cell.value.trim());
   });
 
-  // Days list: 1 to 31
-  daysList = Array.from({ length: 31 }, (_, i) => i + 1);
+  availableMonths = [
+    { value: 1, label: 'JANEIRO' },
+    { value: 2, label: 'FEVEREIRO' },
+    { value: 3, label: 'MARÇO' },
+    { value: 4, label: 'ABRIL' },
+    { value: 5, label: 'MAIO' },
+    { value: 6, label: 'JUNHO' },
+    { value: 7, label: 'JULHO' },
+    { value: 8, label: 'AGOSTO' },
+    { value: 9, label: 'SETEMBRO' },
+    { value: 10, label: 'OUTUBRO' },
+    { value: 11, label: 'NOVEMBRO' },
+    { value: 12, label: 'DEZEMBRO' }
+  ];
+
+  availableYears = [2026, 2027, 2028, 2029, 2030];
+
+  getMonthLabel(month: number): string {
+    const m = this.availableMonths.find(x => x.value === month);
+    return m ? m.label : '';
+  }
+
+  changeMonth(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    this.scaleService.currentMonth.set(parseInt(select.value, 10));
+    this.showToast('Mês alterado com sucesso.');
+  }
+
+  changeYear(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    this.scaleService.currentYear.set(parseInt(select.value, 10));
+    this.showToast('Ano alterado com sucesso.');
+  }
+
+  previousMonth() {
+    let m = this.scaleService.currentMonth();
+    let y = this.scaleService.currentYear();
+    if (m === 1) {
+      m = 12;
+      y--;
+    } else {
+      m--;
+    }
+    if (this.availableYears.includes(y)) {
+      this.scaleService.currentMonth.set(m);
+      this.scaleService.currentYear.set(y);
+    }
+  }
+
+  nextMonth() {
+    let m = this.scaleService.currentMonth();
+    let y = this.scaleService.currentYear();
+    if (m === 12) {
+      m = 1;
+      y++;
+    } else {
+      m++;
+    }
+    if (this.availableYears.includes(y)) {
+      this.scaleService.currentMonth.set(m);
+      this.scaleService.currentYear.set(y);
+    }
+  }
+
+  // Days list: computed based on selected month/year
+  daysList = computed(() => {
+    const month = this.scaleService.currentMonth();
+    const year = this.scaleService.currentYear();
+    const daysInMonth = new Date(year, month, 0).getDate();
+    return Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  });
 
   // Convert day number to Portuguese abbreviation
   getDayOfWeekLabel(day: number): string {
-    const date = new Date(2026, 2, day); // March 2026
+    const month = this.scaleService.currentMonth();
+    const year = this.scaleService.currentYear();
+    const date = new Date(year, month - 1, day);
     const days = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
     return days[date.getDay()];
   }
@@ -174,23 +236,27 @@ export class App {
   }
 
   isWeekendDay(day: number): boolean {
-    return !isWeekday(day);
+    return !isWeekday(day, this.scaleService.currentMonth(), this.scaleService.currentYear());
   }
 
   isHoliday(day: number): boolean {
-    return isHoliday(day);
+    return isHoliday(day, this.scaleService.currentMonth(), this.scaleService.currentYear());
   }
 
   getHolidayName(day: number): string | null {
-    return getHolidayName(day);
+    return getHolidayName(day, this.scaleService.currentMonth(), this.scaleService.currentYear());
   }
 
   getDayTooltip(day: number): string {
-    const dayOfWeek = new Date(2026, 2, day).getDay();
+    const month = this.scaleService.currentMonth();
+    const year = this.scaleService.currentYear();
+    const dayOfWeek = new Date(year, month - 1, day).getDay();
     const weekMap = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-    let label = `${day}/03/2026 (${weekMap[dayOfWeek]})`;
+    const monthStr = month.toString().padStart(2, '0');
+    const dayStr = day.toString().padStart(2, '0');
+    let label = `${dayStr}/${monthStr}/${year} (${weekMap[dayOfWeek]})`;
     if (this.isHoliday(day)) {
-      const hName = getHolidayName(day);
+      const hName = this.getHolidayName(day);
       if (hName) {
         label += ` — ${hName}`;
       }
@@ -204,7 +270,7 @@ export class App {
 
   // Helper to get color of a day cell in the footer contingent
   getContingentFooterCellClass(day: number): string {
-    const check = checkContingentViolation(day, this.scaleService.grid(), this.scaleService.collaborators(), this.scaleService.shiftTypes());
+    const check = checkContingentViolation(day, this.scaleService.currentMonth(), this.scaleService.currentYear(), this.scaleService.grid(), this.scaleService.collaborators());
     if (check.isViolated) {
       return 'bg-rose-100 text-rose-805 border-rose-300 font-bold';
     }
@@ -215,26 +281,43 @@ export class App {
 
   // Count active staff count for the specific pilot turn
   getActiveCount(day: number) {
-    const check = checkContingentViolation(day, this.scaleService.grid(), this.scaleService.collaborators(), this.scaleService.shiftTypes());
+    const check = checkContingentViolation(day, this.scaleService.currentMonth(), this.scaleService.currentYear(), this.scaleService.grid(), this.scaleService.collaborators());
     return check.activeCount;
   }
 
   // Required count for day
   getRequiredCount(day: number) {
-    const weekday = isWeekday(day) && !this.isHoliday(day);
+    const weekday = isWeekday(day, this.scaleService.currentMonth(), this.scaleService.currentYear()) && !this.isHoliday(day);
     return weekday ? 6 : 5;
   }
 
   // Dynamic status check of contingent violation
   hasContingentViolation(day: number): boolean {
-    const check = checkContingentViolation(day, this.scaleService.grid(), this.scaleService.collaborators(), this.scaleService.shiftTypes());
+    const check = checkContingentViolation(day, this.scaleService.currentMonth(), this.scaleService.currentYear(), this.scaleService.grid(), this.scaleService.collaborators());
     return check.isViolated;
   }
 
   // Helper to fetch cell value from state grid
   getCellValue(collabId: string, day: number): string {
-    const cell = this.scaleService.grid().find(c => c.collaboratorId === collabId && c.day === day);
+    const month = this.scaleService.currentMonth();
+    const year = this.scaleService.currentYear();
+    const cell = this.scaleService.grid().find(c => c.collaboratorId === collabId && c.day === day && c.month === month && c.year === year);
     return cell ? cell.value : '';
+  }
+
+  getFolgasCount(collabId: string): number {
+    const month = this.scaleService.currentMonth();
+    const year = this.scaleService.currentYear();
+    return this.scaleService.grid().filter(c => 
+      c.collaboratorId === collabId && 
+      c.month === month &&
+      c.year === year &&
+      ['X', 'FO', 'BH'].includes(c.value)
+    ).length;
+  }
+
+  getMaxFolgas(): number {
+    return this.daysList.length <= 30 ? 8 : 9;
   }
 
   getCellBgColor(collabId: string, day: number): string {
@@ -314,7 +397,8 @@ export class App {
   clearSelectedRow() {
     const col = this.editingCollaboratorRow();
     if (!col) return;
-    for (let day = 1; day <= 31; day++) {
+    const daysCount = this.daysList().length;
+    for (let day = 1; day <= daysCount; day++) {
       this.scaleService.updateCell(col.id, day, '');
     }
     this.confirmingClearRow.set(false);
@@ -435,8 +519,8 @@ export class App {
       this.showToast('Impossível re-gerar. Escala homologada e assinada.');
       return;
     }
-    this.scaleService.runAutoGenerator();
-    this.showToast('Sucesso: Motor de regras calculou e preencheu a grade piloto.');
+    this.scaleService.generateAutoScale();
+    this.showToast('Sucesso: Motor de IA estocástica preencheu a grade respeitando as travas operacionais.');
   }
 
   triggerReset() {
@@ -454,7 +538,8 @@ export class App {
     try {
       const collabs = this.scaleService.collaborators();
       const headers = ['Colaborador', 'Horario', 'Grupo', 'Role', 'Saldo BH', 'Score'];
-      for (let day = 1; day <= 31; day++) {
+      const daysCount = this.daysList().length;
+      for (let day = 1; day <= daysCount; day++) {
         headers.push(`Dia ${day}`);
       }
 
@@ -470,7 +555,7 @@ export class App {
           col.score
         ];
 
-        for (let day = 1; day <= 31; day++) {
+        for (let day = 1; day <= daysCount; day++) {
           const val = this.getCellValue(col.id, day);
           row.push(`"${val || 'Trabalho'}"`);
         }
@@ -571,71 +656,6 @@ export class App {
   deleteBackupSlot(id: string) {
     this.scaleService.deleteScaleBackupProfile(id);
     this.showToast('Slot de backup excluído permanentemente.');
-  }
-
-  // Collaborator CRUD logic
-  addNewCollaborator() {
-    const name = this.newCollabName().trim().toUpperCase();
-    if (!name) {
-      this.showToast('Insira o nome do colaborador.');
-      return;
-    }
-    
-    this.scaleService.addCollaborator(
-      name,
-      this.newCollabRole(),
-      this.newCollabSchedule(),
-      this.newCollabGroup(),
-      this.newCollabBhBalance(),
-      this.newCollabScore()
-    );
-
-    this.newCollabName.set('');
-    this.showToast(`Colaborador ${name} adicionado com sucesso!`);
-  }
-
-  removeCollaborator(id: string) {
-    this.scaleService.removeCollaborator(id);
-    this.showToast('Colaborador removido da escala de trabalho.');
-  }
-
-  startEditCollaborator(c: Collaborator) {
-    this.editingCollabId.set(c.id);
-    this.newCollabName.set(c.name);
-    this.newCollabRole.set(c.role);
-    this.newCollabSchedule.set(c.schedule);
-    this.newCollabGroup.set(c.group);
-    this.newCollabBhBalance.set(c.bhBalance);
-    this.newCollabScore.set(c.score);
-  }
-
-  saveEditedCollaborator() {
-    const id = this.editingCollabId();
-    if (!id) return;
-
-    const name = this.newCollabName().trim().toUpperCase();
-    if (!name) {
-      this.showToast('Insira o nome.');
-      return;
-    }
-
-    this.scaleService.updateCollaboratorDetails(
-      id,
-      name,
-      this.newCollabSchedule(),
-      this.newCollabGroup(),
-      this.newCollabBhBalance(),
-      this.newCollabScore()
-    );
-
-    this.editingCollabId.set(null);
-    this.newCollabName.set('');
-    this.showToast('Cadastro de plantonista atualizado com sucesso!');
-  }
-
-  cancelEditCollaborator() {
-    this.editingCollabId.set(null);
-    this.newCollabName.set('');
   }
 
   // Turn Definition (Siglas) CRUD Logic
