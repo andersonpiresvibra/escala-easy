@@ -1,0 +1,23 @@
+# Wrangler Configuration for Cloudflare Pages & Workers
+
+name = "escala-easy"
+compatibility_date = "2024-01-01"
+
+# Pages configuration
+pages_build_output_dir = "dist/app/browser"
+
+# Workers options (in case you want to use custom KV, D1 databases or queues)
+[vars]
+# Add any environment variables here e.g.:
+# ENVIRONMENT = "production"
+
+# Example D1 database binding:
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "escala_easy_db"
+# database_id = "your-database-uuid"
+
+# Example KV Namespace binding:
+# [[kv_namespaces]]
+# binding = "ESCALA_CACHE"
+# id = "your-kv-namespace-uuid"

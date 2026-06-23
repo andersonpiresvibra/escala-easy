@@ -1,0 +1,6 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "escala-easy",
+  "pages_build_output_dir": "dist/app/browser",
+  "compatibility_date": "2024-01-01"
+}
