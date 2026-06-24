@@ -20,7 +20,7 @@ export interface Collaborator {
   role: 'OPERADOR' | 'LIDER' | 'SUPERVISOR';
   schedule: string; // e.g. '21:12 - 06:00'
   group: 'Manhã' | 'Tarde' | 'Madrugada' | 'Líderes' | 'Treinamento' | 'VIP'; // Keep for legacy compatibility during migration
-  shift: 'MANHÃ' | 'TARDE' | 'MADRUGADA' | 'ADMINISTRATIVO'; // The primary shift block
+  shift: 'MANHÃ' | 'TARDE' | 'MADRUGADA' | 'ADMINISTRATIVO' | 'NOITE' | 'TESTE'; // The primary shift block
   sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO'; // The physical patio/sector
   bhBalance: number; // in hours
   score: number; // 0-100 base gamification
@@ -150,10 +150,10 @@ export const INITIAL_COLLABORATORS: Collaborator[] = [
   { id: '029', name: 'LUNA', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
   { id: '030', name: 'HUAN', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
 
-  // 06:00 - 16:00 (Administrativo)
-  { id: '031', name: 'LUIS', role: 'OPERADOR', schedule: '06:00 - 16:00', group: 'Manhã', shift: 'ADMINISTRATIVO', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
-  { id: '032', name: 'CAIO', role: 'OPERADOR', schedule: '06:00 - 16:00', group: 'Manhã', shift: 'ADMINISTRATIVO', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
-  { id: '033', name: 'IDENILSON', role: 'OPERADOR', schedule: '06:00 - 16:00', group: 'Manhã', shift: 'ADMINISTRATIVO', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  // 06:00 - 16:00 (Teste)
+  { id: '031', name: 'LUIS', role: 'OPERADOR', schedule: '06:00 - 16:00', group: 'Manhã', shift: 'TESTE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '032', name: 'CAIO', role: 'OPERADOR', schedule: '06:00 - 16:00', group: 'Manhã', shift: 'TESTE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '033', name: 'IDENILSON', role: 'OPERADOR', schedule: '06:00 - 16:00', group: 'Manhã', shift: 'TESTE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
 
   // 14:42 - 23:30 (Tarde / Aeródromo)
   { id: '034', name: 'RODOLFO', role: 'OPERADOR', schedule: '14:42 - 23:30', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
@@ -185,16 +185,16 @@ export const INITIAL_COLLABORATORS: Collaborator[] = [
   { id: '056', name: 'MARQUES', role: 'OPERADOR', schedule: '16:00 - 00:37', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
   { id: '057', name: 'LAERCIO', role: 'OPERADOR', schedule: '16:00 - 00:37', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
 
-  // 21:12 - 06:00 (Madrugada / Aeródromo)
-  { id: '058', name: 'HORACIO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 12, score: 98, importantDates: [{ label: 'Meu Aniversário', date: '2026-03-05', priority: 1 }] },
-  { id: '059', name: 'NORMAN', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: -4, score: 92, importantDates: [] },
-  { id: '060', name: 'RAFAEL', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 6, score: 95, importantDates: [] },
-  { id: '061', name: 'DOURADO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 0, score: 89, importantDates: [] },
-  { id: '062', name: 'VENANCIO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: -8, score: 90, importantDates: [] },
-  { id: '063', name: 'DIOGO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 16, score: 97, importantDates: [] },
-  { id: '064', name: 'WILLIAN', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 2, score: 91, importantDates: [] },
-  { id: '065', name: 'SILVERIO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 4, score: 93, importantDates: [] },
-  { id: '066', name: 'REGIS', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: -2, score: 87, importantDates: [] },
+  // 21:12 - 06:00 (Noite / Aeródromo)
+  { id: '058', name: 'HORACIO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'NOITE', sector: 'AERÓDROMO', bhBalance: 12, score: 98, importantDates: [{ label: 'Meu Aniversário', date: '2026-03-05', priority: 1 }] },
+  { id: '059', name: 'NORMAN', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'NOITE', sector: 'AERÓDROMO', bhBalance: -4, score: 92, importantDates: [] },
+  { id: '060', name: 'RAFAEL', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'NOITE', sector: 'AERÓDROMO', bhBalance: 6, score: 95, importantDates: [] },
+  { id: '061', name: 'DOURADO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'NOITE', sector: 'AERÓDROMO', bhBalance: 0, score: 89, importantDates: [] },
+  { id: '062', name: 'VENANCIO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'NOITE', sector: 'AERÓDROMO', bhBalance: -8, score: 90, importantDates: [] },
+  { id: '063', name: 'DIOGO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'NOITE', sector: 'AERÓDROMO', bhBalance: 16, score: 97, importantDates: [] },
+  { id: '064', name: 'WILLIAN', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'NOITE', sector: 'AERÓDROMO', bhBalance: 2, score: 91, importantDates: [] },
+  { id: '065', name: 'SILVERIO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'NOITE', sector: 'AERÓDROMO', bhBalance: 4, score: 93, importantDates: [] },
+  { id: '066', name: 'REGIS', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'NOITE', sector: 'AERÓDROMO', bhBalance: -2, score: 87, importantDates: [] },
 
   // LIDER DE TURNO
   { id: '067', name: 'CESARIO', role: 'LIDER', schedule: '06:00 - 15:00', group: 'Líderes', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 8, score: 94, importantDates: [] },
@@ -205,8 +205,8 @@ export const INITIAL_COLLABORATORS: Collaborator[] = [
   { id: '071', name: 'MARCIO', role: 'LIDER', schedule: '14:30 - 23:30', group: 'Líderes', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 95, importantDates: [] },
   { id: '072', name: 'JONATAN', role: 'LIDER', schedule: '14:30 - 23:30', group: 'Líderes', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 95, importantDates: [] },
 
-  { id: '073', name: 'PEREIRA', role: 'LIDER', schedule: '21:12 - 06:00', group: 'Líderes', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 0, score: 99, importantDates: [] },
-  { id: '074', name: 'GUSTAVO', role: 'LIDER', schedule: '21:12 - 06:00', group: 'Líderes', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 2, score: 96, importantDates: [] },
+  { id: '073', name: 'PEREIRA', role: 'LIDER', schedule: '21:12 - 06:00', group: 'Líderes', shift: 'NOITE', sector: 'AERÓDROMO', bhBalance: 0, score: 99, importantDates: [] },
+  { id: '074', name: 'GUSTAVO', role: 'LIDER', schedule: '21:12 - 06:00', group: 'Líderes', shift: 'NOITE', sector: 'AERÓDROMO', bhBalance: 2, score: 96, importantDates: [] },
 
   // PATIO VIP
   { id: '075', name: 'FERNANDO', role: 'OPERADOR', schedule: '07:00 - 16:00', group: 'VIP', shift: 'MANHÃ', sector: 'VIP', bhBalance: 0, score: 91, importantDates: [] },
@@ -215,8 +215,8 @@ export const INITIAL_COLLABORATORS: Collaborator[] = [
   { id: '078', name: 'TORRES', role: 'OPERADOR', schedule: '14:30 - 23:30', group: 'VIP', shift: 'TARDE', sector: 'VIP', bhBalance: 0, score: 93, importantDates: [] },
   { id: '079', name: 'SOLANGE', role: 'OPERADOR', schedule: '14:30 - 23:30', group: 'VIP', shift: 'TARDE', sector: 'VIP', bhBalance: 0, score: 93, importantDates: [] },
   { id: '080', name: 'LOYOLA', role: 'OPERADOR', schedule: '14:30 - 23:30', group: 'VIP', shift: 'TARDE', sector: 'VIP', bhBalance: 0, score: 93, importantDates: [] },
-  { id: '081', name: 'NORIVAL', role: 'OPERADOR', schedule: '21:00 - 06:00', group: 'VIP', shift: 'MADRUGADA', sector: 'VIP', bhBalance: 2, score: 94, importantDates: [] },
-  { id: '082', name: 'PIRES', role: 'OPERADOR', schedule: '22:00 - 06:00', group: 'VIP', shift: 'MADRUGADA', sector: 'VIP', bhBalance: 2, score: 94, importantDates: [] }
+  { id: '081', name: 'NORIVAL', role: 'OPERADOR', schedule: '21:00 - 06:00', group: 'VIP', shift: 'NOITE', sector: 'VIP', bhBalance: 2, score: 94, importantDates: [] },
+  { id: '082', name: 'PIRES', role: 'OPERADOR', schedule: '22:00 - 06:00', group: 'VIP', shift: 'NOITE', sector: 'VIP', bhBalance: 2, score: 94, importantDates: [] }
 ];
 
 export interface ShiftType {
@@ -244,8 +244,8 @@ export const SHIFT_COLORS: Record<string, { label: string; classes: string }> = 
 };
 
 export const SIGLAS: ShiftType[] = [
-  { code: 'T', label: 'Turno Regular (Trabalho Ativo)', color: 'bg-white text-slate-800 border-slate-300 font-bold hover:bg-slate-50', discounts: false, category: 'TURNO', cannotDelete: true, colorName: 'branco' },
-  { code: 'X', label: 'Folga Regular', color: 'bg-green-600 text-white border-green-700 font-bold hover:bg-green-700', discounts: true, category: 'FOLGAS', cannotDelete: true, colorName: 'verde' },
+  { code: 'T', label: 'Turno', color: 'bg-white text-slate-800 border-slate-300 font-bold hover:bg-slate-50', discounts: false, category: 'TURNO', cannotDelete: true, colorName: 'branco' },
+  { code: 'X', label: 'Folga', color: 'bg-green-600 text-white border-green-700 font-bold hover:bg-green-700', discounts: true, category: 'FOLGAS', cannotDelete: true, colorName: 'verde' },
   { code: 'F', label: 'Férias', color: 'bg-white text-slate-400 border-slate-300 font-bold hover:bg-slate-50', discounts: true, category: 'FERIAS', cannotDelete: true, colorName: 'branco' },
   { code: 'BH', label: 'Banco de Horas', color: 'bg-green-600 text-white border-green-700 font-bold hover:bg-green-700', discounts: true, category: 'FOLGAS', cannotDelete: true, colorName: 'verde' },
   { code: 'AT', label: 'Atestado Médico', color: 'bg-slate-700 text-white border-slate-800 font-bold hover:bg-slate-800', discounts: true, category: 'AFASTAMENTO_SAUDE', cannotDelete: true, colorName: 'cinza-escuro' },
@@ -253,7 +253,7 @@ export const SIGLAS: ShiftType[] = [
   { code: 'CP', label: 'CIPA (Obrigatório)', color: 'bg-yellow-500 text-slate-900 border-yellow-655 font-bold hover:bg-yellow-600', discounts: true, category: 'REUNIOES', cannotDelete: true, colorName: 'amarelo' },
   { code: 'TA', label: 'Trabalho em Altura', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: true, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
   { code: 'LI', label: 'Líquido Inflamável', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: true, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
-  { code: 'W', label: 'Workshop', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: true, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
+  { code: 'W', label: 'WShop', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: true, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
   { code: 'CV', label: 'Circulação Veículos', color: 'bg-blue-600 text-white border-blue-700 font-bold hover:bg-blue-700', discounts: true, category: 'CURSOS_TREINAMENTO', cannotDelete: true, colorName: 'azul' },
   {
     code: 'EX',
@@ -404,15 +404,20 @@ export function checkContingentViolation(
   year: number,
   grid: ShiftCell[],
   collaborators: Collaborator[],
-  shiftFilter = 'MADRUGADA'
+  shiftFilter = 'MANHÃ'
 ): { activeCount: number; required: number; isViolated: boolean } {
 
-  const normalizedFilter = (shiftFilter || 'MADRUGADA').toUpperCase();
+  let normalizedFilter = (shiftFilter || 'MANHÃ').toUpperCase();
+  if (normalizedFilter === 'MADRUGADA') normalizedFilter = 'NOITE';
+  if (normalizedFilter === 'ADMINISTRATIVO') normalizedFilter = 'TESTE';
   
   // Filter collaborators based on shift filter
   let targetCollabs = normalizedFilter === 'TODOS'
     ? collaborators
-    : collaborators.filter(c => c.shift === normalizedFilter);
+    : collaborators.filter(c => {
+        const cShift = c.shift === 'MADRUGADA' ? 'NOITE' : (c.shift === 'ADMINISTRATIVO' ? 'TESTE' : c.shift);
+        return cShift === normalizedFilter;
+      });
     
   // Exclude Leaders (LTs) and VIP collaborators from bottom calculations
   targetCollabs = targetCollabs.filter(c => c.role !== 'LIDER' && c.sector !== 'VIP');
@@ -434,13 +439,13 @@ export function checkContingentViolation(
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
   let required = 0;
-  if (normalizedFilter === 'MADRUGADA') {
+  if (normalizedFilter === 'NOITE' || normalizedFilter === 'MADRUGADA') {
     required = (dayOfWeek === 6) ? 5 : 6;
   } else if (normalizedFilter === 'MANHÃ') {
     required = isWeekend ? 18 : 22;
   } else if (normalizedFilter === 'TARDE') {
     required = isWeekend ? 12 : 15;
-  } else if (normalizedFilter === 'ADMINISTRATIVO') {
+  } else if (normalizedFilter === 'TESTE' || normalizedFilter === 'ADMINISTRATIVO') {
     required = isWeekend ? 0 : 2;
   } else {
     // TODOS: sum of all requirements roughly

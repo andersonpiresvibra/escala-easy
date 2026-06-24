@@ -439,11 +439,14 @@ export class App implements OnInit {
     const currentVal = this.getCellValue(collabId, day);
     if (folgaCodes.includes(currentVal)) return true;
 
-    const count = this.getFolgasCount(collabId);
-    const max = this.getMaxFolgas();
-    if (count >= max) {
-      this.showToast(`Limite de folgas (${max}) já atingido para este mês.`);
-      return false;
+    // Apenas aplicamos o limite de folgas do mês para OPERADORES, já que LTs (Lideres) e Supervisores têm escalas especiais de gestão.
+    if (collab?.role === 'OPERADOR') {
+      const count = this.getFolgasCount(collabId);
+      const max = this.getMaxFolgas();
+      if (count >= max) {
+        this.showToast(`Limite de folgas (${max}) já atingido para este mês.`);
+        return false;
+      }
     }
     return true;
   }
@@ -485,7 +488,7 @@ export class App implements OnInit {
       }
     }
     
-    if (!val) return 'Trabalho Ativo Regular' + suffix;
+    if (!val) return 'Turno' + suffix;
     if (val.includes(' ')) return `Histórico Duplo: ${val}` + suffix;
     
     const found = this.scaleService.shiftTypes().find(s => s.code === val);
@@ -493,6 +496,30 @@ export class App implements OnInit {
 
     if (!isNaN(Number(val))) return `Troca de horário: Turno ${val}h` + suffix;
     return val + suffix;
+  }
+
+  abbreviateLegend(label: string): string {
+    if (!label) return '';
+    const lower = label.toLowerCase();
+    if (lower.includes('turno regular') || lower.includes('trabalho ativo') || lower.includes('turno')) return 'Turno';
+    if (lower.includes('folga regular') || lower.includes('folga')) return 'Folga';
+    if (lower.includes('férias')) return 'Férias';
+    if (lower.includes('banco de horas')) return 'B. Horas';
+    if (lower.includes('atestado médico') || lower.includes('atestado')) return 'Atestado';
+    if (lower.includes('folga operacional')) return 'F. Oper.';
+    if (lower.includes('cipa')) return 'CIPA';
+    if (lower.includes('trabalho em altura')) return 'T. Altura';
+    if (lower.includes('líquido inflamável')) return 'L. Inflam.';
+    if (lower.includes('workshop') || lower.includes('wshop')) return 'WShop';
+    if (lower.includes('circulação veículos') || lower.includes('circulação')) return 'C. Veíc.';
+    if (lower.includes('exame periódico') || lower.includes('exame')) return 'Exame';
+    if (lower.includes('regular (célula vazia)') || lower.includes('célula vazia')) return 'Trabalho';
+    if (lower.includes('trabalho alternativo') || lower.includes('alternativo')) return 'Hr. Ent';
+    
+    if (label.length > 12) {
+      return label.substring(0, 11) + '.';
+    }
+    return label;
   }
 
   editingCollaboratorRow = signal<Collaborator | null>(null);

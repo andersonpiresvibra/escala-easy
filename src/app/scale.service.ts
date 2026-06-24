@@ -1,4 +1,4 @@
-import { Injectable, signal, inject } from '@angular/core';
+import { Injectable, signal, inject, effect, untracked } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import {
   Collaborator,
@@ -36,7 +36,7 @@ interface DbCollaborator {
   role: 'OPERADOR' | 'LIDER' | 'SUPERVISOR';
   schedule: string;
   grupo: 'Madrugada' | 'Manhã' | 'Tarde' | 'Líderes' | 'VIP' | 'Treinamento';
-  shift: 'MANHÃ' | 'TARDE' | 'MADRUGADA' | 'ADMINISTRATIVO';
+  shift: 'MANHÃ' | 'TARDE' | 'MADRUGADA' | 'ADMINISTRATIVO' | 'NOITE' | 'TESTE';
   sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO';
   bh_balance: number;
   score: number;
@@ -107,6 +107,15 @@ export class ScaleService {
     this.loadFromSupabase(); // Sincroniza de forma assíncrona com o Supabase!
     this.setupRealtimeSubscription(); // Inscreve nos canais de tempo real!
     this.startLiveOperationsSimulator();
+
+    // Re-carrega automaticamente do Supabase quando o mês ou ano muda
+    effect(() => {
+      this.currentMonth();
+      this.currentYear();
+      untracked(() => {
+        this.loadFromSupabase();
+      });
+    });
 
     // Fallback polling de contingência a cada 10 segundos para máxima reatividade
     setInterval(() => {
@@ -211,19 +220,42 @@ export class ScaleService {
 
       if (cursosErr) throw cursosErr;
 
-      // 5. Fetch escala_diaria (Com tratamento silencioso caso a tabela não exista ou esteja inacessível)
+      // 5. Fetch escala_diaria (Com paginação para evitar limite de 1000 registros e filtrando pelo mês/ano corrente)
       let typedEscala: { collaborator_id: string; day: number; month: number; year: number; value: string }[] = [];
       try {
-        const { data: escala, error: escalaErr } = await client
-          .from('escala_diaria')
-          .select('*');
-        if (!escalaErr && escala) {
-          typedEscala = escala;
-          this.isSchemaMissing.set(false);
-        } else if (escalaErr) {
-          console.warn('⚠️ [Aviso] Falha ao ler escala_diaria do Supabase:', escalaErr.message);
-          if (escalaErr.message?.includes('Could not find') || escalaErr.code === 'PGRST116') {
-            this.isSchemaMissing.set(true);
+        const currentM = this.currentMonth();
+        const currentY = this.currentYear();
+        let hasMore = true;
+        let fromOffset = 0;
+        const pageSize = 1000;
+
+        while (hasMore) {
+          const toOffset = fromOffset + pageSize - 1;
+          const { data: chunk, error: escalaErr } = await client
+            .from('escala_diaria')
+            .select('*')
+            .eq('month', currentM)
+            .eq('year', currentY)
+            .range(fromOffset, toOffset);
+
+          if (escalaErr) {
+            console.warn('⚠️ [Aviso] Falha ao ler lote de escala_diaria do Supabase:', escalaErr.message);
+            if (escalaErr.message?.includes('Could not find') || escalaErr.code === 'PGRST116') {
+              this.isSchemaMissing.set(true);
+            }
+            break;
+          }
+
+          if (chunk && chunk.length > 0) {
+            typedEscala = [...typedEscala, ...chunk];
+            if (chunk.length < pageSize) {
+              hasMore = false;
+            } else {
+              fromOffset += pageSize;
+            }
+            this.isSchemaMissing.set(false);
+          } else {
+            hasMore = false;
           }
         }
       } catch (err) {
@@ -281,7 +313,7 @@ export class ScaleService {
             role: c.role,
             schedule: c.schedule,
             group: c.grupo,
-            shift: c.shift,
+            shift: c.shift === 'MADRUGADA' ? 'NOITE' : (c.shift === 'ADMINISTRATIVO' ? 'TESTE' : c.shift),
             sector: c.sector,
             bhBalance: c.bh_balance || 0,
             score: c.score || 90,
@@ -372,10 +404,13 @@ export class ScaleService {
         }
       }
     } catch (err) {
-      console.error('❌ Erro ao carregar dados do Supabase:', err);
       const errStr = String(err);
-      if (errStr.includes('Failed to fetch') || errStr.includes('fetch') || errStr.includes('NetworkError') || errStr.includes('Load failed')) {
+      const isOffline = errStr.includes('Failed to fetch') || errStr.includes('fetch') || errStr.includes('NetworkError') || errStr.includes('Load failed');
+      if (isOffline) {
         this.isDatabaseOffline.set(true);
+        console.warn('[Supabase Contingency] Banco de dados offline/pausado ao carregar dados. Usando dados locais.');
+      } else {
+        console.error('❌ Erro ao carregar dados do Supabase:', err);
       }
     } finally {
       this.isSyncing.set(false);
@@ -393,7 +428,7 @@ export class ScaleService {
         role: c.role,
         schedule: c.schedule,
         grupo: c.group,
-        shift: c.shift,
+        shift: c.shift === 'NOITE' ? 'MADRUGADA' : (c.shift === 'TESTE' ? 'ADMINISTRATIVO' : c.shift),
         sector: c.sector,
         bh_balance: c.bhBalance,
         score: c.score
@@ -438,9 +473,15 @@ export class ScaleService {
         month: currentM,
         year: currentY,
         value: value || ''
-      });
+      }, { onConflict: 'collaborator_id,day,month,year' });
       if (error) {
-        console.error(`❌ Erro ao salvar célula (${collaboratorId}, dia ${day}) no Supabase:`, error.message);
+        const isOffline = error.message?.includes('Failed to fetch') || error.message?.includes('fetch') || error.message?.includes('network');
+        if (isOffline) {
+          this.isDatabaseOffline.set(true);
+          console.warn(`[Supabase Contingency] Célula (${collaboratorId}, dia ${day}) salva localmente devido à conexão offline.`);
+        } else {
+          console.error(`❌ Erro ao salvar célula (${collaboratorId}, dia ${day}) no Supabase:`, error.message);
+        }
         if (error.message?.includes('Could not find') || error.code === 'PGRST116') {
           this.isSchemaMissing.set(true);
         }
@@ -449,7 +490,14 @@ export class ScaleService {
         console.log(`✅ Célula (${collaboratorId}, ${day}/${currentM}/${currentY}) salva como "${value}" no Supabase.`);
       }
     } catch (err) {
-      console.error('❌ Erro na conexão para salvar célula no Supabase:', err);
+      const errStr = String(err);
+      const isOffline = errStr.includes('Failed to fetch') || errStr.includes('fetch') || errStr.includes('network') || errStr.includes('Load failed');
+      if (isOffline) {
+        this.isDatabaseOffline.set(true);
+        console.warn(`[Supabase Contingency] Conexão indisponível ao salvar célula (salvo localmente).`);
+      } else {
+        console.error('❌ Erro na conexão para salvar célula no Supabase:', err);
+      }
     }
   }
 
@@ -488,9 +536,12 @@ export class ScaleService {
           
           if (error) {
             hasError = true;
-            console.error(`❌ Erro no upsert do lote ${i} de escalas no Supabase:`, error.message);
-            if (error.message?.includes('Failed to fetch') || error.message?.includes('fetch') || error.message?.includes('network')) {
+            const isOffline = error.message?.includes('Failed to fetch') || error.message?.includes('fetch') || error.message?.includes('network');
+            if (isOffline) {
               this.isDatabaseOffline.set(true);
+              console.warn(`[Supabase Contingency] Lote de escalas ${i} operando offline (salvo localmente).`);
+            } else {
+              console.error(`❌ Erro no upsert do lote ${i} de escalas no Supabase:`, error.message);
             }
             if (error.message?.includes('Could not find') || error.code === 'PGRST116') {
               this.isSchemaMissing.set(true);
@@ -499,9 +550,12 @@ export class ScaleService {
         } catch (innerErr) {
           hasError = true;
           const errStr = String(innerErr);
-          console.error(`❌ Exceção no upsert do lote ${i}:`, errStr);
-          if (errStr.includes('Failed to fetch') || errStr.includes('fetch') || errStr.includes('network') || errStr.includes('Load failed')) {
+          const isOffline = errStr.includes('Failed to fetch') || errStr.includes('fetch') || errStr.includes('network') || errStr.includes('Load failed');
+          if (isOffline) {
             this.isDatabaseOffline.set(true);
+            console.warn(`[Supabase Contingency] Lote de escalas ${i} operando offline (salvo localmente).`);
+          } else {
+            console.error(`❌ Exceção no upsert do lote ${i}:`, errStr);
           }
         }
       }
@@ -511,10 +565,13 @@ export class ScaleService {
         console.log('✅ Escalas (grid) salvas com sucesso no Supabase.');
       }
     } catch (err) {
-      console.error('❌ Erro na conexão para salvar grid de escalas no Supabase:', err);
       const errStr = String(err);
-      if (errStr.includes('Failed to fetch') || errStr.includes('fetch') || errStr.includes('NetworkError') || errStr.includes('Load failed')) {
+      const isOffline = errStr.includes('Failed to fetch') || errStr.includes('fetch') || errStr.includes('NetworkError') || errStr.includes('Load failed');
+      if (isOffline) {
         this.isDatabaseOffline.set(true);
+        console.warn(`[Supabase Contingency] Conexão indisponível para salvar grid de escalas (salvo localmente).`);
+      } else {
+        console.error('❌ Erro na conexão para salvar grid de escalas no Supabase:', err);
       }
     }
   }
@@ -744,7 +801,7 @@ export class ScaleService {
   }
 
   // Collaborator Operations (Plantonistas)
-  addCollaborator(name: string, role: 'OPERADOR' | 'LIDER' | 'SUPERVISOR', schedule: string, group: 'Madrugada' | 'Manhã' | 'Tarde' | 'Líderes' | 'VIP' | 'Treinamento', shift: 'MANHÃ' | 'TARDE' | 'MADRUGADA' | 'ADMINISTRATIVO', sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO', bhBalance: number, score: number) {
+  addCollaborator(name: string, role: 'OPERADOR' | 'LIDER' | 'SUPERVISOR', schedule: string, group: 'Madrugada' | 'Manhã' | 'Tarde' | 'Líderes' | 'VIP' | 'Treinamento', shift: 'MANHÃ' | 'TARDE' | 'MADRUGADA' | 'ADMINISTRATIVO' | 'NOITE' | 'TESTE', sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO', bhBalance: number, score: number) {
     const newId = 'col-' + Math.random().toString(36).substr(2, 9);
     const newCollab: Collaborator = {
       id: newId,
@@ -797,7 +854,7 @@ export class ScaleService {
     this.deleteCollaboratorFromSupabase(id); // Deleta do Supabase!
   }
 
-  updateCollaboratorDetails(id: string, name: string, schedule: string, group: 'Madrugada' | 'Manhã' | 'Tarde' | 'Líderes' | 'VIP' | 'Treinamento', shift: 'MANHÃ' | 'TARDE' | 'MADRUGADA' | 'ADMINISTRATIVO', sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO', bhBalance: number, score: number) {
+  updateCollaboratorDetails(id: string, name: string, schedule: string, group: 'Madrugada' | 'Manhã' | 'Tarde' | 'Líderes' | 'VIP' | 'Treinamento', shift: 'MANHÃ' | 'TARDE' | 'MADRUGADA' | 'ADMINISTRATIVO' | 'NOITE' | 'TESTE', sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO', bhBalance: number, score: number) {
     this.collaborators.update(current => {
       return current.map(c => {
         if (c.id === id) {

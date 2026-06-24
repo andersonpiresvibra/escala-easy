@@ -210,10 +210,10 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
               </div>
               <select [value]="selectedShiftFilter()" (change)="selectedShiftFilter.set($any($event.target).value)"
                       class="bg-slate-100 border border-slate-200 text-slate-800 text-xs font-black rounded px-2 py-1 outline-none focus:border-blue-600 shadow-sm uppercase tracking-wider">
-                <option value="MADRUGADA">MADRUGADA</option>
                 <option value="MANHÃ">MANHÃ</option>
                 <option value="TARDE">TARDE</option>
-                <option value="ADMINISTRATIVO">ADMINISTRATIVO</option>
+                <option value="NOITE">NOITE</option>
+                <option value="TESTE">TESTE</option>
                 <option value="TODOS">TODOS</option>
               </select>
             </div>
@@ -527,30 +527,40 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
         </div>
 
         <!-- GRID INFOBAR LEGEND -->
-        <footer class="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4 text-xs font-sans">
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span class="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Legenda de Acrônimos:</span>
-            <div class="flex flex-wrap gap-4">
-              @for (sig of scaleService.shiftTypes(); track sig.code) {
-                <div class="flex items-center gap-1.5 animate-fade-in">
-                  <span class="px-2 py-1 rounded font-black text-[11px] border hover:scale-105 transition-all shadow-sm block text-center min-w-[24px]" [class]="sig.color">
-                    {{ sig.code }}
-                  </span>
-                  <span class="text-[10px] font-bold text-slate-600">{{ sig.label }}</span>
-                </div>
-              }
-              <div class="flex items-center gap-1.5 animate-fade-in">
-                <span class="px-2 py-1 rounded font-black text-[11px] bg-white text-slate-400 border border-slate-200 shadow-sm block text-center min-w-[24px]">
-                  _
+        <footer class="p-1.5 bg-slate-50 border-t border-slate-200 flex flex-col gap-1 font-sans w-full">
+          <div class="flex items-center gap-1.5">
+            <span class="material-icons text-[10px] text-slate-400 select-none">info</span>
+            <span class="text-slate-400 font-bold uppercase tracking-widest text-[7.5px]">Legenda de Acrônimos / Turnos:</span>
+          </div>
+          
+          <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-12 gap-1 w-full">
+            @for (sig of scaleService.shiftTypes(); track sig.code) {
+              <div class="flex items-center gap-1 p-0.5 px-1 bg-white hover:bg-slate-50 border border-slate-200/50 rounded shadow-xs transition-all animate-fade-in" style="min-width: 0;" [title]="sig.label">
+                <span class="px-0.5 py-0.5 rounded-sm font-black text-[8px] border shadow-xs block text-center min-w-[15px] max-w-[20px] truncate leading-none select-none" [class]="sig.color">
+                  {{ sig.code }}
                 </span>
-                <span class="text-[10px] font-bold text-slate-600">Trabalho Regular (célula vazia)</span>
-              </div>
-              <div class="flex items-center gap-1.5 animate-fade-in">
-                <span class="px-2 py-1 rounded font-black text-[11px] bg-violet-100 text-violet-800 border border-violet-300 shadow-sm block text-center min-w-[24px]">
-                  5/7/21
+                <span class="text-[8px] font-bold text-slate-500 truncate leading-none">
+                  {{ abbreviateLegend(sig.label) }}
                 </span>
-                <span class="text-[10px] font-bold text-slate-600">Trabalho Alternativo</span>
               </div>
+            }
+            
+            <div class="flex items-center gap-1 p-0.5 px-1 bg-white hover:bg-slate-50 border border-slate-200/50 rounded shadow-xs transition-all animate-fade-in" style="min-width: 0;" title="Trabalho (célula vazia)">
+              <span class="px-0.5 py-0.5 rounded-sm font-black text-[8px] bg-white text-slate-400 border border-slate-200 shadow-xs block text-center min-w-[15px] max-w-[20px] truncate leading-none select-none">
+                _
+              </span>
+              <span class="text-[8px] font-bold text-slate-500 truncate leading-none">
+                {{ abbreviateLegend('Célula vazia') }}
+              </span>
+            </div>
+            
+            <div class="flex items-center gap-1 p-0.5 px-1 bg-white hover:bg-slate-50 border border-slate-200/50 rounded shadow-xs transition-all animate-fade-in" style="min-width: 0;" title="Hr. Entrada Alternativo">
+              <span class="px-0.5 py-0.5 rounded-sm font-black text-[8px] bg-violet-100 text-violet-800 border border-violet-300 shadow-xs block text-center min-w-[15px] max-w-[20px] truncate leading-none select-none">
+                5/7/21
+              </span>
+              <span class="text-[8px] font-bold text-slate-500 truncate leading-none">
+                {{ abbreviateLegend('Trabalho Alternativo') }}
+              </span>
             </div>
           </div>
         </footer>
@@ -968,12 +978,29 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
           </div>
 
           <!-- Calendar visual guide -->
-          <div class="mt-4 flex flex-wrap gap-2 text-[9px] justify-between border-t border-slate-100 pt-3 text-slate-500 font-bold uppercase tracking-wider">
-            <span>Legenda:</span>
-            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-slate-200 border border-slate-300"></span> Folga (X)</span>
-            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-amber-100 border border-amber-300"></span> Férias (F)</span>
-            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-sky-100 border border-sky-300"></span> Banco de Horas (BH)</span>
-            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-white border border-slate-200 font-bold"></span> Trabalho Estável</span>
+          <div class="mt-4 border-t border-slate-100 pt-3 flex flex-col gap-1.5 font-sans">
+            <span class="text-slate-400 font-bold uppercase tracking-widest text-[8px] flex items-center gap-1 select-none">
+              <span class="material-icons text-[10px]">info</span>
+              Legenda do Calendário:
+            </span>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full">
+              <div class="flex items-center gap-1.5 p-1 bg-white border border-slate-200/50 rounded shadow-xs" style="min-width: 0;">
+                <span class="w-2.5 h-2.5 rounded bg-slate-200 border border-slate-300 shrink-0"></span>
+                <span class="text-[9px] font-bold text-slate-500 truncate leading-none">Folga (X)</span>
+              </div>
+              <div class="flex items-center gap-1.5 p-1 bg-white border border-slate-200/50 rounded shadow-xs" style="min-width: 0;">
+                <span class="w-2.5 h-2.5 rounded bg-amber-100 border border-amber-300 shrink-0"></span>
+                <span class="text-[9px] font-bold text-slate-500 truncate leading-none">Férias (F)</span>
+              </div>
+              <div class="flex items-center gap-1.5 p-1 bg-white border border-slate-200/50 rounded shadow-xs" style="min-width: 0;">
+                <span class="w-2.5 h-2.5 rounded bg-sky-100 border border-sky-300 shrink-0"></span>
+                <span class="text-[9px] font-bold text-slate-500 truncate leading-none">B. Horas (BH)</span>
+              </div>
+              <div class="flex items-center gap-1.5 p-1 bg-white border border-slate-200/50 rounded shadow-xs" style="min-width: 0;">
+                <span class="w-2.5 h-2.5 rounded bg-white border border-slate-200 shrink-0"></span>
+                <span class="text-[9px] font-bold text-slate-500 truncate leading-none">Trab. Regular</span>
+              </div>
+            </div>
           </div>
 
         </div>
