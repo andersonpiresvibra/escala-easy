@@ -99,7 +99,56 @@ export class ScaleService {
   constructor() {
     this.loadState();
     this.loadFromSupabase(); // Sincroniza de forma assíncrona com o Supabase!
+    this.setupRealtimeSubscription(); // Inscreve nos canais de tempo real!
     this.startLiveOperationsSimulator();
+  }
+
+  // Set up real-time subscription for Supabase tables
+  setupRealtimeSubscription() {
+    try {
+      const client = this.supabaseService.client;
+
+      // Inscrição para escutar alterações em tempo real nas tabelas principais
+      client
+        .channel('supabase-realtime-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'colaboradores' },
+          (payload) => {
+            console.log('⚡ [Realtime] Mudança detectada na tabela colaboradores:', payload);
+            this.loadFromSupabase();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'datas_magnas' },
+          (payload) => {
+            console.log('⚡ [Realtime] Mudança detectada na tabela datas_magnas:', payload);
+            this.loadFromSupabase();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'treinamentos' },
+          (payload) => {
+            console.log('⚡ [Realtime] Mudança detectada na tabela treinamentos:', payload);
+            this.loadFromSupabase();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'cursos_certificacoes' },
+          (payload) => {
+            console.log('⚡ [Realtime] Mudança detectada na tabela cursos_certificacoes:', payload);
+            this.loadFromSupabase();
+          }
+        )
+        .subscribe((status) => {
+          console.log(`📡 [Realtime] Conexão com canais de tempo real do Supabase: ${status}`);
+        });
+    } catch (err) {
+      console.error('❌ Erro ao configurar o canal de tempo real do Supabase:', err);
+    }
   }
 
   // Load from Supabase Database
