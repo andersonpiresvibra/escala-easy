@@ -21,6 +21,22 @@ export class App implements OnInit {
 
   public dbStatus = signal<'checking' | 'connected' | 'error'>('checking');
 
+  // Auth State
+  showAuthModal = signal(false);
+  authMode = signal<'LOGIN' | 'REGISTER'>('LOGIN');
+  authEmail = signal('');
+  authPassword = signal('');
+  authCollabId = signal('');
+  authError = signal('');
+  authSuccess = signal('');
+  isAuthLoading = signal(false);
+  pendingUsers = signal<any[]>([]);
+  showApprovalModal = signal(false);
+
+  eligibleAuthCollaborators = computed(() => {
+    return this.scaleService.collaborators().filter(c => c.role === 'LIDER' || c.role === 'SUPERVISOR');
+  });
+
   async ngOnInit() {
     const isConnected = await this.supabaseService.testConnection();
     this.dbStatus.set(isConnected ? 'connected' : 'error');
@@ -1031,5 +1047,122 @@ export class App implements OnInit {
   changeRole(role: 'SUPERVISOR' | 'LIDER' | 'OPERADOR') {
     this.scaleService.currentRole.set(role);
     this.showToast(`Perfil alterado para: ${role === 'SUPERVISOR' ? 'SUPERVISOR (Frente A)' : role === 'LIDER' ? 'LÍDER DE TURNO (Frente B)' : 'COLABORADOR (Frente C)'}`);
+  }
+
+  // --- AUTHENTICATION & APPROVAL FLOW ---
+  openAuthModal(mode: 'LOGIN' | 'REGISTER' = 'LOGIN') {
+    this.authMode.set(mode);
+    this.authCollabId.set('');
+    this.authPassword.set('');
+    this.authError.set('');
+    this.authSuccess.set('');
+    this.showAuthModal.set(true);
+  }
+
+  async submitAuth() {
+    this.authError.set('');
+    this.authSuccess.set('');
+    this.isAuthLoading.set(true);
+    try {
+      const collabId = this.authCollabId();
+      if (!collabId) throw new Error('Selecione seu nome na lista.');
+      
+      const pwd = this.authPassword();
+      const client = this.supabaseService.client;
+      
+      if (this.authMode() === 'LOGIN') {
+        if (!pwd) throw new Error('Insira a senha fornecida pelo administrador.');
+        
+        const { data, error } = await client
+          .from('usuarios_acesso')
+          .select('*')
+          .eq('collaborator_id', collabId)
+          .eq('senha', pwd)
+          .single();
+
+        if (error || !data) {
+          throw new Error('Nome ou senha inválidos, ou usuário não cadastrado.');
+        }
+
+        if (data.status === 'PENDENTE') {
+          throw new Error('Seu cadastro ainda está PENDENTE de aprovação do Supervisor.');
+        }
+
+        // Success
+        this.scaleService.currentRole.set(data.role as any);
+        this.scaleService.selectedOperatorId.set(data.collaborator_id);
+        this.showToast(`Bem-vindo(a), ${data.nome} (${data.role})`);
+        this.showAuthModal.set(false);
+      } else {
+        // Register (Request Access)
+        const collab = this.scaleService.collaborators().find(c => c.id === collabId);
+        if (!collab) throw new Error('Colaborador não encontrado.');
+        
+        // Verifica se já existe solicitação
+        const { data: existing } = await client.from('usuarios_acesso').select('id, status').eq('collaborator_id', collab.id).maybeSingle();
+        
+        if (existing) {
+           if (existing.status === 'PENDENTE') throw new Error('Você já possui uma solicitação pendente.');
+           if (existing.status === 'APROVADO') throw new Error('Seu acesso já foi aprovado. Solicite a senha ao administrador.');
+        }
+
+        const { error } = await client.from('usuarios_acesso').insert({
+          collaborator_id: collab.id,
+          nome: collab.name,
+          email: `${collab.id}@malha.local`, // Dummy email
+          senha: 'PENDENTE_' + Math.random().toString(36).substring(7),
+          role: collab.role,
+          status: 'PENDENTE'
+        });
+
+        if (error) throw error;
+
+        this.authSuccess.set('Solicitação enviada com sucesso! Aguarde o Supervisor enviar sua senha.');
+        this.authPassword.set('');
+      }
+    } catch (e: any) {
+      this.authError.set(e.message || 'Erro ao processar autenticação.');
+    } finally {
+      this.isAuthLoading.set(false);
+    }
+  }
+
+  async loadPendingUsers() {
+    if (this.scaleService.currentRole() !== 'SUPERVISOR') return;
+    this.showApprovalModal.set(true);
+    const client = this.supabaseService.client;
+    const { data, error } = await client.from('usuarios_acesso').select('*').eq('status', 'PENDENTE');
+    if (!error && data) {
+      this.pendingUsers.set(data);
+    }
+  }
+
+  generatedPasswords = signal<{ [userId: string]: string }>({});
+
+  async approveUser(id: string, collaborator_id: string) {
+    const client = this.supabaseService.client;
+    const pwd = Math.random().toString(36).slice(-6).toUpperCase(); // Gera senha de 6 caracteres
+    
+    const { error } = await client.from('usuarios_acesso').update({ status: 'APROVADO', senha: pwd }).eq('id', id);
+    if (!error) {
+      this.showToast('Usuário aprovado. Senha gerada!');
+      this.generatedPasswords.update(prev => ({ ...prev, [id]: pwd }));
+      // Não damos reload automático para que o Admin possa copiar a senha gerada
+      // Mas atualizamos o status local para mostrar que foi aprovado
+      this.pendingUsers.update(users => users.map(u => u.id === id ? { ...u, status: 'APROVADO' } : u));
+    } else {
+      this.showToast('Erro ao aprovar usuário.');
+    }
+  }
+
+  async rejectUser(id: string) {
+    const client = this.supabaseService.client;
+    const { error } = await client.from('usuarios_acesso').delete().eq('id', id);
+    if (!error) {
+      this.showToast('Solicitação rejeitada e removida.');
+      this.loadPendingUsers();
+    } else {
+      this.showToast('Erro ao rejeitar usuário.');
+    }
   }
 }

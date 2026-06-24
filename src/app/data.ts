@@ -216,7 +216,8 @@ export const INITIAL_COLLABORATORS: Collaborator[] = [
   { id: '079', name: 'SOLANGE', role: 'OPERADOR', schedule: '14:30 - 23:30', group: 'VIP', shift: 'TARDE', sector: 'VIP', bhBalance: 0, score: 93, importantDates: [] },
   { id: '080', name: 'LOYOLA', role: 'OPERADOR', schedule: '14:30 - 23:30', group: 'VIP', shift: 'TARDE', sector: 'VIP', bhBalance: 0, score: 93, importantDates: [] },
   { id: '081', name: 'NORIVAL', role: 'OPERADOR', schedule: '21:00 - 06:00', group: 'VIP', shift: 'NOITE', sector: 'VIP', bhBalance: 2, score: 94, importantDates: [] },
-  { id: '082', name: 'PIRES', role: 'OPERADOR', schedule: '22:00 - 06:00', group: 'VIP', shift: 'NOITE', sector: 'VIP', bhBalance: 2, score: 94, importantDates: [] }
+  { id: '082', name: 'PIRES', role: 'OPERADOR', schedule: '22:00 - 06:00', group: 'VIP', shift: 'NOITE', sector: 'VIP', bhBalance: 2, score: 94, importantDates: [] },
+  { id: '999', name: 'HORÁCIO', role: 'SUPERVISOR', schedule: '08:00 - 17:00', group: 'VIP', shift: 'ADMINISTRATIVO', sector: 'VIP', bhBalance: 0, score: 100, importantDates: [] }
 ];
 
 export interface ShiftType {
