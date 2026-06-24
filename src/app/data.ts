@@ -206,7 +206,7 @@ export function getSiglaLabel(code: string): string {
 }
 
 // Generate complete empty shift table for a specific month/year
-export function generateInitialGrid(collaborators: Collaborator[], year = 2026, month = 3): ShiftCell[] {
+export function generateInitialGrid(collaborators: Collaborator[], year = new Date().getFullYear(), month = new Date().getMonth() + 1): ShiftCell[] {
   const g: ShiftCell[] = [];
   const daysInMonth = new Date(year, month, 0).getDate();
   collaborators.forEach(col => {
@@ -224,13 +224,13 @@ export function generateInitialGrid(collaborators: Collaborator[], year = 2026, 
   return g;
 }
 
-export function isWeekday(day: number, month = 3, year = 2026): boolean {
+export function isWeekday(day: number, month = new Date().getMonth() + 1, year = new Date().getFullYear()): boolean {
   const date = new Date(year, month - 1, day);
   const dayOfWeek = date.getDay();
   return dayOfWeek !== 0 && dayOfWeek !== 6; // true if Monday to Friday
 }
 
-export function isHoliday(day: number, month = 3, year = 2026): boolean {
+export function isHoliday(day: number, month = new Date().getMonth() + 1, year = new Date().getFullYear()): boolean {
   if (month === 3 && year === 2026) {
     const holidays = [6, 25]; // March 6 (Data Magna PE) & March 25 (Data Magna CE)
     return holidays.includes(day);
@@ -239,7 +239,7 @@ export function isHoliday(day: number, month = 3, year = 2026): boolean {
   return false;
 }
 
-export function getHolidayName(day: number, month = 3, year = 2026): string | null {
+export function getHolidayName(day: number, month = new Date().getMonth() + 1, year = new Date().getFullYear()): string | null {
   if (month === 3 && year === 2026) {
     if (day === 6) return 'Feriado: Data Magna (PE)';
     if (day === 25) return 'Feriado: Data Magna (CE)';
@@ -329,8 +329,9 @@ export function checkContingentViolation(
     }
   });
 
-  const weekday = isWeekday(day, month, year) && !isHoliday(day, month, year);
-  const required = weekday ? 6 : 5;
+  const date = new Date(year, month - 1, day);
+  const isSaturday = date.getDay() === 6;
+  const required = isSaturday ? 5 : 6;
   const isViolated = activeCount < required;
 
   return { activeCount, required, isViolated };

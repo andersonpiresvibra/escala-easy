@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject, signal, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ScaleService } from './scale.service';
+import { SupabaseService } from './supabase.service';
 import { checkContingentViolation, isWeekday, isHoliday, getHolidayName, Collaborator, SHIFT_COLORS } from './data';
 
 @Component({
@@ -10,9 +11,17 @@ import { checkContingentViolation, isWeekday, isHoliday, getHolidayName, Collabo
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App {
+export class App implements OnInit {
   // Service Injection
   public scaleService = inject(ScaleService);
+  public supabaseService = inject(SupabaseService);
+
+  public dbStatus = signal<'checking' | 'connected' | 'error'>('checking');
+
+  async ngOnInit() {
+    const isConnected = await this.supabaseService.testConnection();
+    this.dbStatus.set(isConnected ? 'connected' : 'error');
+  }
 
   // Track active sub-tab for granular workspace
   public activeSubTab = signal<'matrix' | 'backups' | 'shifts'>('matrix');
@@ -166,15 +175,37 @@ export class App {
 
   availableYears = [2026, 2027, 2028, 2029, 2030];
 
+  showMonthSelector = signal<boolean>(false);
+
   getMonthLabel(month: number): string {
     const m = this.availableMonths.find(x => x.value === month);
     return m ? m.label : '';
   }
 
-  changeMonth(event: Event) {
-    const select = event.target as HTMLSelectElement;
-    this.scaleService.currentMonth.set(parseInt(select.value, 10));
+  toggleMonthSelector() {
+    this.showMonthSelector.update(v => !v);
+  }
+
+  selectMonth(month: number) {
+    this.scaleService.currentMonth.set(month);
+    this.showMonthSelector.set(false);
     this.showToast('Mês alterado com sucesso.');
+  }
+
+  getMonthSelectorClass(month: number): string {
+    const currentActualMonth = new Date().getMonth() + 1;
+    const isSelected = this.scaleService.currentMonth() === month;
+    const isPast = month < currentActualMonth;
+    
+    if (isSelected) {
+      return 'bg-blue-600 text-white shadow-sm hover:brightness-110';
+    }
+    
+    if (isPast) {
+      return 'text-slate-400 hover:bg-slate-50 opacity-60';
+    }
+    
+    return 'text-slate-700 hover:bg-slate-100 hover:text-blue-600';
   }
 
   changeYear(event: Event) {
@@ -287,8 +318,9 @@ export class App {
 
   // Required count for day
   getRequiredCount(day: number) {
-    const weekday = isWeekday(day, this.scaleService.currentMonth(), this.scaleService.currentYear()) && !this.isHoliday(day);
-    return weekday ? 6 : 5;
+    const date = new Date(this.scaleService.currentYear(), this.scaleService.currentMonth() - 1, day);
+    const isSaturday = date.getDay() === 6;
+    return isSaturday ? 5 : 6;
   }
 
   // Dynamic status check of contingent violation
@@ -308,16 +340,27 @@ export class App {
   getFolgasCount(collabId: string): number {
     const month = this.scaleService.currentMonth();
     const year = this.scaleService.currentYear();
+    const folgaCodes = this.scaleService.shiftTypes().filter(s => s.category === 'FOLGAS').map(s => s.code);
+
     return this.scaleService.grid().filter(c => 
       c.collaboratorId === collabId && 
       c.month === month &&
       c.year === year &&
-      ['X', 'FO', 'BH'].includes(c.value)
+      folgaCodes.includes(c.value)
     ).length;
   }
 
   getMaxFolgas(): number {
-    return this.daysList.length <= 30 ? 8 : 9;
+    const daysCount = this.daysList().length;
+    return daysCount <= 28 ? 7 : (daysCount <= 30 ? 8 : 9);
+  }
+
+  canAddFolga(collabId: string, day: number, code: string): boolean {
+    const folgaCodes = this.scaleService.shiftTypes().filter(s => s.category === 'FOLGAS').map(s => s.code);
+    if (!folgaCodes.includes(code)) return true;
+    const currentVal = this.getCellValue(collabId, day);
+    if (folgaCodes.includes(currentVal)) return true;
+    return this.getFolgasCount(collabId) < this.getMaxFolgas();
   }
 
   getCellBgColor(collabId: string, day: number): string {
@@ -467,6 +510,12 @@ export class App {
       const code = this.rowEditorSelectedSigla();
       const currentVal = this.scaleService.grid().find((c) => c.collaboratorId === collabId && c.day === day)?.value || '';
       const finalCode = currentVal === code ? '' : code;
+      
+      if (finalCode !== '' && !this.canAddFolga(collabId, day, finalCode)) {
+        this.showToast(`Limite de folgas (${this.getMaxFolgas()}) já atingido para este mês.`);
+        return;
+      }
+      
       this.scaleService.updateCell(collabId, day, finalCode);
       if (finalCode === '') {
         this.showToast(`Linha de ${editingCol.name}: Dia ${day} limpo (Trabalho Regular)`);
@@ -481,6 +530,12 @@ export class App {
     if (this.showPaintbrushPanel() && brush !== null) {
       const currentVal = this.scaleService.grid().find((c) => c.collaboratorId === collabId && c.day === day)?.value || '';
       const finalCode = currentVal === brush ? '' : brush;
+
+      if (finalCode !== '' && !this.canAddFolga(collabId, day, finalCode)) {
+        this.showToast(`Limite de folgas (${this.getMaxFolgas()}) já atingido para este mês.`);
+        return;
+      }
+
       this.scaleService.updateCell(collabId, day, finalCode);
       if (finalCode === '') {
         this.showToast(`Pincel: Dia ${day} limpo (Trabalho Regular)`);
@@ -498,6 +553,12 @@ export class App {
     const editor = this.activeEditor();
     if (!editor) return;
 
+    if (code !== '' && !this.canAddFolga(editor.collaboratorId, editor.day, code)) {
+      this.showToast(`Limite de folgas (${this.getMaxFolgas()}) já atingido para este mês.`);
+      this.activeEditor.set(null);
+      return;
+    }
+
     this.scaleService.updateCell(editor.collaboratorId, editor.day, code);
     this.activeEditor.set(null);
     this.showToast(`Planilha Mãe Atualizada para o dia ${editor.day}.`);
@@ -507,6 +568,12 @@ export class App {
   applyCustomValue(val: string) {
     const editor = this.activeEditor();
     if (!editor) return;
+
+    if (val !== '' && !this.canAddFolga(editor.collaboratorId, editor.day, val.trim().toUpperCase())) {
+      this.showToast(`Limite de folgas (${this.getMaxFolgas()}) já atingido para este mês.`);
+      this.activeEditor.set(null);
+      return;
+    }
 
     this.scaleService.updateCell(editor.collaboratorId, editor.day, val);
     this.activeEditor.set(null);

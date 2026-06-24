@@ -6,8 +6,6 @@ import {
   AuditLog,
   INITIAL_COLLABORATORS,
   generateInitialGrid,
-  isWeekday,
-  isHoliday,
   isActiveCellValue,
   isFixedAbsenceValue,
   isWorkDayForFatigue,
@@ -53,8 +51,8 @@ export class ScaleService {
   operations = signal<JetFuelOperation[]>([]);
 
   // Current Date context mapping
-  currentMonth = signal<number>(3); // Default to 3 (March)
-  currentYear = signal<number>(2026); // Default year
+  currentMonth = signal<number>(new Date().getMonth() + 1); // Current month
+  currentYear = signal<number>(new Date().getFullYear()); // Current year
 
   constructor() {
     this.loadState();
@@ -394,31 +392,32 @@ export class ScaleService {
 
       const newGrid: ShiftCell[] = currentGrid.map(cell => ({ ...cell }));
 
-      const getCellIndex = (collaboratorId: string, day: number): number => {
-        return newGrid.findIndex(c => c.collaboratorId === collaboratorId && c.day === day && c.month === month && c.year === year);
+      const getCellIndex = (collaboratorId: string, day: number, m = month, y = year): number => {
+        return newGrid.findIndex(c => c.collaboratorId === collaboratorId && c.day === day && c.month === m && c.year === y);
       };
 
-      const getCellValue = (collaboratorId: string, day: number): string => {
-        const idx = getCellIndex(collaboratorId, day);
+      const getCellValue = (collaboratorId: string, day: number, m = month, y = year): string => {
+        const idx = getCellIndex(collaboratorId, day, m, y);
         if (idx === -1) return '';
         return normalizeCellValue(newGrid[idx].value);
       };
 
-      const setCellValue = (collaboratorId: string, day: number, value: string): void => {
-        const idx = getCellIndex(collaboratorId, day);
+      const setCellValue = (collaboratorId: string, day: number, value: string, m = month, y = year): void => {
+        const idx = getCellIndex(collaboratorId, day, m, y);
         if (idx !== -1) {
           newGrid[idx] = {
             ...newGrid[idx],
             value
           };
         } else {
-          newGrid.push({ collaboratorId, day, month, year, value });
+          newGrid.push({ collaboratorId, day, month: m, year: y, value });
         }
       };
 
       const requiredForDay = (day: number): number => {
-        const weekday = isWeekday(day, month, year) && !isHoliday(day, month, year);
-        return weekday ? 6 : 5;
+        const date = new Date(year, month - 1, day);
+        const isSaturday = date.getDay() === 6;
+        return isSaturday ? 5 : 6;
       };
 
       const activeCountForDay = (day: number): number => {
@@ -432,7 +431,7 @@ export class ScaleService {
         return count;
       };
 
-      const canGiveDayOff = (collaboratorId: string, day: number): boolean => {
+      const canGiveDayOff = (collaboratorId: string, day: number, force = false): boolean => {
         const currentValue = getCellValue(collaboratorId, day);
 
         if (isFixedAbsenceValue(currentValue)) return false;
@@ -441,18 +440,18 @@ export class ScaleService {
         const beforeActive = activeCountForDay(day);
         const required = requiredForDay(day);
 
-        if (beforeActive <= required) return false;
+        if (!force && beforeActive <= required) return false;
 
         return true;
       };
 
-      const giveDayOff = (collaboratorId: string, day: number): boolean => {
-        if (!canGiveDayOff(collaboratorId, day)) return false;
+      const giveDayOff = (collaboratorId: string, day: number, force = false): boolean => {
+        if (!canGiveDayOff(collaboratorId, day, force)) return false;
         setCellValue(collaboratorId, day, 'X');
         const afterActive = activeCountForDay(day);
         const required = requiredForDay(day);
 
-        if (afterActive < required) {
+        if (!force && afterActive < required) {
           setCellValue(collaboratorId, day, '');
           return false;
         }
@@ -472,10 +471,24 @@ export class ScaleService {
 
       const consecutiveWorkBefore = (collaboratorId: string, day: number): number => {
         let count = 0;
-        for (let d = day - 1; d >= 1; d--) {
-          const val = getCellValue(collaboratorId, d);
+        let d = day - 1;
+        let m = month;
+        let y = year;
+        
+        while (true) {
+          if (d < 1) {
+            m--;
+            if (m < 1) {
+              m = 12;
+              y--;
+            }
+            d = new Date(y, m, 0).getDate();
+          }
+          
+          const val = getCellValue(collaboratorId, d, m, y);
           if (isWorkDayForFatigue(val)) {
             count++;
+            d--;
           } else {
             break;
           }
@@ -576,15 +589,13 @@ export class ScaleService {
       }
 
       // =========================================================================
-      // ETAPA 3 — Distribuição Sequencial Dia a Dia com trava absoluta de folgas
-      // Limite cravado: 9 para 31 dias, 8 para 30 dias, 7 para 28 dias.
+      // ETAPA 3 — Distribuição Balanceada Dia a Dia
       // =========================================================================
       const targetOffs = daysInMonth <= 28 ? 7 : (daysInMonth <= 30 ? 8 : 9);
 
       for (let day = 1; day <= daysInMonth; day++) {
         const required = requiredForDay(day);
         let availableSlots = activeCountForDay(day) - required;
-        if (availableSlots <= 0) continue;
 
         const candidates = madrugadaOps.map(op => {
           const consecutive = consecutiveWorkBefore(op.id, day);
@@ -597,27 +608,50 @@ export class ScaleService {
         const needOff = candidates.filter(c => !c.isOffToday && c.totalOffsAssigned < targetOffs);
 
         needOff.forEach(c => {
-          let score = c.consecutive * 1000;
+          let score = 0;
+          
+          if (c.consecutive >= maxConsecutiveWork) {
+            score += 100000; // MUST HAVE
+          } else {
+            score += c.consecutive * 1000;
+          }
+          
           const remainingDays = (daysInMonth - day) + 1;
           const remainingOffs = targetOffs - c.totalOffsAssigned;
           const pressure = remainingOffs / remainingDays;
-          score += pressure * 500;
+          
+          if (pressure >= 1) {
+            score += 50000; // Must have otherwise we run out of days
+          } else {
+            score += pressure * 5000;
+          }
+          
+          if (c.consecutive < 2) {
+             score -= 5000; // Penalize early days off to balance T and X
+          }
+
           c.score = score;
         });
 
-        // Ordenamos prioritariamente por risco de fadiga
-        needOff.sort((a, b) => {
-           if (a.consecutive !== b.consecutive) return b.consecutive - a.consecutive;
-           return b.score - a.score;
-        });
+        needOff.sort((a, b) => b.score - a.score);
 
         for (const c of needOff) {
-          if (availableSlots <= 0) break;
-
-          if (canGiveDayOff(c.op.id, day)) {
+          const force = c.consecutive >= maxConsecutiveWork || c.score > 40000;
+          
+          if (!force && c.consecutive < 2) {
+            continue; // Evita TXTX se não for forçado
+          }
+          
+          if (!force && availableSlots <= 0) {
+            continue;
+          }
+          
+          if (canGiveDayOff(c.op.id, day, force)) {
             setCellValue(c.op.id, day, 'X');
             c.totalOffsAssigned++; // local pointer increment
-            availableSlots--;
+            if (!force) {
+              availableSlots--;
+            }
           }
         }
       }
@@ -629,7 +663,6 @@ export class ScaleService {
       for (let pass = 0; pass < 2; pass++) {
         for (let day = daysInMonth; day >= 1; day--) {
           let availableSlots = activeCountForDay(day) - requiredForDay(day);
-          if (availableSlots <= 0) continue;
 
           const candidates = madrugadaOps.map(op => ({
             op,
@@ -637,17 +670,28 @@ export class ScaleService {
             isOffToday: getCellValue(op.id, day) === 'X' || isFixedAbsenceValue(getCellValue(op.id, day))
           })).filter(c => !c.isOffToday && c.totalOffsAssigned < targetOffs);
 
-          // Quem tem menos folgas tem preferência para bater a cota logo
           candidates.sort((a, b) => a.totalOffsAssigned - b.totalOffsAssigned);
 
           for (const c of candidates) {
-            if (availableSlots <= 0) break;
+            const force = c.totalOffsAssigned < targetOffs && pass === 1; // force on last pass if missing quota
+            if (!force && availableSlots <= 0) break;
             
-            if (canGiveDayOff(c.op.id, day)) {
+            if (canGiveDayOff(c.op.id, day, force)) {
               setCellValue(c.op.id, day, 'X');
               c.totalOffsAssigned++;
-              availableSlots--;
+              if (!force) availableSlots--;
             }
+          }
+        }
+      }
+
+      // =========================================================================
+      // ETAPA 4.5 — Preencher Células Vazias com "T"
+      // =========================================================================
+      for (const op of collabs) {
+        for (let day = 1; day <= daysInMonth; day++) {
+          if (getCellValue(op.id, day) === '') {
+            setCellValue(op.id, day, 'T');
           }
         }
       }
@@ -667,7 +711,7 @@ export class ScaleService {
       }
 
       for (const op of madrugadaOps) {
-        let consecutive = 0;
+        let consecutive = consecutiveWorkBefore(op.id, 1);
         const totalOffs = offCountSoFar(op.id, daysInMonth);
 
         // CHECAGEM RIGOROSA DO LIMITE COTA
