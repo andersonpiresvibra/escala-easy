@@ -84,6 +84,10 @@ export class ScaleService {
   selectedOperatorId = signal<string>('001'); // Default logged operator (MICHEL)
   antiFatigueLimit = signal<number>(5); // Max N consecutive days
   
+  // Sync state signals for UI
+  isSyncing = signal<boolean>(false);
+  lastSyncTime = signal<string>('');
+
   // Custom Saved Profiles Slots
   savedProfiles = signal<SavedScaleProfile[]>([]);
   // Dynamic Shift Types Configurator
@@ -101,6 +105,11 @@ export class ScaleService {
     this.loadFromSupabase(); // Sincroniza de forma assíncrona com o Supabase!
     this.setupRealtimeSubscription(); // Inscreve nos canais de tempo real!
     this.startLiveOperationsSimulator();
+
+    // Fallback polling de contingência a cada 10 segundos para máxima reatividade
+    setInterval(() => {
+      this.loadFromSupabase();
+    }, 10000);
   }
 
   // Set up real-time subscription for Supabase tables
@@ -153,6 +162,7 @@ export class ScaleService {
 
   // Load from Supabase Database
   async loadFromSupabase() {
+    this.isSyncing.set(true);
     try {
       console.log('🔄 Baixando dados reais do Supabase...');
       const client = this.supabaseService.client;
@@ -254,6 +264,9 @@ export class ScaleService {
       }
     } catch (err) {
       console.error('❌ Erro ao carregar dados do Supabase:', err);
+    } finally {
+      this.isSyncing.set(false);
+      this.lastSyncTime.set(new Date().toLocaleTimeString());
     }
   }
 

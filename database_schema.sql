@@ -217,3 +217,15 @@ INSERT INTO cursos_certificacoes (collaborator_id, name, institution, issue_date
 ('067', 'Curso Avançado de Combate a Incêndio em Aeródromos', 'MALHA ACADEMY', '2025-02-28', 'CI-ACAD-2025-99'),
 -- Renata ('076')
 ('076', 'Direção Defensiva de Caminhões Tanque Abastecedores (CTA)', 'SENAT', '2025-04-10', 'DIRDEF-99120-VIP');
+
+
+-- =====================================================================
+-- HABILITANDO REPLICAÇÃO EM TEMPO REAL (REALTIME) NO SUPABASE
+-- Para que as alterações no banco reflitam instantaneamente no app!
+-- =====================================================================
+
+alter publication supabase_realtime add table colaboradores;
+alter publication supabase_realtime add table datas_magnas;
+alter publication supabase_realtime add table treinamentos;
+alter publication supabase_realtime add table cursos_certificacoes;
+

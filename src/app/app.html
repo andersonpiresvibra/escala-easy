@@ -17,23 +17,42 @@
         <span class="text-base font-black tracking-tighter text-slate-900 leading-none">ESCALA<span class="text-blue-600">.</span>EASY</span>
       </div>
       
-      <!-- Database Status Indicator -->
-      <div class="mt-1 flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-slate-200 bg-white w-fit" title="Status do Banco de Dados Supabase">
-        @if (dbStatus() === 'checking') {
-          <span class="material-icons text-[10px] text-slate-400 animate-spin">sync</span>
-          <span class="text-[8px] font-black uppercase tracking-widest text-slate-400">Verificando...</span>
-        } @else if (dbStatus() === 'connected') {
-          <span class="relative flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <span class="text-[8px] font-black uppercase tracking-widest text-emerald-600">Conectado ao Banco de Dados</span>
-        } @else {
-          <span class="relative flex h-2 w-2">
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-          </span>
-          <span class="text-[8px] font-black uppercase tracking-widest text-red-600">Erro de Conexão</span>
-        }
+      <!-- Database Status & Realtime Sync Indicator -->
+      <div class="mt-1 flex items-center gap-1.5" id="database_sync_indicators">
+        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-slate-200 bg-white w-fit" title="Status do Banco de Dados Supabase">
+          @if (dbStatus() === 'checking') {
+            <span class="material-icons text-[10px] text-slate-400 animate-spin">sync</span>
+            <span class="text-[8px] font-black uppercase tracking-widest text-slate-400">Verificando...</span>
+          } @else if (dbStatus() === 'connected') {
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span class="text-[8px] font-black uppercase tracking-widest text-emerald-600">Conectado</span>
+          } @else {
+            <span class="relative flex h-2 w-2">
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+            </span>
+            <span class="text-[8px] font-black uppercase tracking-widest text-red-600">Erro</span>
+          }
+        </div>
+
+        <!-- Realtime status / Last Sync / Sync Action -->
+        <button (click)="scaleService.loadFromSupabase()" 
+                [disabled]="scaleService.isSyncing()"
+                class="flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors disabled:opacity-50 select-none cursor-pointer"
+                id="realtime_sync_btn"
+                title="Forçar sincronização manual com o Supabase">
+          <span class="material-icons text-[10px]" [class.animate-spin]="scaleService.isSyncing()">sync</span>
+          @if (scaleService.isSyncing()) {
+            <span class="text-[8px] font-black uppercase tracking-widest">Sincronizando...</span>
+          } @else {
+            <span class="text-[8px] font-black uppercase tracking-widest">Tempo Real</span>
+            @if (scaleService.lastSyncTime()) {
+              <span class="text-[7px] text-blue-500 font-mono">({{ scaleService.lastSyncTime() }})</span>
+            }
+          }
+        </button>
       </div>
     </div>
 
