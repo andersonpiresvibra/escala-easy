@@ -403,16 +403,26 @@ export function checkContingentViolation(
   month: number,
   year: number,
   grid: ShiftCell[],
-  collaborators: Collaborator[]
+  collaborators: Collaborator[],
+  shiftFilter = 'MADRUGADA'
 ): { activeCount: number; required: number; isViolated: boolean } {
 
-  const pilotOps = collaborators.filter(c => c.group === 'Madrugada');
-  const pilotOpsIds = new Set(pilotOps.map(c => c.id));
+  const normalizedFilter = (shiftFilter || 'MADRUGADA').toUpperCase();
+  
+  // Filter collaborators based on shift filter
+  let targetCollabs = normalizedFilter === 'TODOS'
+    ? collaborators
+    : collaborators.filter(c => c.shift === normalizedFilter);
+    
+  // Exclude Leaders (LTs) and VIP collaborators from bottom calculations
+  targetCollabs = targetCollabs.filter(c => c.role !== 'LIDER' && c.sector !== 'VIP');
+    
+  const targetCollabIds = new Set(targetCollabs.map(c => c.id));
 
   let activeCount = 0;
 
   grid.forEach(cell => {
-    if (cell.day === day && cell.month === month && cell.year === year && pilotOpsIds.has(cell.collaboratorId)) {
+    if (cell.day === day && cell.month === month && cell.year === year && targetCollabIds.has(cell.collaboratorId)) {
       if (isActiveCellValue(cell.value)) {
         activeCount++;
       }
@@ -420,8 +430,23 @@ export function checkContingentViolation(
   });
 
   const date = new Date(year, month - 1, day);
-  const isSaturday = date.getDay() === 6;
-  const required = isSaturday ? 5 : 6;
+  const dayOfWeek = date.getDay(); // 0: Sunday, 1: Monday, ..., 6: Saturday
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+  let required = 0;
+  if (normalizedFilter === 'MADRUGADA') {
+    required = (dayOfWeek === 6) ? 5 : 6;
+  } else if (normalizedFilter === 'MANHÃ') {
+    required = isWeekend ? 18 : 22;
+  } else if (normalizedFilter === 'TARDE') {
+    required = isWeekend ? 12 : 15;
+  } else if (normalizedFilter === 'ADMINISTRATIVO') {
+    required = isWeekend ? 0 : 2;
+  } else {
+    // TODOS: sum of all requirements roughly
+    required = isWeekend ? 35 : 43;
+  }
+
   const isViolated = activeCount < required;
 
   return { activeCount, required, isViolated };

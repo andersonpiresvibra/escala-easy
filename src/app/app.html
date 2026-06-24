@@ -3,8 +3,8 @@
 
   <!-- TOAST ALERTS BANNER -->
   @if (toastMessage()) {
-    <div class="fixed top-4 right-4 z-50 bg-slate-900 text-white p-4 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce max-w-sm border border-slate-700" id="toast_notification">
-      <span class="material-icons select-none text-blue-400 text-xl">verified</span>
+    <div class="fixed top-4 right-4 z-50 bg-emerald-600 text-white p-4 rounded-xl shadow-2xl flex items-center gap-3 animate-fade-in max-w-sm border border-emerald-500" id="toast_notification">
+      <span class="material-icons select-none text-white text-xl">verified</span>
       <span class="text-sm font-bold tracking-wide">{{ toastMessage() }}</span>
     </div>
   }
@@ -24,35 +24,17 @@
             <span class="material-icons text-[10px] text-slate-400 animate-spin">sync</span>
             <span class="text-[8px] font-black uppercase tracking-widest text-slate-400">Verificando...</span>
           } @else if (dbStatus() === 'connected') {
-            <span class="relative flex h-2 w-2">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <span class="relative flex h-1.5 w-1.5">
+              <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
             </span>
             <span class="text-[8px] font-black uppercase tracking-widest text-emerald-600">Conectado</span>
           } @else {
-            <span class="relative flex h-2 w-2">
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+            <span class="relative flex h-1.5 w-1.5">
+              <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
             </span>
             <span class="text-[8px] font-black uppercase tracking-widest text-red-600">Erro</span>
           }
         </div>
-
-        <!-- Realtime status / Last Sync / Sync Action -->
-        <button (click)="scaleService.loadFromSupabase()" 
-                [disabled]="scaleService.isSyncing()"
-                class="flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors disabled:opacity-50 select-none cursor-pointer"
-                id="realtime_sync_btn"
-                title="Forçar sincronização manual com o Supabase">
-          <span class="material-icons text-[10px]" [class.animate-spin]="scaleService.isSyncing()">sync</span>
-          @if (scaleService.isSyncing()) {
-            <span class="text-[8px] font-black uppercase tracking-widest">Sincronizando...</span>
-          } @else {
-            <span class="text-[8px] font-black uppercase tracking-widest">Tempo Real</span>
-            @if (scaleService.lastSyncTime()) {
-              <span class="text-[7px] text-blue-500 font-mono">({{ scaleService.lastSyncTime() }})</span>
-            }
-          }
-        </button>
       </div>
     </div>
 
@@ -71,11 +53,11 @@
     <!-- GROUPED dropdown options button -->
     <div class="relative inline-block text-left" id="options_dropdown_container">
       <button (click)="isDropdownOpen.set(!isDropdownOpen())"
-              class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase bg-slate-900 hover:bg-slate-800 text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm select-none"
+              class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm select-none"
               style="border-radius: 5px;"
               id="btn_options_dropdown">
-        <span class="material-icons text-xs">settings_applications</span>
-        Opções & Ferramentas
+        <span class="material-icons text-xs text-slate-600">settings</span>
+        Opções
         <span class="material-icons text-xs transition-transform duration-200" [class.rotate-180]="isDropdownOpen()">expand_more</span>
       </button>
 
@@ -84,20 +66,6 @@
           <!-- Section 0: Perfis de Visão / Frente de Acesso -->
           <div class="py-1.5 bg-slate-50 rounded-t-xl">
             <span class="block px-4 py-1 text-[8px] font-black uppercase text-slate-400 tracking-wider">Perfis de Acesso</span>
-            
-            <button (click)="changeRole('SUPERVISOR'); isDropdownOpen.set(false)"
-                    class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center justify-between cursor-pointer"
-                    [class.bg-emerald-50]="scaleService.currentRole() === 'SUPERVISOR'"
-                    [class.text-emerald-700]="scaleService.currentRole() === 'SUPERVISOR'"
-                    [class.text-slate-700]="scaleService.currentRole() !== 'SUPERVISOR'">
-              <span class="flex items-center gap-2">
-                <span class="material-icons text-slate-500 text-sm">security</span>
-                Governança
-              </span>
-              @if (scaleService.currentRole() === 'SUPERVISOR') {
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              }
-            </button>
 
             <button (click)="changeRole('LIDER'); isDropdownOpen.set(false)"
                     class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center justify-between cursor-pointer"
@@ -135,7 +103,7 @@
                       class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center gap-2 cursor-pointer"
                       [class]="showPaintbrushPanel() ? 'text-amber-600 bg-amber-50 hover:bg-amber-100/50' : 'text-slate-700 hover:bg-slate-50'">
                 <span class="material-icons text-sm" [class]="showPaintbrushPanel() ? 'text-amber-500' : 'text-slate-500'">edit_calendar</span>
-                {{ showPaintbrushPanel() ? 'Fechar Edição em Massa' : 'Editar Escala em Massa' }}
+                {{ showPaintbrushPanel() ? 'Fechar Edição em Massa' : 'Editar em Massa' }}
               </button>
               <button (click)="scaleService.clearAllScales(); isDropdownOpen.set(false)"
                       class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-red-600 hover:bg-red-50 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-t border-slate-100">
@@ -153,25 +121,6 @@
               <span class="material-icons text-slate-500 text-sm">tune</span>
               Turnos & Siglas
             </button>
-            <button (click)="activeSubTab.set('backups'); isDropdownOpen.set(false)"
-                    class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-slate-700 hover:bg-slate-50 transition-colors tracking-wider flex items-center gap-2 cursor-pointer">
-              <span class="material-icons text-slate-500 text-sm">cloud_sync</span>
-              Salvar / Carregar
-            </button>
-          </div>
-
-          <!-- Section 2: Relatórios & Dados -->
-          <div class="py-1.5">
-            <button (click)="exportToCSV(); isDropdownOpen.set(false)"
-                    class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-slate-700 hover:bg-slate-50 transition-colors tracking-wider flex items-center gap-2 cursor-pointer">
-              <span class="material-icons text-slate-500 text-sm">table_chart</span>
-              Exportar CSV
-            </button>
-            <button (click)="exportToPDF(); isDropdownOpen.set(false)"
-                    class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-slate-700 hover:bg-slate-50 transition-colors tracking-wider flex items-center gap-2 cursor-pointer">
-              <span class="material-icons text-slate-500 text-sm">picture_as_pdf</span>
-              Imprimir / PDF
-            </button>
           </div>
         </div>
       }
@@ -180,6 +129,35 @@
 
   <!-- MAIN CONTAINER GRID -->
   <main class="flex-1 w-full flex flex-col gap-6 transition-all duration-200 p-0 md:py-6" id="app_content">
+
+    <!-- WARNING: Supabase Offline / Paused Project -->
+    @if (scaleService.isDatabaseOffline()) {
+      <div class="mx-6 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-950 animate-fade-in flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm animate-pulse-subtle" id="supabase_offline_project_warning">
+        <div class="flex items-start gap-3">
+          <span class="material-icons text-amber-600 mt-0.5 animate-bounce">cloud_off</span>
+          <div>
+            <h3 class="text-xs font-black uppercase tracking-wider text-amber-900">Banco de Dados Supabase Off-line ou Pausado</h3>
+            <p class="text-[11px] text-amber-800 mt-1 max-w-2xl leading-relaxed font-semibold">
+              ⚠️ Não foi possível conectar com o banco de dados Supabase (<code class="font-mono bg-amber-100 px-1 py-0.5 rounded text-amber-950">Failed to fetch</code>). 
+              Isso geralmente significa que seu **projeto gratuito do Supabase foi pausado** por inatividade.
+            </p>
+            <p class="text-[11px] text-amber-800 mt-1.5 max-w-2xl leading-relaxed">
+              💡 <strong>Como resolver:</strong> Faça login no site do <a href="https://supabase.com/dashboard" target="_blank" class="underline hover:text-amber-950 font-black">Supabase (supabase.com)</a>, entre no seu projeto e clique em <strong>"Restore Project"</strong> para ativá-lo.
+            </p>
+            <p class="text-[10px] text-emerald-700 mt-2 font-medium flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Não se preocupe: o sistema está operando em Modo Contingência (Off-line) e as edições estão salvas localmente no navegador!
+            </p>
+          </div>
+        </div>
+        <div class="flex shrink-0 gap-2">
+          <button (click)="scaleService.isDatabaseOffline.set(false); scaleService.loadFromSupabase()" class="px-3.5 py-2 text-[10px] font-black uppercase tracking-wider bg-amber-600 hover:bg-amber-700 text-white rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors select-none border-none">
+            <span class="material-icons text-xs">sync</span>
+            Reconectar
+          </button>
+        </div>
+      </div>
+    }
 
     <!-- WARNING: Supabase Table escala_diaria Missing -->
     @if (scaleService.isSchemaMissing()) {
@@ -272,119 +250,76 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
               </button>
             </div>
           </header>
+        <!-- PAINEL UNIFICADO DE EDIÇÃO (LINHA ÚNICA OU EM MASSA) -->
+        @if (editingCollaboratorRow() || showPaintbrushPanel()) {
+          <div class="bg-slate-50 border-b border-slate-200 px-4 py-2 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+            <!-- Left: Context label, Eraser, Shift Types, and Custom Input -->
+            <div class="flex flex-wrap items-center gap-3">
+              @if (editingCollaboratorRow(); as col) {
+                <span class="text-[10px] font-black text-emerald-700 uppercase tracking-tight flex items-center gap-1.5 shrink-0 select-none">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Editando Linha: {{ col.name }}
+                </span>
+              } @else {
+                <span class="text-[10px] font-black text-amber-700 uppercase tracking-tight flex items-center gap-1.5 shrink-0 select-none">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                  Pincel em Massa (Clique na Grade)
+                </span>
+              }
 
-        <!-- FERRAMENTA PINCEL (EDICAO RAPIDA DE ESCALA - PAINEL DE PINTURA) -->
-        @if (showPaintbrushPanel()) {
-          <div class="bg-slate-955 border-b border-amber-500/20 px-4 py-2 flex flex-wrap items-center justify-between gap-3 shadow-inner">
-            <div class="flex items-center gap-3">
-              <span class="text-[10px] font-black text-slate-300 uppercase tracking-tight flex items-center gap-1.5 shrink-0">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                Pincel em Massa:
-              </span>
-
-              <div class="flex flex-wrap items-center gap-1 bg-slate-900 p-0.5 rounded border border-slate-850">
-                <!-- Regular work -->
-                <button (click)="selectPaintbrush('')" 
-                        [class]="selectedPaintbrush() === '' ? 'border-amber-500 ring-2 ring-amber-500/40 bg-slate-800 text-white font-black' : 'border-transparent text-slate-400 hover:text-slate-200'"
-                        class="h-7 w-9 rounded text-[10px] font-mono font-black border transition-all cursor-pointer flex items-center justify-center"
-                        title="Turno Regular (Trabalho Ativo)">
-                  T
-                </button>
-
-                <!-- Active shift types -->
-                @for (sigla of scaleService.shiftTypes(); track sigla.code) {
-                  <button (click)="selectPaintbrush(sigla.code)" 
-                          [class]="selectedPaintbrush() === sigla.code ? 'border-amber-500 ring-2 ring-amber-500/40 bg-slate-850 font-extrabold scale-[1.03]' : 'border-transparent text-slate-400 hover:scale-[1.01]'"
+              <!-- The exact same editor palette tool shared for both -->
+              <div class="flex flex-wrap items-center gap-1 bg-white p-0.5 rounded border border-slate-200" style="height: 34px; padding-left: 6px; padding-right: 6px;">
+                @for (sig of scaleService.shiftTypes(); track sig.code) {
+                  <button (click)="rowEditorSelectedSigla.set(sig.code); customEditValueInput.value = ''"
+                          [class]="rowEditorSelectedSigla() === sig.code ? 'border-emerald-500 ring-2 ring-emerald-500/30 bg-slate-100 scale-105 font-bold' : 'border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-50 bg-white'"
                           class="h-7 px-2 rounded text-[10px] font-bold border transition-all cursor-pointer flex items-center justify-center"
-                          [title]="sigla.label">
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-black" [class]="sigla.color" [title]="sigla.label">
-                      {{ sigla.code }}
+                          [title]="sig.label">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-black" [class]="sig.color" [title]="sig.label">
+                      {{ sig.code }}
                     </span>
                   </button>
                 }
-              </div>
-            </div>
 
-            <button (click)="togglePaintbrushPanel()" 
-                    class="h-7 px-3.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer">
-              <span class="material-icons text-xs">close</span> Fechar
-            </button>
-          </div>
-        }
+                <!-- Espaço Separado / Separador Vertical -->
+                <div class="h-5 w-px bg-slate-200 mx-1.5 self-center"></div>
 
-        @if (editingCollaboratorRow(); as col) {
-          <!-- CABEÇALHO DINÂMICO DE EDIÇÃO DE LINHA (EXCLUSIVO MALHA/JETFUEL DESIGN) -->
-          <div class="bg-slate-955 border-b border-emerald-500/20 px-4 py-2 flex flex-wrap items-center justify-between gap-3 shadow-inner">
-            <!-- Left: Operator ID and the button lineup -->
-            <div class="flex flex-wrap items-center gap-3">
-              <span class="text-[10px] font-black text-slate-200 uppercase tracking-tight flex items-center gap-1.5 shrink-0">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Linha de {{ col.name }}:
-              </span>
-
-              <!-- Align Left: Minimal Buttons list -->
-              <div class="flex flex-wrap items-center gap-1 bg-slate-900 p-0.5 rounded border border-slate-850" style="height: 34px; padding-left: 6px; padding-right: 6px;">
-                <!-- Trabalho Regular -->
-                <button (click)="rowEditorSelectedSigla.set('')"
-                        [class]="rowEditorSelectedSigla() === '' ? 'border-emerald-500 ring-2 ring-emerald-500/40 bg-slate-800 text-white font-black' : 'border-transparent text-slate-400 hover:text-slate-200'"
-                        class="h-7 w-9 rounded text-[10px] font-mono font-black border transition-all cursor-pointer flex items-center justify-center"
-                        title="Turno Regular (Trabalho Ativo)">
-                  T
+                <!-- Borracha (Apagar Célula) - ALWAYS RED-ACCENTED! Now at the end of the icon bar -->
+                <button (click)="rowEditorSelectedSigla.set(''); customEditValueInput.value = ''"
+                        [class]="rowEditorSelectedSigla() === '' ? 'border-red-500 ring-2 ring-red-500/30 bg-red-100 text-red-700 font-bold scale-105' : 'border-red-200 text-red-500 bg-red-50 hover:bg-red-100/50 hover:text-red-600'"
+                        class="h-7 w-9 rounded border transition-all cursor-pointer flex items-center justify-center"
+                        title="Borracha (Apagar Célula)">
+                  <span class="material-icons text-[11px]">cleaning_services</span>
                 </button>
-
-                @for (sig of scaleService.shiftTypes(); track sig.code) {
-                  <button (click)="rowEditorSelectedSigla.set(sig.code)"
-                          [class]="rowEditorSelectedSigla() === sig.code ? 'border-emerald-500 ring-2 ring-emerald-500/40 bg-slate-855 font-bold text-white' : 'border-transparent text-slate-400 hover:scale-[1.03]'"
-                          class="h-7 px-2 rounded text-[10px] font-bold border transition-all cursor-pointer flex items-center justify-center"
-                          [title]="sig.label">
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-black font-semibold" [class]="sig.color" [title]="sig.label">{{ sig.code }}</span>
-                  </button>
-                }
               </div>
 
-              <!-- Compact Custom shift time input -->
-              <div class="flex items-center gap-1.5 border-l border-slate-800 pl-3">
+              <!-- Compact Custom shift input - shared for both -->
+              <div class="flex items-center gap-1.5 border-l border-slate-200 pl-3">
                 <input id="customEditValueInputId"
                        #customEditValueInput
-                       placeholder="Ex: 06:00"
-                       class="bg-slate-900 text-white font-mono text-[10px] rounded border border-slate-800 focus:border-emerald-500 outline-none"
-                       style="padding-left: 6px; padding-right: 6px; width: 70px; height: 30px;">
-                <button (click)="rowEditorSelectedSigla.set(customEditValueInput.value); customEditValueInput.value = ''"
-                        class="h-7 w-7 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded flex items-center justify-center transition-all cursor-pointer"
-                        title="Aplicar personalizado">
+                       placeholder="Ex: 12"
+                       class="bg-white text-slate-800 font-mono text-[10px] rounded border border-slate-250 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none"
+                       style="padding-left: 8px; padding-right: 8px; width: 80px; height: 30px;">
+                <button (click)="rowEditorSelectedSigla.set(customEditValueInput.value.trim().toUpperCase())"
+                        class="h-7 w-7 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded flex items-center justify-center transition-all cursor-pointer shadow-md"
+                        title="Aplicar código personalizado">
                   <span class="material-icons text-xs">done</span>
                 </button>
               </div>
             </div>
 
-            <!-- Right side: Done Action & Clear Action -->
+            <!-- Right: Action to close/conclude -->
             <div class="flex items-center gap-2">
-              @if (!confirmingClearRow()) {
-                <button (click)="confirmingClearRow.set(true)"
-                        class="h-7 px-3 rounded bg-red-650 hover:bg-red-600 text-white font-bold text-[10px] uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer border border-red-700/40"
-                        title="Limpar escala completa deste colaborador">
-                  <span class="material-icons text-xs">cleaning_services</span> Limpar
+              @if (editingCollaboratorRow()) {
+                <button (click)="closeRowEditor()"
+                        class="h-7 px-3.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer shadow-md">
+                  <span class="material-icons text-xs">done_all</span> Concluir Linha
                 </button>
               } @else {
-                <div class="flex items-center gap-2 bg-red-955 py-0.5 px-2 rounded border border-red-900">
-                  <span class="text-[9px] font-black text-rose-250 uppercase tracking-tighter">Limpar escala de {{ col.name }}?</span>
-                  <div class="flex gap-1">
-                    <button (click)="clearSelectedRow()"
-                            class="h-5 px-2 bg-red-605 hover:bg-red-505 text-white font-black text-[9px] rounded uppercase cursor-pointer transition-all">
-                      Confirmar
-                    </button>
-                    <button (click)="confirmingClearRow.set(false)"
-                            class="h-5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-350 font-medium text-[9px] rounded uppercase cursor-pointer transition-all">
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
+                <button (click)="togglePaintbrushPanel()"
+                        class="h-7 px-3.5 rounded bg-amber-600 hover:bg-amber-500 text-white font-bold text-[10px] uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer shadow-md">
+                  <span class="material-icons text-xs">done</span> Concluir
+                </button>
               }
-
-              <button (click)="closeRowEditor()"
-                      class="h-7 px-3.5 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer">
-                <span class="material-icons text-xs">done_all</span> Concluir
-              </button>
             </div>
           </div>
         }
@@ -402,7 +337,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
                   FLGS
                 </th>
                 @for (day of daysList(); track day) {
-                  <th class="p-0.5 py-1 border-r border-slate-100 text-center font-mono" 
+                  <th class="p-0.5 py-1 border-r border-slate-300 text-center font-mono" 
                       style="font-size: 16px;"
                       [class.highlighted-column-header]="isColumnHighlighted(day)"
                       [class.cursor-help]="isColumnHighlighted(day)"
@@ -421,17 +356,17 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
               </tr>
             </thead>
             
-            <tbody class="divide-y divide-slate-100">
+            <tbody class="divide-y divide-slate-300">
               @for (col of filteredCollaborators(); track col.id) {
                 <tr [class]="editingCollaboratorRow()?.id === col.id 
-                            ? 'border-b-2 border-emerald-500/50 bg-emerald-50/40 hover:bg-emerald-50/50 transition-all text-slate-900' 
-                            : 'border-b border-slate-100 hover:bg-slate-50/50 transition-colors'">
+                            ? 'border-b border-emerald-500 bg-emerald-100/50 hover:bg-emerald-100/60 transition-all text-slate-900 font-semibold ring-1 ring-emerald-500/20' 
+                            : 'border-b border-slate-300 hover:bg-slate-50/50 transition-colors'">
                   
                   <!-- COLLABORATOR NAME STICKY HEADER WITH RECTANGULAR AVATAR PHOTO -->
-                  <td [class]="editingCollaboratorRow()?.id === col.id ? 'bg-emerald-50 border-r-2 border-r-emerald-500 font-bold' : 'bg-white border-r border-slate-200'"
+                  <td [class]="editingCollaboratorRow()?.id === col.id ? 'bg-emerald-100 border-r border-r-emerald-500 font-extrabold text-emerald-950' : 'bg-white border-r border-slate-300'"
                       class="p-1 text-xs sticky left-0 z-10 flex items-center gap-2 select-none shadow-[2px_0_5px_rgba(0,0,0,0.015)]">
                     <!-- Rectangular photo/avatar placeholder -->
-                    <div [class]="editingCollaboratorRow()?.id === col.id ? 'from-emerald-500 to-emerald-600 border-emerald-400 ring-2 ring-emerald-500/20' : 'from-blue-500 to-blue-600 border-blue-400'"
+                    <div [class]="editingCollaboratorRow()?.id === col.id ? 'from-emerald-500 to-emerald-600 border-emerald-400 ring-1 ring-emerald-500/20' : 'from-blue-500 to-blue-600 border-blue-400'"
                          class="w-6 h-6 rounded bg-gradient-to-br text-white flex items-center justify-center flex-shrink-0 border text-[8px] font-black uppercase tracking-wider shadow-sm transition-all">
                       {{ col.name.substring(0, 2) }}
                     </div>
@@ -449,7 +384,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
                   </td>
 
                   <!-- FOLGAS COUNTER CELL -->
-                  <td [class]="editingCollaboratorRow()?.id === col.id ? 'bg-emerald-50 border-r-2 border-r-emerald-500' : 'bg-white border-r border-slate-200'"
+                  <td [class]="editingCollaboratorRow()?.id === col.id ? 'bg-emerald-100 border-r border-r-emerald-500' : 'bg-white border-r border-slate-300'"
                       class="p-1 text-center sticky left-[12%] z-10 select-none shadow-[2px_0_5px_rgba(0,0,0,0.015)]">
                     <div class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-black w-full"
                          [class.bg-red-100]="getFolgasCount(col.id) > getMaxFolgas()"
@@ -466,8 +401,9 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
                   @for (day of daysList(); track day) {
                     <td (click)="clickCell(col.id, day)" 
                         [title]="getToolTipLabel(col.id, day)"
-                        class="p-0.5 border-r border-slate-100 transition-all cursor-pointer text-center relative font-mono text-xs overflow-hidden"
-                        [class.highlighted-column-cell]="isColumnHighlighted(day)">
+                        class="p-0.5 border-r border-slate-300 transition-all cursor-pointer text-center relative font-mono text-xs overflow-hidden"
+                        [class.highlighted-column-cell]="isColumnHighlighted(day)"
+                        [class.bg-emerald-50/75]="editingCollaboratorRow()?.id === col.id">
                       
                       <!-- Cell inside block representing exact schedule state -->
                       <div class="w-full h-6 flex items-center justify-center font-black rounded border text-[9px] tracking-tight transition-all duration-150 hover:scale-105"
@@ -479,33 +415,111 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
                   }
 
                   <!-- ACTION CELL FOR QUICK ROW EDIT -->
-                  <td [class]="editingCollaboratorRow()?.id === col.id ? 'bg-emerald-50 border-l-2 border-l-emerald-500' : 'bg-white border-l border-slate-200'"
+                  <td [class]="editingCollaboratorRow()?.id === col.id ? 'bg-emerald-100 border-l-2 border-l-emerald-500' : 'bg-white border-l border-slate-300'"
                       class="p-1 text-center sticky right-0 z-10 shadow-[-2px_0_5px_rgba(0,0,0,0.015)] align-middle">
-                    <button (click)="openRowEditor(col)"
-                            [class]="editingCollaboratorRow()?.id === col.id ? 'bg-amber-500 text-slate-950 font-black border-amber-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 hover:text-slate-900'"
-                            class="h-7 px-2.0 rounded-lg border transition-all text-[9.5px] font-black uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer shadow-sm mx-auto">
-                      <span class="material-icons text-[12px] font-bold">edit_calendar</span>
-                      Editar
-                    </button>
+                    @if (editingCollaboratorRow()?.id === col.id) {
+                      <div class="flex items-center justify-center gap-1 mx-auto">
+                        <!-- Limpar Linha (Borracha Vermelha) -->
+                        <button (click)="clearSelectedRow()"
+                                class="h-7 w-7 rounded bg-red-600 hover:bg-red-500 text-white transition-all flex items-center justify-center cursor-pointer shadow-md"
+                                title="Limpar toda a escala de {{ col.name }}">
+                          <span class="material-icons text-[11px]">cleaning_services</span>
+                        </button>
+                        <!-- Concluir Linha (Check Verde) -->
+                        <button (click)="closeRowEditor()"
+                                class="h-7 w-7 rounded bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center justify-center cursor-pointer shadow-md"
+                                title="Concluir edição da linha">
+                          <span class="material-icons text-[14px]">done</span>
+                        </button>
+                      </div>
+                    } @else if (showPaintbrushPanel()) {
+                      <!-- No modo pincel/edição em massa: Substitui o lápis por um botão de limpar linha (borracha) -->
+                      <button (click)="clearRowForCollaborator(col)"
+                              class="h-7 w-7 rounded bg-red-600 hover:bg-red-500 text-white transition-all flex items-center justify-center cursor-pointer shadow-md mx-auto"
+                              title="Limpar toda a escala de {{ col.name }}">
+                        <span class="material-icons text-[11px]">cleaning_services</span>
+                      </button>
+                    } @else {
+                      <button (click)="openRowEditor(col)"
+                              class="h-7 w-7 rounded-lg border border-slate-300 hover:border-blue-300 bg-slate-50 hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-all flex items-center justify-center cursor-pointer shadow-sm mx-auto"
+                              title="Editar escala deste colaborador">
+                        <span class="material-icons text-[14px]">edit</span>
+                      </button>
+                    }
                   </td>
                 </tr>
               }
 
-              <!-- BOTTOM CONTINGENTE MATRIX SECURITY FOOTER / BARRA DE SEGURANÇA -->
-              <tr class="bg-slate-50 font-mono border-t border-slate-200">
-                <td colspan="2" class="p-4 text-xs font-bold text-slate-700 sticky left-0 bg-slate-50 z-10 border-r border-slate-200">
-                  <div class="font-black text-[9px] text-slate-400 uppercase tracking-widest">CONTINGENTE MIN.</div>
-                  <div class="text-[10px] text-blue-600 font-black mt-1">{{ selectedShiftFilter() }}</div>
+              <!-- 3-ROW BOTTOM CONTINGENTE MATRIX SECURITY FOOTER / BARRA DE SEGURANÇA -->
+              
+              <!-- 1. CONTINGENTE MÍNIMO ROW -->
+              <tr class="bg-slate-50 font-mono border-t border-slate-300" title="Atenção: Líderes de Turno (LTs) e colaboradores do setor VIP não fazem parte desta contagem de segurança.">
+                <td class="p-2 text-xs font-bold text-slate-700 sticky left-0 bg-slate-50 z-10 border-r border-slate-300 shadow-[2px_0_5px_rgba(0,0,0,0.015)] cursor-help"
+                    title="Atenção: Líderes de Turno (LTs) e colaboradores do setor VIP não fazem parte desta contagem de segurança.">
+                  <div class="font-black text-[9px] text-slate-400 uppercase tracking-widest leading-none">CONTINGENTE MÍNIMO</div>
+                  <div class="text-[9px] text-blue-600 font-black uppercase mt-1 tracking-tight">{{ selectedShiftFilter() }}</div>
+                </td>
+                
+                <td class="p-2 text-center sticky left-[12%] bg-slate-50 z-10 border-r border-slate-300 shadow-[2px_0_5px_rgba(0,0,0,0.015)] select-none cursor-help"
+                    title="Atenção: Líderes de Turno (LTs) e colaboradores do setor VIP não fazem parte desta contagem de segurança.">
+                  <div class="text-xs font-black text-slate-800">{{ filteredCollaborators().length }}</div>
+                  <div class="text-[7px] text-slate-400 font-bold uppercase tracking-widest leading-none mt-0.5">Ativos</div>
                 </td>
 
                 @for (day of daysList(); track day) {
-                  <td class="p-2 border-r border-slate-100 text-center transition-all" [class]="getContingentFooterCellClass(day)">
-                    <div class="text-xs font-black">{{ getActiveCount(day) }}</div>
-                    <div class="text-[8px] font-bold uppercase tracking-tighter opacity-70">Req: {{ getRequiredCount(day) }}</div>
+                  <td class="p-2 border-r border-slate-300 text-center transition-all bg-slate-50 text-slate-600 font-bold cursor-help"
+                      title="Atenção: Líderes de Turno (LTs) e colaboradores do setor VIP não fazem parte desta contagem de segurança.">
+                    <div class="text-[10px]">{{ getRequiredCount(day) }}</div>
                   </td>
                 }
                 
-                <td class="p-2 bg-slate-50 sticky right-0 z-10 border-l border-slate-200 shadow-[-2px_0_5px_rgba(0,0,0,0.015)]"></td>
+                <td class="p-2 bg-slate-50 sticky right-0 z-10 border-l border-slate-300 shadow-[-2px_0_5px_rgba(0,0,0,0.015)]"></td>
+              </tr>
+
+              <!-- 2. CONTINGENTE DO DIA ROW -->
+              <tr class="bg-slate-50 font-mono border-t border-slate-300" title="Atenção: Líderes de Turno (LTs) e colaboradores do setor VIP não fazem parte desta contagem de segurança.">
+                <td class="p-2 text-xs font-bold text-slate-700 sticky left-0 bg-slate-100 z-10 border-r border-slate-300 shadow-[2px_0_5px_rgba(0,0,0,0.015)] cursor-help"
+                    title="Atenção: Líderes de Turno (LTs) e colaboradores do setor VIP não fazem parte desta contagem de segurança.">
+                  <div class="font-black text-[9px] text-slate-500 uppercase tracking-widest leading-none">CONTINGENTE DO DIA</div>
+                  <div class="text-[8px] text-slate-400 font-bold uppercase mt-1 tracking-tight">Presenças Ativas</div>
+                </td>
+                
+                <td class="p-2 text-center sticky left-[12%] bg-slate-100 z-10 border-r border-slate-300 shadow-[2px_0_5px_rgba(0,0,0,0.015)] select-none cursor-help"
+                    title="Atenção: Líderes de Turno (LTs) e colaboradores do setor VIP não fazem parte desta contagem de segurança.">
+                  <span class="text-[10px] text-slate-400 font-bold">-</span>
+                </td>
+
+                @for (day of daysList(); track day) {
+                  <td class="p-2 border-r border-slate-300 text-center transition-all cursor-help" [class]="getContingentFooterCellClass(day)"
+                      title="Atenção: Líderes de Turno (LTs) e colaboradores do setor VIP não fazem parte desta contagem de segurança.">
+                    <div class="text-xs font-black">{{ getActiveCount(day) }}</div>
+                  </td>
+                }
+                
+                <td class="p-2 bg-slate-50 sticky right-0 z-10 border-l border-slate-300 shadow-[-2px_0_5px_rgba(0,0,0,0.015)]"></td>
+              </tr>
+
+              <!-- 3. FOLGAS DO DIA ROW -->
+              <tr class="bg-slate-50 font-mono border-t border-b border-slate-300" title="Atenção: Líderes de Turno (LTs) e colaboradores do setor VIP não fazem parte desta contagem de segurança.">
+                <td class="p-2 text-xs font-bold text-slate-700 sticky left-0 bg-slate-50 z-10 border-r border-slate-300 shadow-[2px_0_5px_rgba(0,0,0,0.015)] cursor-help"
+                    title="Atenção: Líderes de Turno (LTs) e colaboradores do setor VIP não fazem parte desta contagem de segurança.">
+                  <div class="font-black text-[9px] text-slate-400 uppercase tracking-widest leading-none">FOLGAS DO DIA</div>
+                  <div class="text-[8px] text-slate-400 font-bold uppercase mt-1 tracking-tight">Escaladas/Folgas</div>
+                </td>
+                
+                <td class="p-2 text-center sticky left-[12%] bg-slate-50 z-10 border-r border-slate-300 shadow-[2px_0_5px_rgba(0,0,0,0.015)] select-none cursor-help"
+                    title="Atenção: Líderes de Turno (LTs) e colaboradores do setor VIP não fazem parte desta contagem de segurança.">
+                  <span class="text-[10px] text-slate-400 font-bold">-</span>
+                </td>
+
+                @for (day of daysList(); track day) {
+                  <td class="p-2 border-r border-slate-300 text-center transition-all bg-emerald-50/50 text-emerald-800 font-bold cursor-help"
+                      title="Atenção: Líderes de Turno (LTs) e colaboradores do setor VIP não fazem parte desta contagem de segurança.">
+                    <div class="text-xs font-black">{{ getDailyFolgasCount(day) }}</div>
+                  </td>
+                }
+                
+                <td class="p-2 bg-slate-50 sticky right-0 z-10 border-l border-slate-300 shadow-[-2px_0_5px_rgba(0,0,0,0.015)]"></td>
               </tr>
 
             </tbody>

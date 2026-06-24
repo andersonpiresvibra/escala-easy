@@ -10,6 +10,9 @@ import { checkContingentViolation, isWeekday, isHoliday, getHolidayName, Collabo
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:click)': 'onDocumentClick($event)'
+  }
 })
 export class App implements OnInit {
   // Service Injection
@@ -21,6 +24,16 @@ export class App implements OnInit {
   async ngOnInit() {
     const isConnected = await this.supabaseService.testConnection();
     this.dbStatus.set(isConnected ? 'connected' : 'error');
+  }
+
+  onDocumentClick(event: MouseEvent) {
+    if (!this.isDropdownOpen()) return;
+    const target = event.target as HTMLElement;
+    if (!target) return;
+    const container = document.getElementById('options_dropdown_container');
+    if (container && !container.contains(target)) {
+      this.isDropdownOpen.set(false);
+    }
   }
 
   // Track active sub-tab for granular workspace
@@ -125,7 +138,7 @@ export class App implements OnInit {
       if (this.toastMessage() === msg) {
         this.toastMessage.set(null);
       }
-    }, 5000);
+    }, 7000);
   }
 
   // Filtered list of collaborators for the grid spreadsheet
@@ -328,7 +341,7 @@ export class App implements OnInit {
 
   // Helper to get color of a day cell in the footer contingent
   getContingentFooterCellClass(day: number): string {
-    const check = checkContingentViolation(day, this.scaleService.currentMonth(), this.scaleService.currentYear(), this.scaleService.grid(), this.scaleService.collaborators());
+    const check = checkContingentViolation(day, this.scaleService.currentMonth(), this.scaleService.currentYear(), this.scaleService.grid(), this.scaleService.collaborators(), this.selectedShiftFilter());
     if (check.isViolated) {
       return 'bg-rose-100 text-rose-805 border-rose-300 font-bold';
     }
@@ -339,20 +352,19 @@ export class App implements OnInit {
 
   // Count active staff count for the specific pilot turn
   getActiveCount(day: number) {
-    const check = checkContingentViolation(day, this.scaleService.currentMonth(), this.scaleService.currentYear(), this.scaleService.grid(), this.scaleService.collaborators());
+    const check = checkContingentViolation(day, this.scaleService.currentMonth(), this.scaleService.currentYear(), this.scaleService.grid(), this.scaleService.collaborators(), this.selectedShiftFilter());
     return check.activeCount;
   }
 
   // Required count for day
   getRequiredCount(day: number) {
-    const date = new Date(this.scaleService.currentYear(), this.scaleService.currentMonth() - 1, day);
-    const isSaturday = date.getDay() === 6;
-    return isSaturday ? 5 : 6;
+    const check = checkContingentViolation(day, this.scaleService.currentMonth(), this.scaleService.currentYear(), this.scaleService.grid(), this.scaleService.collaborators(), this.selectedShiftFilter());
+    return check.required;
   }
 
   // Dynamic status check of contingent violation
   hasContingentViolation(day: number): boolean {
-    const check = checkContingentViolation(day, this.scaleService.currentMonth(), this.scaleService.currentYear(), this.scaleService.grid(), this.scaleService.collaborators());
+    const check = checkContingentViolation(day, this.scaleService.currentMonth(), this.scaleService.currentYear(), this.scaleService.grid(), this.scaleService.collaborators(), this.selectedShiftFilter());
     return check.isViolated;
   }
 
@@ -377,6 +389,32 @@ export class App implements OnInit {
     ).length;
   }
 
+  getDailyFolgasCount(day: number): number {
+    const month = this.scaleService.currentMonth();
+    const year = this.scaleService.currentYear();
+    const filter = this.selectedShiftFilter();
+    
+    // Get visible/filtered collaborators for this shift
+    const list = this.scaleService.collaborators();
+    let targetCollabs = filter === 'TODOS'
+      ? list
+      : list.filter(c => c.shift === filter);
+      
+    // Exclude LTs and VIP collaborators from bottom calculations
+    targetCollabs = targetCollabs.filter(c => c.role !== 'LIDER' && c.sector !== 'VIP');
+      
+    const targetCollabIds = new Set(targetCollabs.map(c => c.id));
+    const folgaCodes = this.scaleService.shiftTypes().filter(s => s.category === 'FOLGAS').map(s => s.code);
+    
+    return this.scaleService.grid().filter(c => 
+      c.day === day &&
+      c.month === month &&
+      c.year === year &&
+      targetCollabIds.has(c.collaboratorId) &&
+      folgaCodes.includes(c.value)
+    ).length;
+  }
+
   getMaxFolgas(): number {
     const daysCount = this.daysList().length;
     return daysCount <= 28 ? 7 : (daysCount <= 30 ? 8 : 9);
@@ -385,9 +423,29 @@ export class App implements OnInit {
   canAddFolga(collabId: string, day: number, code: string): boolean {
     const folgaCodes = this.scaleService.shiftTypes().filter(s => s.category === 'FOLGAS').map(s => s.code);
     if (!folgaCodes.includes(code)) return true;
+
+    // Check LT (Lider de Turno) closing day rule
+    const collab = this.scaleService.collaborators().find(c => c.id === collabId);
+    if (collab?.role === 'LIDER') {
+      const month = this.scaleService.currentMonth();
+      const year = this.scaleService.currentYear();
+      const lastDay = new Date(year, month, 0).getDate();
+      if (day === lastDay) {
+        this.showToast(`Trava de Segurança: LT (${collab.name}) não pode folgar no último dia do mês (Fechamento Mensal).`);
+        return false;
+      }
+    }
+
     const currentVal = this.getCellValue(collabId, day);
     if (folgaCodes.includes(currentVal)) return true;
-    return this.getFolgasCount(collabId) < this.getMaxFolgas();
+
+    const count = this.getFolgasCount(collabId);
+    const max = this.getMaxFolgas();
+    if (count >= max) {
+      this.showToast(`Limite de folgas (${max}) já atingido para este mês.`);
+      return false;
+    }
+    return true;
   }
 
   getCellBgColor(collabId: string, day: number): string {
@@ -467,11 +525,23 @@ export class App implements OnInit {
   clearSelectedRow() {
     const col = this.editingCollaboratorRow();
     if (!col) return;
+    this.clearRowForCollaborator(col);
+    this.confirmingClearRow.set(false);
+  }
+
+  clearRowForCollaborator(col: Collaborator) {
+    if (this.scaleHomologated()) {
+      this.showToast('Impossível editar. Escala homologada e assinada.');
+      return;
+    }
+    if (this.scaleService.currentRole() === 'OPERADOR') {
+      this.showToast('Operadores de pátio não possuem permissão para reescrever a escala.');
+      return;
+    }
     const daysCount = this.daysList().length;
     for (let day = 1; day <= daysCount; day++) {
       this.scaleService.updateCell(col.id, day, '');
     }
-    this.confirmingClearRow.set(false);
     this.showToast(`Toda a linha de escala de ${col.name} foi limpa com sucesso.`);
   }
 
@@ -539,36 +609,24 @@ export class App implements OnInit {
       const finalCode = currentVal === code ? '' : code;
       
       if (finalCode !== '' && !this.canAddFolga(collabId, day, finalCode)) {
-        this.showToast(`Limite de folgas (${this.getMaxFolgas()}) já atingido para este mês.`);
         return;
       }
       
       this.scaleService.updateCell(collabId, day, finalCode);
-      if (finalCode === '') {
-        this.showToast(`Linha de ${editingCol.name}: Dia ${day} limpo (Trabalho Regular)`);
-      } else {
-        this.showToast(`Linha de ${editingCol.name}: Dia ${day} definido como "${code}"`);
-      }
       return;
     }
 
     // 2nd Priority: Mass grid paintbrush panel
-    const brush = this.selectedPaintbrush();
-    if (this.showPaintbrushPanel() && brush !== null) {
+    if (this.showPaintbrushPanel()) {
+      const code = this.rowEditorSelectedSigla();
       const currentVal = this.scaleService.grid().find((c) => c.collaboratorId === collabId && c.day === day)?.value || '';
-      const finalCode = currentVal === brush ? '' : brush;
+      const finalCode = currentVal === code ? '' : code;
 
       if (finalCode !== '' && !this.canAddFolga(collabId, day, finalCode)) {
-        this.showToast(`Limite de folgas (${this.getMaxFolgas()}) já atingido para este mês.`);
         return;
       }
 
       this.scaleService.updateCell(collabId, day, finalCode);
-      if (finalCode === '') {
-        this.showToast(`Pincel: Dia ${day} limpo (Trabalho Regular)`);
-      } else {
-        this.showToast(`Pincel: Dia ${day} atualizado com "${brush}"`);
-      }
       return;
     }
 
@@ -581,7 +639,6 @@ export class App implements OnInit {
     if (!editor) return;
 
     if (code !== '' && !this.canAddFolga(editor.collaboratorId, editor.day, code)) {
-      this.showToast(`Limite de folgas (${this.getMaxFolgas()}) já atingido para este mês.`);
       this.activeEditor.set(null);
       return;
     }
@@ -596,15 +653,15 @@ export class App implements OnInit {
     const editor = this.activeEditor();
     if (!editor) return;
 
-    if (val !== '' && !this.canAddFolga(editor.collaboratorId, editor.day, val.trim().toUpperCase())) {
-      this.showToast(`Limite de folgas (${this.getMaxFolgas()}) já atingido para este mês.`);
+    const cleanVal = val.trim().toUpperCase();
+    if (cleanVal !== '' && !this.canAddFolga(editor.collaboratorId, editor.day, cleanVal)) {
       this.activeEditor.set(null);
       return;
     }
 
-    this.scaleService.updateCell(editor.collaboratorId, editor.day, val);
+    this.scaleService.updateCell(editor.collaboratorId, editor.day, cleanVal);
     this.activeEditor.set(null);
-    this.showToast(`Fórmula manual aplicada na célula: "${val || 'Vazio/Trabalho'}"`);
+    this.showToast(`Fórmula manual aplicada na célula: "${cleanVal || 'Vazio/Trabalho'}"`);
   }
 
   // High level actions

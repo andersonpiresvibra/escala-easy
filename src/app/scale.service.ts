@@ -88,6 +88,7 @@ export class ScaleService {
   isSyncing = signal<boolean>(false);
   lastSyncTime = signal<string>('');
   isSchemaMissing = signal<boolean>(false);
+  isDatabaseOffline = signal<boolean>(false);
 
   // Custom Saved Profiles Slots
   savedProfiles = signal<SavedScaleProfile[]>([]);
@@ -181,7 +182,13 @@ export class ScaleService {
         .from('colaboradores')
         .select('*');
 
-      if (colabsErr) throw colabsErr;
+      if (colabsErr) {
+        if (colabsErr.message?.includes('Failed to fetch') || colabsErr.message?.includes('fetch') || colabsErr.message?.includes('network')) {
+          this.isDatabaseOffline.set(true);
+        }
+        throw colabsErr;
+      }
+      this.isDatabaseOffline.set(false);
 
       // 2. Fetch datas_magnas
       const { data: magnas, error: magnasErr } = await client
@@ -366,6 +373,10 @@ export class ScaleService {
       }
     } catch (err) {
       console.error('❌ Erro ao carregar dados do Supabase:', err);
+      const errStr = String(err);
+      if (errStr.includes('Failed to fetch') || errStr.includes('fetch') || errStr.includes('NetworkError') || errStr.includes('Load failed')) {
+        this.isDatabaseOffline.set(true);
+      }
     } finally {
       this.isSyncing.set(false);
       this.lastSyncTime.set(new Date().toLocaleTimeString());
@@ -470,24 +481,41 @@ export class ScaleService {
       let hasError = false;
       for (let i = 0; i < rows.length; i += chunkSize) {
         const chunk = rows.slice(i, i + chunkSize);
-        const { error } = await client
-          .from('escala_diaria')
-          .upsert(chunk, { onConflict: 'collaborator_id,day,month,year' });
-        
-        if (error) {
+        try {
+          const { error } = await client
+            .from('escala_diaria')
+            .upsert(chunk, { onConflict: 'collaborator_id,day,month,year' });
+          
+          if (error) {
+            hasError = true;
+            console.error(`❌ Erro no upsert do lote ${i} de escalas no Supabase:`, error.message);
+            if (error.message?.includes('Failed to fetch') || error.message?.includes('fetch') || error.message?.includes('network')) {
+              this.isDatabaseOffline.set(true);
+            }
+            if (error.message?.includes('Could not find') || error.code === 'PGRST116') {
+              this.isSchemaMissing.set(true);
+            }
+          }
+        } catch (innerErr) {
           hasError = true;
-          console.error(`❌ Erro no upsert do lote ${i} de escalas no Supabase:`, error.message);
-          if (error.message?.includes('Could not find') || error.code === 'PGRST116') {
-            this.isSchemaMissing.set(true);
+          const errStr = String(innerErr);
+          console.error(`❌ Exceção no upsert do lote ${i}:`, errStr);
+          if (errStr.includes('Failed to fetch') || errStr.includes('fetch') || errStr.includes('network') || errStr.includes('Load failed')) {
+            this.isDatabaseOffline.set(true);
           }
         }
       }
       if (!hasError) {
         this.isSchemaMissing.set(false);
+        this.isDatabaseOffline.set(false);
         console.log('✅ Escalas (grid) salvas com sucesso no Supabase.');
       }
     } catch (err) {
       console.error('❌ Erro na conexão para salvar grid de escalas no Supabase:', err);
+      const errStr = String(err);
+      if (errStr.includes('Failed to fetch') || errStr.includes('fetch') || errStr.includes('NetworkError') || errStr.includes('Load failed')) {
+        this.isDatabaseOffline.set(true);
+      }
     }
   }
 
