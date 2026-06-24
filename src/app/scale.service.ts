@@ -349,7 +349,7 @@ export class ScaleService {
                 role: c.role,
                 schedule: c.schedule,
                 grupo: c.group,
-                shift: c.shift,
+                shift: c.shift === 'NOITE' ? 'MADRUGADA' : (c.shift === 'TESTE' ? 'ADMINISTRATIVO' : c.shift),
                 sector: c.sector,
                 bh_balance: c.bhBalance,
                 score: c.score

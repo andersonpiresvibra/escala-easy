@@ -76,7 +76,7 @@ export class App implements OnInit {
     if (!file) return;
 
     this.importStatus.set('processing');
-    this.importMessage.set('Enviando imagem e analisando escala com IA...');
+    this.importMessage.set('Enviando arquivo e analisando escala com IA...');
 
     try {
       const reader = new FileReader();
@@ -158,9 +158,9 @@ export class App implements OnInit {
     } catch (e: unknown) {
       this.importStatus.set('error');
       if (e instanceof Error) {
-        this.importMessage.set(e.message || 'Erro ao processar imagem.');
+        this.importMessage.set(e.message || 'Erro ao processar arquivo.');
       } else {
-        this.importMessage.set('Erro ao processar imagem.');
+        this.importMessage.set('Erro ao processar arquivo.');
       }
     }
   }
@@ -185,7 +185,7 @@ export class App implements OnInit {
   activeEditor = signal<{ collaboratorId: string; day: number } | null>(null);
 
   // Shift filter for Parent Grid spreadsheet view
-  selectedShiftFilter = signal<'MADRUGADA' | 'MANHÃ' | 'TARDE' | 'ADMINISTRATIVO' | 'TODOS'>('MADRUGADA');
+  selectedShiftFilter = signal<'MADRUGADA' | 'MANHÃ' | 'TARDE' | 'ADMINISTRATIVO' | 'TODOS'>('TODOS');
 
   // New Backup Slot form signals
   newProfileName = signal<string>('');
