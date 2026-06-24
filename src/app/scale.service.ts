@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
+import { SupabaseService } from './supabase.service';
 import {
   Collaborator,
   ShiftCell,
@@ -29,17 +30,58 @@ export interface SavedScaleProfile {
   collaborators: Collaborator[];
 }
 
+interface DbCollaborator {
+  id: string;
+  name: string;
+  role: 'OPERADOR' | 'LIDER' | 'SUPERVISOR';
+  schedule: string;
+  grupo: 'Madrugada' | 'Manhã' | 'Tarde' | 'Líderes' | 'VIP' | 'Treinamento';
+  shift: 'MANHÃ' | 'TARDE' | 'MADRUGADA' | 'ADMINISTRATIVO';
+  sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO';
+  bh_balance: number;
+  score: number;
+}
+
+interface DbMagnaDate {
+  collaborator_id: string;
+  label: string;
+  day: number;
+  month: number;
+  year: number | null;
+  priority: number;
+}
+
+interface DbTraining {
+  id: number;
+  collaborator_id: string;
+  title: string;
+  completion_date: string;
+  expiration_date: string | null;
+  status: 'CONCLUÍDO' | 'EXPIRADO' | 'EM_CURSO';
+}
+
+interface DbCourse {
+  id: number;
+  collaborator_id: string;
+  name: string;
+  institution: string;
+  issue_date: string;
+  certificate_code: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ScaleService {
+  private supabaseService = inject(SupabaseService);
+
   // State Signals
   collaborators = signal<Collaborator[]>([]);
   grid = signal<ShiftCell[]>([]);
   trades = signal<TradeRequest[]>([]);
   logs = signal<AuditLog[]>([]);
   currentRole = signal<'SUPERVISOR' | 'LIDER' | 'OPERADOR'>('LIDER'); // Default to Turn Leader
-  selectedOperatorId = signal<string>('op1'); // Default logged operator for Frente C (MILTON)
+  selectedOperatorId = signal<string>('001'); // Default logged operator (MICHEL)
   antiFatigueLimit = signal<number>(5); // Max N consecutive days
   
   // Custom Saved Profiles Slots
@@ -56,7 +98,211 @@ export class ScaleService {
 
   constructor() {
     this.loadState();
+    this.loadFromSupabase(); // Sincroniza de forma assíncrona com o Supabase!
     this.startLiveOperationsSimulator();
+  }
+
+  // Load from Supabase Database
+  async loadFromSupabase() {
+    try {
+      console.log('🔄 Baixando dados reais do Supabase...');
+      const client = this.supabaseService.client;
+
+      // 1. Fetch colaboradores
+      const { data: colabs, error: colabsErr } = await client
+        .from('colaboradores')
+        .select('*');
+
+      if (colabsErr) throw colabsErr;
+
+      // 2. Fetch datas_magnas
+      const { data: magnas, error: magnasErr } = await client
+        .from('datas_magnas')
+        .select('*');
+
+      if (magnasErr) throw magnasErr;
+
+      // 3. Fetch treinamentos
+      const { data: treinos, error: treinosErr } = await client
+        .from('treinamentos')
+        .select('*');
+
+      if (treinosErr) throw treinosErr;
+
+      // 4. Fetch cursos_certificacoes
+      const { data: cursos, error: cursosErr } = await client
+        .from('cursos_certificacoes')
+        .select('*');
+
+      if (cursosErr) throw cursosErr;
+
+      console.log(`✅ Dados do Supabase baixados com sucesso! Colaboradores: ${colabs?.length}, Datas: ${magnas?.length}, Treinamentos: ${treinos?.length}, Cursos: ${cursos?.length}`);
+
+      if (colabs && colabs.length > 0) {
+        const typedColabs = colabs as DbCollaborator[];
+        const typedMagnas = (magnas || []) as DbMagnaDate[];
+        const typedTreinos = (treinos || []) as DbTraining[];
+        const typedCursos = (cursos || []) as DbCourse[];
+
+        const mappedColabs = typedColabs.map((c: DbCollaborator) => {
+          // find important dates for this colab
+          const datesForColab = typedMagnas
+            .filter((m: DbMagnaDate) => m.collaborator_id === c.id)
+            .map((m: DbMagnaDate) => {
+              const yearStr = m.year ? m.year : new Date().getFullYear();
+              const monthStr = String(m.month).padStart(2, '0');
+              const dayStr = String(m.day).padStart(2, '0');
+              return {
+                label: m.label,
+                date: `${yearStr}-${monthStr}-${dayStr}`,
+                priority: m.priority
+              };
+            });
+
+          // find trainings for this colab
+          const treinosForColab = typedTreinos
+            .filter((t: DbTraining) => t.collaborator_id === c.id)
+            .map((t: DbTraining) => ({
+              id: t.id,
+              title: t.title,
+              completion_date: t.completion_date,
+              expiration_date: t.expiration_date,
+              status: t.status
+            }));
+
+          // find courses for this colab
+          const cursosForColab = typedCursos
+            .filter((cur: DbCourse) => cur.collaborator_id === c.id)
+            .map((cur: DbCourse) => ({
+              id: cur.id,
+              name: cur.name,
+              institution: cur.institution,
+              issue_date: cur.issue_date,
+              certificate_code: cur.certificate_code
+            }));
+
+          return {
+            id: c.id,
+            name: c.name,
+            role: c.role,
+            schedule: c.schedule,
+            group: c.grupo,
+            shift: c.shift,
+            sector: c.sector,
+            bhBalance: c.bh_balance || 0,
+            score: c.score || 90,
+            importantDates: datesForColab,
+            trainings: treinosForColab,
+            courses: cursosForColab
+          };
+        });
+
+        // Set state reactive signal
+        this.collaborators.set(mappedColabs);
+        
+        // Save current synced state in local storage as local cache
+        localStorage.setItem('es_collaborators', JSON.stringify(mappedColabs));
+      }
+    } catch (err) {
+      console.error('❌ Erro ao carregar dados do Supabase:', err);
+    }
+  }
+
+  // Save/Upsert collaborator to Supabase
+  async saveCollaboratorToSupabase(c: Collaborator) {
+    try {
+      const client = this.supabaseService.client;
+      const { error } = await client.from('colaboradores').upsert({
+        id: c.id,
+        name: c.name,
+        role: c.role,
+        schedule: c.schedule,
+        grupo: c.group,
+        shift: c.shift,
+        sector: c.sector,
+        bh_balance: c.bhBalance,
+        score: c.score
+      });
+      if (error) throw error;
+      console.log(`✅ Colaborador ${c.name} salvo no Supabase.`);
+    } catch (err) {
+      console.error(`❌ Erro ao salvar colaborador no Supabase:`, err);
+    }
+  }
+
+  // Delete collaborator from Supabase
+  async deleteCollaboratorFromSupabase(id: string) {
+    try {
+      const client = this.supabaseService.client;
+      const { error } = await client.from('colaboradores').delete().eq('id', id);
+      if (error) throw error;
+      console.log(`✅ Colaborador ${id} removido do Supabase.`);
+    } catch (err) {
+      console.error(`❌ Erro ao remover colaborador do Supabase:`, err);
+    }
+  }
+
+  // Save Magna Date to Supabase
+  async saveMagnaDateToSupabase(collabId: string, label: string, date: string, priority: number) {
+    try {
+      const client = this.supabaseService.client;
+      const dateParts = date.split('-');
+      const year = dateParts[0] ? parseInt(dateParts[0]) : null;
+      const month = dateParts[1] ? parseInt(dateParts[1]) : 1;
+      const day = dateParts[2] ? parseInt(dateParts[2]) : 1;
+
+      const { error } = await client.from('datas_magnas').insert({
+        collaborator_id: collabId,
+        label,
+        day,
+        month,
+        year,
+        priority,
+        icon_type: label.toLowerCase().includes('aniversário') || label.toLowerCase().includes('niver') ? 'cake' : 'star'
+      });
+      if (error) throw error;
+      console.log(`✅ Data magna "${label}" salva no Supabase.`);
+    } catch (err) {
+      console.error(`❌ Erro ao salvar data magna no Supabase:`, err);
+    }
+  }
+
+  // Save training to Supabase
+  async addTrainingToSupabase(collabId: string, title: string, completion_date: string, expiration_date: string | null, status: 'CONCLUÍDO' | 'EXPIRADO' | 'EM_CURSO') {
+    try {
+      const client = this.supabaseService.client;
+      const { error } = await client.from('treinamentos').insert({
+        collaborator_id: collabId,
+        title,
+        completion_date,
+        expiration_date: expiration_date || null,
+        status
+      });
+      if (error) throw error;
+      console.log(`✅ Treinamento "${title}" salvo no Supabase.`);
+      await this.loadFromSupabase();
+    } catch (err) {
+      console.error(`❌ Erro ao salvar treinamento no Supabase:`, err);
+    }
+  }
+
+  // Save course/certification to Supabase
+  async addCourseToSupabase(collabId: string, name: string, institution: string, issue_date: string, certificate_code: string | null) {
+    try {
+      const client = this.supabaseService.client;
+      const { error } = await client.from('cursos_certificacoes').insert({
+        collaborator_id: collabId,
+        name,
+        institution: institution || 'GOL',
+        issue_date,
+        certificate_code: certificate_code || null
+      });
+      if (error) throw error;
+      console.log(`✅ Curso/Certificado "${name}" salvo no Supabase.`);
+      await this.loadFromSupabase();
+    } catch (err) {
+      console.error(`❌ Erro ao salvar curso no Supabase:`, err);
+    }
   }
 
   loadState() {
@@ -221,7 +467,7 @@ export class ScaleService {
   }
 
   // Collaborator Operations (Plantonistas)
-  addCollaborator(name: string, role: 'OPERADOR' | 'LIDER' | 'SUPERVISOR', schedule: string, group: 'Madrugada' | 'Manhã' | 'Tarde' | 'Líderes' | 'VIP' | 'Treinamento', bhBalance: number, score: number) {
+  addCollaborator(name: string, role: 'OPERADOR' | 'LIDER' | 'SUPERVISOR', schedule: string, group: 'Madrugada' | 'Manhã' | 'Tarde' | 'Líderes' | 'VIP' | 'Treinamento', shift: 'MANHÃ' | 'TARDE' | 'MADRUGADA' | 'ADMINISTRATIVO', sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO', bhBalance: number, score: number) {
     const newId = 'col-' + Math.random().toString(36).substr(2, 9);
     const newCollab: Collaborator = {
       id: newId,
@@ -229,6 +475,8 @@ export class ScaleService {
       role,
       schedule,
       group,
+      shift,
+      sector,
       bhBalance,
       score,
       importantDates: []
@@ -256,6 +504,7 @@ export class ScaleService {
 
     this.addLog('LÍDER TURNO', 'ADICIONAR COLABORADOR', `Novo colaborador cadastrado: ${newCollab.name} (${group})`);
     this.saveState();
+    this.saveCollaboratorToSupabase(newCollab); // Salva no Supabase!
     return newCollab;
   }
 
@@ -268,20 +517,25 @@ export class ScaleService {
 
     this.addLog('LÍDER TURNO', 'REMOVER COLABORADOR', `Colaborador excluído: ${collab.name}`);
     this.saveState();
+    this.deleteCollaboratorFromSupabase(id); // Deleta do Supabase!
   }
 
-  updateCollaboratorDetails(id: string, name: string, schedule: string, group: 'Madrugada' | 'Manhã' | 'Tarde' | 'Líderes' | 'VIP' | 'Treinamento', bhBalance: number, score: number) {
+  updateCollaboratorDetails(id: string, name: string, schedule: string, group: 'Madrugada' | 'Manhã' | 'Tarde' | 'Líderes' | 'VIP' | 'Treinamento', shift: 'MANHÃ' | 'TARDE' | 'MADRUGADA' | 'ADMINISTRATIVO', sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO', bhBalance: number, score: number) {
     this.collaborators.update(current => {
       return current.map(c => {
         if (c.id === id) {
-          return {
+          const updated = {
             ...c,
             name: name.trim().toUpperCase(),
             schedule,
             group,
+            shift,
+            sector,
             bhBalance,
             score
           };
+          this.saveCollaboratorToSupabase(updated); // Salva as alterações no Supabase!
+          return updated;
         }
         return c;
       });
@@ -893,6 +1147,7 @@ export class ScaleService {
       `Registrou data magna de prioridade ${priority}: "${label}" em ${date}.`
     );
     this.saveState();
+    this.saveMagnaDateToSupabase(collabId, label, date, priority); // Salva no Supabase!
   }
 
   // Helpers

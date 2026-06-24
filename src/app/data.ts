@@ -1,12 +1,32 @@
+export interface Training {
+  id?: number;
+  title: string;
+  completion_date: string;
+  expiration_date?: string | null;
+  status: 'CONCLUÍDO' | 'EXPIRADO' | 'EM_CURSO';
+}
+
+export interface Course {
+  id?: number;
+  name: string;
+  institution: string;
+  issue_date: string;
+  certificate_code?: string | null;
+}
+
 export interface Collaborator {
   id: string;
   name: string;
   role: 'OPERADOR' | 'LIDER' | 'SUPERVISOR';
   schedule: string; // e.g. '21:12 - 06:00'
-  group: 'Madrugada' | 'Manhã' | 'Tarde' | 'Líderes' | 'VIP' | 'Treinamento';
+  group: 'Manhã' | 'Tarde' | 'Madrugada' | 'Líderes' | 'Treinamento' | 'VIP'; // Keep for legacy compatibility during migration
+  shift: 'MANHÃ' | 'TARDE' | 'MADRUGADA' | 'ADMINISTRATIVO'; // The primary shift block
+  sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO'; // The physical patio/sector
   bhBalance: number; // in hours
   score: number; // 0-100 base gamification
   importantDates: { label: string; date: string; priority: number }[]; // 5 vital dates
+  trainings?: Training[];
+  courses?: Course[];
 }
 
 export interface ShiftCell {
@@ -96,37 +116,107 @@ export const FLEET_CTAS = [
 
 // Seed initial collaborators
 export const INITIAL_COLLABORATORS: Collaborator[] = [
-  // Madrugada Pilot operators (9 operators)
-  { id: 'op1', name: 'MILTON', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', bhBalance: 12, score: 98, importantDates: [{ label: 'Meu Aniversário', date: '2026-03-05', priority: 1 }, { label: 'Aniversário do Cônjuge', date: '2026-03-18', priority: 2 }] },
-  { id: 'op2', name: 'NORMAN', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', bhBalance: -4, score: 92, importantDates: [{ label: 'Aniversário do Filho', date: '2026-03-12', priority: 1 }] },
-  { id: 'op3', name: 'RAFAEL', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', bhBalance: 6, score: 95, importantDates: [] },
-  { id: 'op4', name: 'DOURADO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', bhBalance: 0, score: 89, importantDates: [] },
-  { id: 'op5', name: 'VENANCIO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', bhBalance: -8, score: 90, importantDates: [] },
-  { id: 'op6', name: 'DIOGO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', bhBalance: 16, score: 97, importantDates: [{ label: 'Casamento', date: '2026-03-24', priority: 1 }] },
-  { id: 'op7', name: 'WILLIAN', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', bhBalance: 2, score: 91, importantDates: [] },
-  { id: 'op8', name: 'SILVERIO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', bhBalance: 4, score: 93, importantDates: [] },
-  { id: 'op9', name: 'REGIS', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', bhBalance: -2, score: 87, importantDates: [] },
+  // 05:00 - 14:00 (Manhã / Aeródromo)
+  { id: '001', name: 'MICHEL', role: 'OPERADOR', schedule: '05:00 - 14:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '002', name: 'JOAO', role: 'OPERADOR', schedule: '05:00 - 14:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '003', name: 'ADAUTO', role: 'OPERADOR', schedule: '05:00 - 14:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '004', name: 'PAULO', role: 'OPERADOR', schedule: '05:00 - 14:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '005', name: 'EWERTON', role: 'OPERADOR', schedule: '05:00 - 14:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
 
-  // Leaders
-  { id: 'lt1', name: 'PEREIRA', role: 'LIDER', schedule: '21:12 - 06:00', group: 'Líderes', bhBalance: 0, score: 99, importantDates: [] },
-  { id: 'lt2', name: 'GUSTAVO', role: 'LIDER', schedule: '21:12 - 06:00', group: 'Líderes', bhBalance: 2, score: 96, importantDates: [] },
-  { id: 'lt3', name: 'CESARIO', role: 'LIDER', schedule: '06:00 - 15:00', group: 'Líderes', bhBalance: 8, score: 94, importantDates: [] },
-  { id: 'lt4', name: 'MARTINEZ', role: 'LIDER', schedule: '06:00 - 15:00', group: 'Líderes', bhBalance: 0, score: 95, importantDates: [] },
+  // 06:00 - 15:00 (Manhã / Aeródromo)
+  { id: '006', name: 'ALEX BARBOSA', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '007', name: 'DOUGLAS', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '008', name: 'TAVARES', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '009', name: 'JULIO', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '010', name: 'SANDRO', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '011', name: 'CLEBER', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '012', name: 'JOSE', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '013', name: 'CALAZANS', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '014', name: 'SILVA', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '015', name: 'GUILHERME', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '016', name: 'ILDO', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '017', name: 'PETERSON', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '018', name: 'RENILSON', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '019', name: 'RAMOS', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '020', name: 'VAGNER', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '021', name: 'EVANDRO', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '022', name: 'BARBOSA', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '023', name: 'CESAR JC', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '024', name: 'FLAVIO', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '025', name: 'CARLOS', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '026', name: 'BELENTANI', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '027', name: 'EULES', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '028', name: 'SOUZA', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '029', name: 'LUNA', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '030', name: 'HUAN', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'Manhã', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
 
-  // 05:00 - 14:00 (TOTAL 05)
-  { id: 'g05_1', name: 'MICHEL', role: 'OPERADOR', schedule: '05:00 - 14:00', group: 'Manhã', bhBalance: 0, score: 90, importantDates: [] },
-  { id: 'g05_2', name: 'JOAO', role: 'OPERADOR', schedule: '05:00 - 14:00', group: 'Manhã', bhBalance: 4, score: 88, importantDates: [] },
-  { id: 'g05_3', name: 'ADAUTO', role: 'OPERADOR', schedule: '05:00 - 14:00', group: 'Manhã', bhBalance: -2, score: 92, importantDates: [] },
-  { id: 'g05_4', name: 'EWERTON', role: 'OPERADOR', schedule: '05:00 - 14:00', group: 'Manhã', bhBalance: 0, score: 85, importantDates: [] },
+  // 06:00 - 16:00 (Administrativo)
+  { id: '031', name: 'LUIS', role: 'OPERADOR', schedule: '06:00 - 16:00', group: 'Manhã', shift: 'ADMINISTRATIVO', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '032', name: 'CAIO', role: 'OPERADOR', schedule: '06:00 - 16:00', group: 'Manhã', shift: 'ADMINISTRATIVO', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '033', name: 'IDENILSON', role: 'OPERADOR', schedule: '06:00 - 16:00', group: 'Manhã', shift: 'ADMINISTRATIVO', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
 
-  // Patio VIP
-  { id: 'vip1', name: 'FERNANDO', role: 'OPERADOR', schedule: 'PATIO VIP', group: 'VIP', bhBalance: 0, score: 91, importantDates: [] },
-  { id: 'vip2', name: 'VALDINA', role: 'OPERADOR', schedule: 'PATIO VIP', group: 'VIP', bhBalance: 2, score: 94, importantDates: [] },
-  { id: 'vip3', name: 'RENATA', role: 'OPERADOR', schedule: 'PATIO VIP', group: 'VIP', bhBalance: -4, score: 93, importantDates: [] },
+  // 14:42 - 23:30 (Tarde / Aeródromo)
+  { id: '034', name: 'RODOLFO', role: 'OPERADOR', schedule: '14:42 - 23:30', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '035', name: 'LEONARDO', role: 'OPERADOR', schedule: '14:42 - 23:30', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '036', name: 'GILVAN', role: 'OPERADOR', schedule: '14:42 - 23:30', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '037', name: 'VIEIRA', role: 'OPERADOR', schedule: '14:42 - 23:30', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '038', name: 'LUCAS', role: 'OPERADOR', schedule: '14:42 - 23:30', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '039', name: 'WESLEY', role: 'OPERADOR', schedule: '14:42 - 23:30', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '040', name: 'PETTINELLI', role: 'OPERADOR', schedule: '14:42 - 23:30', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
 
-  // Treinamento
-  { id: 'tre1', name: 'SALES', role: 'OPERADOR', schedule: '07:00 - 16:00', group: 'Treinamento', bhBalance: 0, score: 90, importantDates: [] },
-  { id: 'tre2', name: 'BARBOSA', role: 'OPERADOR', schedule: '07:00 - 16:00', group: 'Treinamento', bhBalance: 0, score: 93, importantDates: [] }
+  // 15:15 - 00:00 (Tarde / Aeródromo)
+  { id: '041', name: 'FREDISON', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '042', name: 'ALVES', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '043', name: 'LEANDRO EUFRA', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '044', name: 'JOSE EDSON', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '045', name: 'FEITOSA', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '046', name: 'LOPES', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '047', name: 'GIVANI', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '048', name: 'RENATO', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '049', name: 'COSTA', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '050', name: 'MANOEL', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '051', name: 'RONALD', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '052', name: 'KLEYSSON', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '053', name: 'BASTOS', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '054', name: 'JUNIOR', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '055', name: 'MILTON', role: 'OPERADOR', schedule: '15:15 - 00:00', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+
+  // 16:00 - 00:37 (Tarde / Aeródromo)
+  { id: '056', name: 'MARQUES', role: 'OPERADOR', schedule: '16:00 - 00:37', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+  { id: '057', name: 'LAERCIO', role: 'OPERADOR', schedule: '16:00 - 00:37', group: 'Tarde', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 90, importantDates: [] },
+
+  // 21:12 - 06:00 (Madrugada / Aeródromo)
+  { id: '058', name: 'HORACIO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 12, score: 98, importantDates: [{ label: 'Meu Aniversário', date: '2026-03-05', priority: 1 }] },
+  { id: '059', name: 'NORMAN', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: -4, score: 92, importantDates: [] },
+  { id: '060', name: 'RAFAEL', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 6, score: 95, importantDates: [] },
+  { id: '061', name: 'DOURADO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 0, score: 89, importantDates: [] },
+  { id: '062', name: 'VENANCIO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: -8, score: 90, importantDates: [] },
+  { id: '063', name: 'DIOGO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 16, score: 97, importantDates: [] },
+  { id: '064', name: 'WILLIAN', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 2, score: 91, importantDates: [] },
+  { id: '065', name: 'SILVERIO', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 4, score: 93, importantDates: [] },
+  { id: '066', name: 'REGIS', role: 'OPERADOR', schedule: '21:12 - 06:00', group: 'Madrugada', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: -2, score: 87, importantDates: [] },
+
+  // LIDER DE TURNO
+  { id: '067', name: 'CESARIO', role: 'LIDER', schedule: '06:00 - 15:00', group: 'Líderes', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 8, score: 94, importantDates: [] },
+  { id: '068', name: 'MARTINEZ', role: 'LIDER', schedule: '06:00 - 15:00', group: 'Líderes', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 95, importantDates: [] },
+  { id: '069', name: 'PASCHOAL', role: 'LIDER', schedule: '06:00 - 15:00', group: 'Líderes', shift: 'MANHÃ', sector: 'AERÓDROMO', bhBalance: 0, score: 95, importantDates: [] },
+  
+  { id: '070', name: 'SPEDINI', role: 'LIDER', schedule: '14:30 - 23:30', group: 'Líderes', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 95, importantDates: [] },
+  { id: '071', name: 'MARCIO', role: 'LIDER', schedule: '14:30 - 23:30', group: 'Líderes', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 95, importantDates: [] },
+  { id: '072', name: 'JONATAN', role: 'LIDER', schedule: '14:30 - 23:30', group: 'Líderes', shift: 'TARDE', sector: 'AERÓDROMO', bhBalance: 0, score: 95, importantDates: [] },
+
+  { id: '073', name: 'PEREIRA', role: 'LIDER', schedule: '21:12 - 06:00', group: 'Líderes', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 0, score: 99, importantDates: [] },
+  { id: '074', name: 'GUSTAVO', role: 'LIDER', schedule: '21:12 - 06:00', group: 'Líderes', shift: 'MADRUGADA', sector: 'AERÓDROMO', bhBalance: 2, score: 96, importantDates: [] },
+
+  // PATIO VIP
+  { id: '075', name: 'FERNANDO', role: 'OPERADOR', schedule: '07:00 - 16:00', group: 'VIP', shift: 'MANHÃ', sector: 'VIP', bhBalance: 0, score: 91, importantDates: [] },
+  { id: '076', name: 'RENATA', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'VIP', shift: 'MANHÃ', sector: 'VIP', bhBalance: 0, score: 93, importantDates: [] },
+  { id: '077', name: 'ZAGO', role: 'OPERADOR', schedule: '06:00 - 15:00', group: 'VIP', shift: 'MANHÃ', sector: 'VIP', bhBalance: 0, score: 93, importantDates: [] },
+  { id: '078', name: 'TORRES', role: 'OPERADOR', schedule: '14:30 - 23:30', group: 'VIP', shift: 'TARDE', sector: 'VIP', bhBalance: 0, score: 93, importantDates: [] },
+  { id: '079', name: 'SOLANGE', role: 'OPERADOR', schedule: '14:30 - 23:30', group: 'VIP', shift: 'TARDE', sector: 'VIP', bhBalance: 0, score: 93, importantDates: [] },
+  { id: '080', name: 'LOYOLA', role: 'OPERADOR', schedule: '14:30 - 23:30', group: 'VIP', shift: 'TARDE', sector: 'VIP', bhBalance: 0, score: 93, importantDates: [] },
+  { id: '081', name: 'NORIVAL', role: 'OPERADOR', schedule: '21:00 - 06:00', group: 'VIP', shift: 'MADRUGADA', sector: 'VIP', bhBalance: 2, score: 94, importantDates: [] },
+  { id: '082', name: 'PIRES', role: 'OPERADOR', schedule: '22:00 - 06:00', group: 'VIP', shift: 'MADRUGADA', sector: 'VIP', bhBalance: 2, score: 94, importantDates: [] }
 ];
 
 export interface ShiftType {

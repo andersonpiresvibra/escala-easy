@@ -32,8 +32,8 @@ export class App implements OnInit {
   // Track state of grid cell editor modal/popover
   activeEditor = signal<{ collaboratorId: string; day: number } | null>(null);
 
-  // Group filter for Parent Grid spreadsheet view
-  selectedGroupFilter = signal<'Madrugada' | 'Manhã' | 'Tarde' | 'VIP' | 'Treinamento' | 'Todos'>('Madrugada');
+  // Shift filter for Parent Grid spreadsheet view
+  selectedShiftFilter = signal<'MADRUGADA' | 'MANHÃ' | 'TARDE' | 'ADMINISTRATIVO' | 'TODOS'>('MADRUGADA');
 
   // New Backup Slot form signals
   newProfileName = signal<string>('');
@@ -96,6 +96,18 @@ export class App implements OnInit {
   magnaDate = signal<string>('2026-03-24');
   magnaPriority = signal<number>(1);
 
+  // New Training form signals
+  trainingTitle = signal<string>('');
+  trainingCompletionDate = signal<string>('2026-06-24');
+  trainingExpirationDate = signal<string>('');
+  trainingStatus = signal<'CONCLUÍDO' | 'EXPIRADO' | 'EM_CURSO'>('CONCLUÍDO');
+
+  // New Course/Cert form signals
+  courseName = signal<string>('');
+  courseInstitution = signal<string>('');
+  courseIssueDate = signal<string>('2026-06-24');
+  courseCertificateCode = signal<string>('');
+
   // Scale homologation status
   scaleHomologated = signal<boolean>(false);
   supervisorSignature = signal<string>('');
@@ -119,9 +131,24 @@ export class App implements OnInit {
   // Filtered list of collaborators for the grid spreadsheet
   filteredCollaborators = computed(() => {
     const list = this.scaleService.collaborators();
-    const filter = this.selectedGroupFilter();
-    if (filter === 'Todos') return list;
-    return list.filter(c => c.group === filter);
+    const filter = this.selectedShiftFilter();
+    
+    let filteredList = list;
+    if (filter !== 'TODOS') {
+      filteredList = list.filter(c => c.shift === filter);
+    }
+    
+    // Sort: LIDER first, then by Sector (AERÓDROMO first, then VIP, then TREINAMENTO), then by Name
+    return [...filteredList].sort((a, b) => {
+      if (a.role === 'LIDER' && b.role !== 'LIDER') return -1;
+      if (a.role !== 'LIDER' && b.role === 'LIDER') return 1;
+      
+      const sectorWeight = { 'AERÓDROMO': 1, 'VIP': 2, 'TREINAMENTO': 3 };
+      if (sectorWeight[a.sector] < sectorWeight[b.sector]) return -1;
+      if (sectorWeight[a.sector] > sectorWeight[b.sector]) return 1;
+      
+      return a.name.localeCompare(b.name);
+    });
   });
 
   // Fetch the active operator info Reactively
@@ -844,6 +871,44 @@ export class App implements OnInit {
     this.showToast('Reserva de Data Magna efetuada. Nova escala respeitará seu limite.');
   }
 
+  // Submit Training to Supabase
+  submitTraining() {
+    const loggedOpId = this.scaleService.selectedOperatorId();
+    const title = this.trainingTitle().trim();
+    const completion = this.trainingCompletionDate();
+    const expiration = this.trainingExpirationDate() || null;
+    const status = this.trainingStatus();
+
+    if (!title || !completion) {
+      this.showToast('Preencha o título do treinamento e a data de conclusão.');
+      return;
+    }
+
+    this.scaleService.addTrainingToSupabase(loggedOpId, title, completion, expiration, status);
+    this.trainingTitle.set('');
+    this.showToast('Histórico de Treinamento inserido e sincronizado com o Supabase!');
+  }
+
+  // Submit Course/Cert to Supabase
+  submitCourse() {
+    const loggedOpId = this.scaleService.selectedOperatorId();
+    const name = this.courseName().trim();
+    const institution = this.courseInstitution().trim() || 'GOL';
+    const issueDate = this.courseIssueDate();
+    const code = this.courseCertificateCode().trim() || null;
+
+    if (!name || !issueDate) {
+      this.showToast('Preencha o nome do curso/certificação e a data de emissão.');
+      return;
+    }
+
+    this.scaleService.addCourseToSupabase(loggedOpId, name, institution, issueDate, code);
+    this.courseName.set('');
+    this.courseInstitution.set('');
+    this.courseCertificateCode.set('');
+    this.showToast('Certificação registrada e sincronizada com o Supabase!');
+  }
+
   // Sign off scales officially
   homologateCurrentScale() {
     if (!this.supervisorSignature().trim()) {
@@ -873,7 +938,9 @@ export class App implements OnInit {
   }
 
   getOnShiftOperators() {
-    return this.scaleService.collaborators().filter(c => c.group === 'Madrugada');
+    const logged = this.loggedOperator();
+    if (!logged) return [];
+    return this.scaleService.collaborators().filter(c => c.shift === logged.shift);
   }
 
   // Toggle user permissions quickly for demonstration

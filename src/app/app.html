@@ -172,11 +172,19 @@
 
         @if (activeSubTab() === 'matrix') {
           <header class="px-6 bg-white border-b border-slate-200 flex items-center justify-between gap-4" style="height: 55px;">
-            <div>
+            <div class="flex items-center gap-4">
               <div class="flex items-center gap-2">
                 <span class="material-icons select-none text-blue-600 font-bold">grid_on</span>
-                <h2 class="font-black tracking-tighter text-slate-900 uppercase" style="font-size: 14px;">TURNO {{ selectedGroupFilter() | uppercase }}</h2>
+                <h2 class="font-black tracking-tighter text-slate-900 uppercase" style="font-size: 14px;">TURNO</h2>
               </div>
+              <select [value]="selectedShiftFilter()" (change)="selectedShiftFilter.set($any($event.target).value)"
+                      class="bg-slate-100 border border-slate-200 text-slate-800 text-xs font-black rounded px-2 py-1 outline-none focus:border-blue-600 shadow-sm uppercase tracking-wider">
+                <option value="MADRUGADA">MADRUGADA</option>
+                <option value="MANHÃ">MANHÃ</option>
+                <option value="TARDE">TARDE</option>
+                <option value="ADMINISTRATIVO">ADMINISTRATIVO</option>
+                <option value="TODOS">TODOS</option>
+              </select>
             </div>
             
             <div class="flex items-center gap-2 border border-slate-200 bg-slate-50 px-2 py-1 rounded-md shadow-sm relative">
@@ -375,7 +383,15 @@
                       {{ col.name.substring(0, 2) }}
                     </div>
                     <div class="flex flex-col justify-center truncate min-w-0">
-                      <span class="text-xs font-bold text-slate-900 truncate tracking-wide pr-1">{{ col.name }}</span>
+                      <span class="text-xs font-bold text-slate-900 truncate tracking-wide pr-1 flex items-center gap-1">
+                        {{ col.name }}
+                        @if (col.role === 'LIDER') {
+                          <span class="bg-amber-100 text-amber-800 text-[8px] px-1 py-0.5 rounded border border-amber-200 uppercase tracking-widest font-black leading-none" title="Líder de Turno">LT</span>
+                        }
+                        @if (col.sector === 'VIP') {
+                          <span class="bg-purple-100 text-purple-800 text-[8px] px-1 py-0.5 rounded border border-purple-200 uppercase tracking-widest font-black leading-none" title="Pátio VIP">VIP</span>
+                        }
+                      </span>
                     </div>
                   </td>
 
@@ -426,7 +442,7 @@
               <tr class="bg-slate-50 font-mono border-t border-slate-200">
                 <td colspan="2" class="p-4 text-xs font-bold text-slate-700 sticky left-0 bg-slate-50 z-10 border-r border-slate-200">
                   <div class="font-black text-[9px] text-slate-400 uppercase tracking-widest">CONTINGENTE MIN.</div>
-                  <div class="text-[10px] text-blue-600 font-black mt-1">Madrugada (Min: 6/5)</div>
+                  <div class="text-[10px] text-blue-600 font-black mt-1">{{ selectedShiftFilter() }}</div>
                 </td>
 
                 @for (day of daysList(); track day) {
@@ -898,6 +914,33 @@
         <!-- OUTROS DETALHES DO COLABORADOR: DATAS MAGNAS & PERMUTAS (SPAN 5) -->
         <div class="lg:col-span-5 space-y-6" id="colab_side_tools">
           
+          <!-- PROFILE CARD -->
+          <article class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex items-center gap-5 relative overflow-hidden">
+            <!-- Decorative background -->
+            <div class="absolute -right-4 -top-4 opacity-5 pointer-events-none">
+              <span class="material-icons" style="font-size: 120px;">flight_takeoff</span>
+            </div>
+            
+            <!-- Square Avatar Frame -->
+            <div class="w-20 h-20 bg-slate-800 border-2 border-slate-700 rounded-md flex items-center justify-center shrink-0 shadow-inner z-10 overflow-hidden">
+              <img [src]="'https://ui-avatars.com/api/?name=' + (loggedOperator()?.name || 'User') + '&background=1e293b&color=94a3b8&size=128&rounded=false&font-size=0.33'" alt="Avatar" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+            </div>
+            
+            <div class="z-10">
+              <h3 class="text-2xl font-black text-white tracking-tight uppercase leading-none mb-2">{{ loggedOperator()?.name }}</h3>
+              <div class="flex flex-col gap-1">
+                <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1">
+                  <span class="material-icons text-[14px]">shield</span> 
+                  {{ loggedOperator()?.role === 'LIDER' ? 'LT' : loggedOperator()?.role }} - {{ loggedOperator()?.shift || loggedOperator()?.group }}
+                </span>
+                <span class="text-[10px] text-slate-400 uppercase font-mono tracking-wider flex items-center gap-1">
+                   <span class="material-icons text-[12px]">pin_drop</span>
+                   PÁTIO: {{ loggedOperator()?.sector || 'AERÓDROMO' }}
+                </span>
+              </div>
+            </div>
+          </article>
+
           <!-- DATAS MAGNAS COMPACT BUILDER -->
           <article class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl space-y-4" id="datas_magnas_section">
             <div class="flex items-center justify-between">
@@ -965,6 +1008,172 @@
               <button (click)="submitMagnaDate()" 
                       class="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-black py-2 rounded-xl transition-colors uppercase tracking-wider">
                 Registrar Data Garantiva
+              </button>
+            </div>
+          </article>
+
+          <!-- HISTÓRICO DE TREINAMENTOS -->
+          <article class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl space-y-4" id="trainings_section">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="material-icons select-none text-blue-600 font-bold">model_training</span>
+                <h3 class="text-slate-900 font-black uppercase tracking-tight text-sm">HISTÓRICO DE TREINAMENTOS</h3>
+              </div>
+              <span class="text-[9px] bg-emerald-100 text-emerald-800 font-black border border-emerald-200 px-2 py-0.5 rounded uppercase">CONFORMIDADE GOL</span>
+            </div>
+
+            <p class="text-xs text-slate-500 leading-relaxed">
+              Consulte e adicione os treinamentos regulamentares da ANAC e GOL associados ao seu cadastro de operador.
+            </p>
+
+            <!-- Listed trainings -->
+            <div class="space-y-2">
+              @if (loggedOperator()?.trainings?.length) {
+                <div class="space-y-1.5 font-sans">
+                  @for (t of loggedOperator()?.trainings; track t.id) {
+                    <div class="bg-slate-50 px-3 py-2.5 rounded-xl border border-slate-200 flex flex-col gap-1 text-xs">
+                      <div class="flex items-center justify-between font-bold text-slate-800">
+                        <span class="tracking-wide text-slate-900 truncate max-w-[200px]">{{ t.title }}</span>
+                        <span class="px-2 py-0.5 text-[8px] font-black rounded border uppercase"
+                              [class.bg-emerald-100]="t.status === 'CONCLUÍDO'" [class.text-emerald-800]="t.status === 'CONCLUÍDO'" [class.border-emerald-200]="t.status === 'CONCLUÍDO'"
+                              [class.bg-rose-100]="t.status === 'EXPIRADO'" [class.text-rose-800]="t.status === 'EXPIRADO'" [class.border-rose-200]="t.status === 'EXPIRADO'"
+                              [class.bg-blue-100]="t.status === 'EM_CURSO'" [class.text-blue-800]="t.status === 'EM_CURSO'" [class.border-blue-200]="t.status === 'EM_CURSO'">
+                          {{ t.status }}
+                        </span>
+                      </div>
+                      <div class="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                        <span>Conclusão: {{ t.completion_date | date:'dd/MM/yyyy' }}</span>
+                        @if (t.expiration_date) {
+                          <span class="text-slate-400">Vencimento: {{ t.expiration_date | date:'dd/MM/yyyy' }}</span>
+                        } @else {
+                          <span class="text-slate-400">Sem Vencimento</span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-slate-400 font-bold text-[10px] text-center bg-slate-50 py-3 rounded-xl border border-slate-200">Nenhum registro de treinamento disponível.</p>
+              }
+            </div>
+
+            <!-- Add new training form -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <h4 class="text-[10px] font-black text-slate-600 uppercase tracking-wider font-mono">Registrar Novo Treinamento</h4>
+              <div class="space-y-2">
+                <input id="trainingTitleInput" [value]="trainingTitle()" (input)="trainingTitle.set($any($event.target).value)" 
+                       type="text" placeholder="Ex: Abastecimento de B737-8" 
+                       aria-label="Título do Treinamento"
+                       class="bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 w-full shadow-sm" />
+                
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label for="trainingCompDateInput" class="block text-[9px] font-bold text-slate-500 uppercase mb-1 select-none">Conclusão:</label>
+                    <input id="trainingCompDateInput" [value]="trainingCompletionDate()" (change)="trainingCompletionDate.set($any($event.target).value)" 
+                           type="date"
+                           class="bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 w-full shadow-sm" />
+                  </div>
+
+                  <div>
+                    <label for="trainingExpDateInput" class="block text-[9px] font-bold text-slate-500 uppercase mb-1 select-none">Vencimento:</label>
+                    <input id="trainingExpDateInput" [value]="trainingExpirationDate()" (change)="trainingExpirationDate.set($any($event.target).value)" 
+                           type="date"
+                           class="bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 w-full shadow-sm" />
+                  </div>
+                </div>
+
+                <div>
+                  <label for="trainingStatusSelect" class="block text-[9px] font-bold text-slate-500 uppercase mb-1 select-none">Status:</label>
+                  <select id="trainingStatusSelect" [value]="trainingStatus()" (change)="trainingStatus.set($any($event.target).value)" 
+                          class="bg-white border border-slate-250 text-blue-600 text-xs rounded-xl px-2 py-2 outline-none focus:border-blue-600 w-full font-black shadow-sm">
+                    <option value="CONCLUÍDO">CONCLUÍDO</option>
+                    <option value="EXPIRADO">EXPIRADO</option>
+                    <option value="EM_CURSO">EM_CURSO</option>
+                  </select>
+                </div>
+              </div>
+
+              <button (click)="submitTraining()" 
+                      class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-black py-2 rounded-xl transition-colors uppercase tracking-wider">
+                Adicionar ao Cadastro
+              </button>
+            </div>
+          </article>
+
+          <!-- CURSOS E CERTIFICAÇÕES -->
+          <article class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl space-y-4" id="courses_section">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="material-icons select-none text-blue-600 font-bold">verified</span>
+                <h3 class="text-slate-900 font-black uppercase tracking-tight text-sm">CURSOS E CERTIFICAÇÕES</h3>
+              </div>
+              <span class="text-[9px] bg-blue-100 text-blue-700 font-black border border-blue-200 px-2 py-0.5 rounded uppercase">ACADÊMICO</span>
+            </div>
+
+            <p class="text-xs text-slate-500 leading-relaxed">
+              Registre suas certificações profissionais de aviação e cursos de segurança de ativos.
+            </p>
+
+            <!-- Listed courses -->
+            <div class="space-y-2">
+              @if (loggedOperator()?.courses?.length) {
+                <div class="space-y-1.5 font-sans">
+                  @for (c of loggedOperator()?.courses; track c.id) {
+                    <div class="bg-slate-50 px-3 py-2.5 rounded-xl border border-slate-200 flex flex-col gap-1 text-xs">
+                      <div class="flex items-center justify-between font-bold text-slate-800">
+                        <span class="tracking-wide text-slate-900 truncate max-w-[220px]">{{ c.name }}</span>
+                        <span class="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-black font-mono">{{ c.institution }}</span>
+                      </div>
+                      <div class="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-100">
+                        <span>Emissão: {{ c.issue_date | date:'dd/MM/yyyy' }}</span>
+                        @if (c.certificate_code) {
+                          <span class="text-slate-400">Ref: {{ c.certificate_code }}</span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-slate-400 font-bold text-[10px] text-center bg-slate-50 py-3 rounded-xl border border-slate-200">Nenhum certificado registrado.</p>
+              }
+            </div>
+
+            <!-- Add new course form -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <h4 class="text-[10px] font-black text-slate-600 uppercase tracking-wider font-mono">Registrar Nova Certificação</h4>
+              <div class="space-y-2">
+                <input id="courseNameInput" [value]="courseName()" (input)="courseName.set($any($event.target).value)" 
+                       type="text" placeholder="Ex: AVSEC - Segurança da Aviação Civil" 
+                       aria-label="Nome do Curso/Certificação"
+                       class="bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 w-full shadow-sm" />
+
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label for="courseInstInput" class="block text-[9px] font-bold text-slate-500 uppercase mb-1 select-none">Instituição:</label>
+                    <input id="courseInstInput" [value]="courseInstitution()" (input)="courseInstitution.set($any($event.target).value)" 
+                           type="text" placeholder="Ex: ANAC" 
+                           class="bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 w-full shadow-sm" />
+                  </div>
+
+                  <div>
+                    <label for="courseDateInput" class="block text-[9px] font-bold text-slate-500 uppercase mb-1 select-none">Data Emissão:</label>
+                    <input id="courseDateInput" [value]="courseIssueDate()" (change)="courseIssueDate.set($any($event.target).value)" 
+                           type="date"
+                           class="bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 w-full shadow-sm" />
+                  </div>
+                </div>
+
+                <div>
+                  <label for="courseCodeInput" class="block text-[9px] font-bold text-slate-500 uppercase mb-1 select-none">Cód. Certificado:</label>
+                  <input id="courseCodeInput" [value]="courseCertificateCode()" (input)="courseCertificateCode.set($any($event.target).value)" 
+                         type="text" placeholder="Ex: AVSEC-12345" 
+                         class="bg-white border border-slate-250 text-slate-800 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-600 w-full shadow-sm" />
+                </div>
+              </div>
+
+              <button (click)="submitCourse()" 
+                      class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-black py-2 rounded-xl transition-colors uppercase tracking-wider">
+                Registrar Certificado
               </button>
             </div>
           </article>
