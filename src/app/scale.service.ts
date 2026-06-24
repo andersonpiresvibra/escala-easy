@@ -331,7 +331,17 @@ export class ScaleService {
 
         // 6. Atualizar o grid com os dados baixados do Supabase
         if (typedEscala && typedEscala.length > 0) {
-          const mappedGrid: ShiftCell[] = typedEscala.map(item => ({
+          // Deduplicate the loaded scala items based on unique keys to keep the latest valid value
+          const uniqueEscalaMap = new Map();
+          typedEscala.forEach(item => {
+            const m = item.month || this.currentMonth();
+            const y = item.year || this.currentYear();
+            const key = `${item.collaborator_id}-${item.day}-${m}-${y}`;
+            uniqueEscalaMap.set(key, item);
+          });
+          const uniqueEscala = Array.from(uniqueEscalaMap.values());
+
+          const mappedGrid: ShiftCell[] = uniqueEscala.map((item: { collaborator_id: string; day: number; month: number; year: number; value: string }) => ({
             collaboratorId: item.collaborator_id,
             day: item.day,
             month: item.month || this.currentMonth(),
@@ -502,7 +512,16 @@ export class ScaleService {
   }
 
   // Save the entire grid to Supabase
+  private isSavingGrid = false;
+  private pendingGridSave = false;
+
   async saveGridToSupabase() {
+    if (this.isSavingGrid) {
+      this.pendingGridSave = true;
+      return;
+    }
+    this.isSavingGrid = true;
+
     try {
       const client = this.supabaseService.client;
       const cells = this.grid();
@@ -524,11 +543,27 @@ export class ScaleService {
         value: c.value || ''
       }));
 
-      // Fat-batch upsert em blocos de 300 registros para garantir alta performance e evitar limites de tamanho de payload
-      const chunkSize = 300;
+      // Deduplicate rows based on composite unique key to avoid ON CONFLICT errors
+      const uniqueMap = new Map();
+      rows.forEach(r => {
+        const key = `${r.collaborator_id}-${r.day}-${r.month}-${r.year}`;
+        uniqueMap.set(key, r);
+      });
+      const uniqueRows = Array.from(uniqueMap.values());
+
+      // Sort rows by primary key components to prevent deadlocks in Postgres during bulk upserts
+      uniqueRows.sort((a, b) => {
+        if (a.collaborator_id !== b.collaborator_id) return a.collaborator_id.localeCompare(b.collaborator_id);
+        if (a.year !== b.year) return a.year - b.year;
+        if (a.month !== b.month) return a.month - b.month;
+        return a.day - b.day;
+      });
+
+      // Fat-batch upsert em blocos de 150 registros para garantir alta performance e evitar limites de tamanho de payload
+      const chunkSize = 150;
       let hasError = false;
-      for (let i = 0; i < rows.length; i += chunkSize) {
-        const chunk = rows.slice(i, i + chunkSize);
+      for (let i = 0; i < uniqueRows.length; i += chunkSize) {
+        const chunk = uniqueRows.slice(i, i + chunkSize);
         try {
           const { error } = await client
             .from('escala_diaria')
@@ -558,6 +593,9 @@ export class ScaleService {
             console.error(`❌ Exceção no upsert do lote ${i}:`, errStr);
           }
         }
+
+        // Small delay to prevent statement timeouts and DB starvation
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
       if (!hasError) {
         this.isSchemaMissing.set(false);
@@ -572,6 +610,12 @@ export class ScaleService {
         console.warn(`[Supabase Contingency] Conexão indisponível para salvar grid de escalas (salvo localmente).`);
       } else {
         console.error('❌ Erro na conexão para salvar grid de escalas no Supabase:', err);
+      }
+    } finally {
+      this.isSavingGrid = false;
+      if (this.pendingGridSave) {
+        this.pendingGridSave = false;
+        setTimeout(() => this.saveGridToSupabase(), 100);
       }
     }
   }
