@@ -176,7 +176,7 @@ export class App implements OnInit {
   }
 
   // Track active sub-tab for granular workspace
-  public activeSubTab = signal<'matrix' | 'backups' | 'shifts'>('matrix');
+  public activeSubTab = signal<'matrix' | 'backups' | 'shifts' | 'dashboard'>('matrix');
 
   // Track if option/tools dropdown menu is open
   public isDropdownOpen = signal<boolean>(false);
@@ -184,7 +184,115 @@ export class App implements OnInit {
   // Track state of grid cell editor modal/popover
   activeEditor = signal<{ collaboratorId: string; day: number } | null>(null);
 
-  // Shift filter for Parent Grid spreadsheet view
+  // Dashboard Analytics Signals
+  dashboardStats = computed(() => {
+    const grid = this.scaleService.grid();
+    const collabs = this.scaleService.collaborators();
+    const month = this.scaleService.currentMonth();
+    const year = this.scaleService.currentYear();
+    
+    // Helper to check if a day is weekend
+    const isWeekend = (day: number) => {
+      const date = new Date(year, month - 1, day);
+      return date.getDay() === 0 || date.getDay() === 6;
+    };
+
+    const statsByCollab = collabs.map(c => {
+      const colGrid = grid.filter(cell => cell.collaboratorId === c.id && cell.month === month && cell.year === year).sort((a, b) => a.day - b.day);
+      
+      let maxConsecutiveWork = 0;
+      let currentConsecutiveWork = 0;
+      let weekendsOff = 0;
+      let holidaysOff = 0; // Simplified for now
+      let dobradinhas = 0;
+      
+      let prevDayWasOff = false;
+
+      colGrid.forEach(cell => {
+        const isWork = cell.value === 'T' || cell.value === '' || cell.value === '5' || cell.value === '7' || cell.value === '21';
+        const isOff = cell.value === 'X' || cell.value === 'F' || cell.value === 'FO' || cell.value === 'BH';
+        
+        if (isWork) {
+          currentConsecutiveWork++;
+          maxConsecutiveWork = Math.max(maxConsecutiveWork, currentConsecutiveWork);
+          prevDayWasOff = false;
+        } else if (isOff) {
+          currentConsecutiveWork = 0;
+          if (isWeekend(cell.day)) weekendsOff++;
+          if (prevDayWasOff) dobradinhas++;
+          prevDayWasOff = true;
+        } else {
+          // Exames, Atestados don't break the streak strictly, but let's reset work streak
+          currentConsecutiveWork = 0;
+          prevDayWasOff = false;
+        }
+      });
+
+      // Calculate a "Health Risk Factor" (0-100)
+      // Higher is worse.
+      let riskScore = 0;
+      if (maxConsecutiveWork >= 7) riskScore += 50;
+      else if (maxConsecutiveWork === 6) riskScore += 30;
+      else if (maxConsecutiveWork === 5) riskScore += 15;
+      
+      if (c.bhBalance < 0) riskScore += Math.min(Math.abs(c.bhBalance) * 5, 30);
+      if (c.score < 90) riskScore += (90 - c.score) * 2;
+      
+      riskScore = Math.min(riskScore, 100);
+
+      // Benefit Score (Equidade)
+      let benefitScore = (weekendsOff * 10) + (dobradinhas * 15);
+
+      return {
+        ...c,
+        maxConsecutiveWork,
+        weekendsOff,
+        dobradinhas,
+        riskScore,
+        benefitScore
+      };
+    });
+
+    const byShift: Record<string, typeof statsByCollab> = {
+      'MADRUGADA': statsByCollab.filter(c => c.shift === 'MADRUGADA').sort((a, b) => b.riskScore - a.riskScore),
+      'MANHÃ': statsByCollab.filter(c => c.shift === 'MANHÃ').sort((a, b) => b.riskScore - a.riskScore),
+      'TARDE': statsByCollab.filter(c => c.shift === 'TARDE').sort((a, b) => b.riskScore - a.riskScore),
+    };
+
+    const topAtRisk = [...statsByCollab].sort((a, b) => b.riskScore - a.riskScore).slice(0, 10);
+    const topBenefited = [...statsByCollab].sort((a, b) => b.benefitScore - a.benefitScore).slice(0, 10);
+
+    // Distribution for pie chart
+    const riskDistribution = {
+      high: statsByCollab.filter(c => c.riskScore >= 50).length,
+      medium: statsByCollab.filter(c => c.riskScore >= 20 && c.riskScore < 50).length,
+      low: statsByCollab.filter(c => c.riskScore < 20).length
+    };
+
+    // Heatmap data: Count of people working on each day of the month
+    const heatmapData = Array.from({ length: 31 }, (_, i) => {
+      const day = i + 1;
+      let working = 0;
+      let off = 0;
+      grid.filter(cell => cell.month === month && cell.year === year && cell.day === day).forEach(cell => {
+        const isWork = cell.value === 'T' || cell.value === '' || cell.value === '5' || cell.value === '7' || cell.value === '21';
+        if (isWork) working++;
+        else off++;
+      });
+      return { day, working, off, intensity: (working / (working + off || 1)) * 100 };
+    });
+
+    return {
+      statsByCollab,
+      byShift,
+      topAtRisk,
+      topBenefited,
+      riskDistribution,
+      heatmapData
+    };
+  });
+
+  // End of Dashboard Analytics
   selectedShiftFilter = signal<'MADRUGADA' | 'MANHÃ' | 'TARDE' | 'ADMINISTRATIVO' | 'TODOS'>('TODOS');
 
   // New Backup Slot form signals
