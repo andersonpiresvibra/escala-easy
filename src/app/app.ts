@@ -30,8 +30,15 @@ export class App implements OnInit {
   authError = signal('');
   authSuccess = signal('');
   isAuthLoading = signal(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   pendingUsers = signal<any[]>([]);
   showApprovalModal = signal(false);
+
+  // Import Image State
+  showImportModal = signal(false);
+  importFile = signal<File | null>(null);
+  importStatus = signal<'processing' | 'success' | 'error' | ''>('');
+  importMessage = signal('');
 
   eligibleAuthCollaborators = computed(() => {
     return this.scaleService.collaborators().filter(c => c.role === 'LIDER' || c.role === 'SUPERVISOR');
@@ -40,6 +47,117 @@ export class App implements OnInit {
   async ngOnInit() {
     const isConnected = await this.supabaseService.testConnection();
     this.dbStatus.set(isConnected ? 'connected' : 'error');
+  }
+
+  // Import Escala Logics
+  openImportModal() {
+    if (this.scaleService.currentRole() !== 'SUPERVISOR' && this.scaleService.currentRole() !== 'LIDER') {
+      this.showToast('Apenas LTs e o Administrador podem importar dados de escala.');
+      return;
+    }
+    this.importFile.set(null);
+    this.importStatus.set('');
+    this.importMessage.set('');
+    this.showImportModal.set(true);
+  }
+
+  onImportFileSelected(event: Event) {
+    const target = event.target as HTMLInputElement;
+    if (target && target.files && target.files.length > 0) {
+      const file = target.files[0];
+      this.importFile.set(file);
+      this.importStatus.set('');
+      this.importMessage.set('');
+    }
+  }
+
+  async processImport() {
+    const file = this.importFile();
+    if (!file) return;
+
+    this.importStatus.set('processing');
+    this.importMessage.set('Enviando imagem e analisando escala com IA...');
+
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = (reader.result as string).split(',')[1];
+        
+        const response = await fetch('/api/parse-scale', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageBase64: base64Data,
+            mimeType: file.type
+          })
+        });
+
+        if (!response.ok) {
+          let errorMsg = 'Falha na resposta da API de visão computacional.';
+          try {
+            const errBody = await response.json();
+            if (errBody && errBody.error) errorMsg += ' Detalhes: ' + errBody.error;
+          } catch {
+            console.warn('Falha ao decodificar erro de resposta da API de visão.');
+          }
+          throw new Error(errorMsg);
+        }
+
+        const data: {name: string, days: number[]}[] = await response.json();
+        
+        // Atualiza a grid com os dados processados (só "X" por enquanto, como o usuário pediu)
+        let updatedCells = 0;
+        const currentMonth = this.scaleService.currentMonth();
+        const currentYear = this.scaleService.currentYear();
+
+        this.scaleService.grid.update(currentGrid => {
+          let newGrid = [...currentGrid];
+          
+          data.forEach(item => {
+            // Acha o colaborador pelo nome (pode ser parcial, ou case insensitive)
+            const collab = this.scaleService.collaborators().find(c => 
+              c.name.toUpperCase().includes(item.name.toUpperCase()) || 
+              item.name.toUpperCase().includes(c.name.toUpperCase())
+            );
+            
+            if (collab) {
+              item.days.forEach(day => {
+                let exists = false;
+                newGrid = newGrid.map(cell => {
+                  if (cell.collaboratorId === collab.id && cell.day === day && cell.month === currentMonth && cell.year === currentYear) {
+                    exists = true;
+                    return { ...cell, value: 'X' };
+                  }
+                  return cell;
+                });
+                if (!exists) {
+                  newGrid.push({ collaboratorId: collab.id, day, month: currentMonth, year: currentYear, value: 'X' });
+                }
+                updatedCells++;
+              });
+            }
+          });
+          return newGrid;
+        });
+
+        this.scaleService.saveState();
+        this.scaleService.saveGridToSupabase();
+
+        this.importStatus.set('success');
+        this.importMessage.set(`Sucesso! ${updatedCells} folgas (X) processadas e sincronizadas.`);
+        this.showToast(`${updatedCells} folgas importadas com sucesso.`);
+      };
+      
+      reader.readAsDataURL(file);
+
+    } catch (e: unknown) {
+      this.importStatus.set('error');
+      if (e instanceof Error) {
+        this.importMessage.set(e.message || 'Erro ao processar imagem.');
+      } else {
+        this.importMessage.set('Erro ao processar imagem.');
+      }
+    }
   }
 
   onDocumentClick(event: MouseEvent) {
@@ -1069,6 +1187,7 @@ export class App implements OnInit {
       
       const pwd = this.authPassword();
       const client = this.supabaseService.client;
+      if (!client) throw new Error('Supabase client não inicializado.');
       
       if (this.authMode() === 'LOGIN') {
         if (!pwd) throw new Error('Insira a senha fornecida pelo administrador.');
@@ -1089,7 +1208,7 @@ export class App implements OnInit {
         }
 
         // Success
-        this.scaleService.currentRole.set(data.role as any);
+        this.scaleService.currentRole.set(data.role as 'SUPERVISOR' | 'LIDER' | 'OPERADOR');
         this.scaleService.selectedOperatorId.set(data.collaborator_id);
         this.showToast(`Bem-vindo(a), ${data.nome} (${data.role})`);
         this.showAuthModal.set(false);
@@ -1120,8 +1239,12 @@ export class App implements OnInit {
         this.authSuccess.set('Solicitação enviada com sucesso! Aguarde o Supervisor enviar sua senha.');
         this.authPassword.set('');
       }
-    } catch (e: any) {
-      this.authError.set(e.message || 'Erro ao processar autenticação.');
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        this.authError.set(e.message || 'Erro ao processar autenticação.');
+      } else {
+        this.authError.set('Erro ao processar autenticação.');
+      }
     } finally {
       this.isAuthLoading.set(false);
     }
@@ -1131,16 +1254,18 @@ export class App implements OnInit {
     if (this.scaleService.currentRole() !== 'SUPERVISOR') return;
     this.showApprovalModal.set(true);
     const client = this.supabaseService.client;
+    if (!client) return;
     const { data, error } = await client.from('usuarios_acesso').select('*').eq('status', 'PENDENTE');
     if (!error && data) {
       this.pendingUsers.set(data);
     }
   }
 
-  generatedPasswords = signal<{ [userId: string]: string }>({});
+  generatedPasswords = signal<Record<string, string>>({});
 
-  async approveUser(id: string, collaborator_id: string) {
+  async approveUser(id: string) {
     const client = this.supabaseService.client;
+    if (!client) return;
     const pwd = Math.random().toString(36).slice(-6).toUpperCase(); // Gera senha de 6 caracteres
     
     const { error } = await client.from('usuarios_acesso').update({ status: 'APROVADO', senha: pwd }).eq('id', id);
@@ -1157,6 +1282,7 @@ export class App implements OnInit {
 
   async rejectUser(id: string) {
     const client = this.supabaseService.client;
+    if (!client) return;
     const { error } = await client.from('usuarios_acesso').delete().eq('id', id);
     if (!error) {
       this.showToast('Solicitação rejeitada e removida.');

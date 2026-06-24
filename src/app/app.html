@@ -63,6 +63,15 @@
         </div>
       </div>
 
+      <!-- IMPORT IMAGE BUTTON -->
+      <button (click)="openImportModal()"
+              class="px-4 py-2.5 h-[42px] text-[10px] font-black tracking-wider uppercase bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm select-none"
+              style="border-radius: 5px;"
+              title="Importar Escala via Imagem">
+        <span class="material-icons text-xs">document_scanner</span>
+        <span class="hidden md:inline">Importar Escala</span>
+      </button>
+
       <!-- GROUPED dropdown options button -->
       <div class="relative inline-block text-left" id="options_dropdown_container">
         <button (click)="isDropdownOpen.set(!isDropdownOpen())"
@@ -1433,8 +1442,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
 
   <!-- AUTH MODAL -->
   @if (showAuthModal()) {
-    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in" (click)="showAuthModal.set(false)">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col font-sans" (click)="$event.stopPropagation()">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in" (click)="showAuthModal.set(false)" (keyup.enter)="showAuthModal.set(false)" tabindex="0">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col font-sans" (click)="$event.stopPropagation()" (keyup.enter)="$event.stopPropagation()" tabindex="0">
         <!-- Header -->
         <div class="bg-slate-900 p-5 flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -1473,8 +1482,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
 
           @if (authMode() === 'LOGIN' || authMode() === 'REGISTER') {
             <div class="space-y-1.5">
-              <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Colaborador</label>
-              <select [value]="authCollabId()" (change)="authCollabId.set($any($event.target).value)"
+              <label for="authCollabIdSelect" class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Colaborador</label>
+              <select id="authCollabIdSelect" [value]="authCollabId()" (change)="authCollabId.set($any($event.target).value)"
                       class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2.5 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30">
                 <option value="" disabled>Selecione seu nome na lista...</option>
                 @for (col of eligibleAuthCollaborators(); track col.id) {
@@ -1486,8 +1495,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
 
           @if (authMode() === 'LOGIN') {
             <div class="space-y-1.5">
-              <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Senha de Acesso</label>
-              <input [value]="authPassword()" (input)="authPassword.set($any($event.target).value)"
+              <label for="authPasswordInput" class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Senha de Acesso</label>
+              <input id="authPasswordInput" [value]="authPassword()" (input)="authPassword.set($any($event.target).value)"
                      type="password" placeholder="••••••••"
                      class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2.5 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30" />
             </div>
@@ -1518,8 +1527,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
 
   <!-- APPROVAL MODAL -->
   @if (showApprovalModal()) {
-    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in" (click)="showApprovalModal.set(false)">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col font-sans max-h-[80vh]" (click)="$event.stopPropagation()">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in" (click)="showApprovalModal.set(false)" (keyup.enter)="showApprovalModal.set(false)" tabindex="0">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col font-sans max-h-[80vh]" (click)="$event.stopPropagation()" (keyup.enter)="$event.stopPropagation()" tabindex="0">
         <!-- Header -->
         <div class="bg-slate-900 p-5 flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -1553,7 +1562,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
                   </div>
                   <div class="flex items-center gap-2">
                     @if (user.status === 'PENDENTE') {
-                      <button (click)="approveUser(user.id, user.collaborator_id)" class="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer">
+                      <button (click)="approveUser(user.id)" class="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer">
                         <span class="material-icons text-sm">check_circle</span> Aprovar
                       </button>
                     }
@@ -1570,6 +1579,72 @@ ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
               <p class="text-slate-500 text-sm font-bold">Não há usuários pendentes de aprovação no momento.</p>
             </div>
           }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- IMPORT MODAL -->
+  @if (showImportModal()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in" (click)="showImportModal.set(false)" (keyup.enter)="showImportModal.set(false)" tabindex="0">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col font-sans" (click)="$event.stopPropagation()" (keyup.enter)="$event.stopPropagation()" tabindex="0">
+        <!-- Header -->
+        <div class="bg-slate-900 p-5 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded bg-emerald-500 flex items-center justify-center">
+              <span class="material-icons text-white text-lg">document_scanner</span>
+            </div>
+            <div>
+              <h3 class="text-white font-black uppercase tracking-tight text-sm leading-tight">Importador de Escala</h3>
+              <p class="text-emerald-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Visão Computacional</p>
+            </div>
+          </div>
+          <button (click)="showImportModal.set(false)" class="text-slate-400 hover:text-white transition-colors cursor-pointer">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 space-y-4">
+          <p class="text-xs text-slate-500 font-bold mb-2">Faça o upload de uma imagem da escala. A Inteligência Artificial irá identificar os colaboradores e preencher as folgas ('X') automaticamente no banco de dados.</p>
+          
+          <div class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center flex flex-col items-center justify-center transition-colors"
+               [class.bg-slate-50]="!importFile()" [class.border-emerald-500]="importFile()" [class.bg-emerald-50]="importFile()">
+            <span class="material-icons text-4xl mb-3" [class.text-slate-300]="!importFile()" [class.text-emerald-500]="importFile()">
+              {{ importFile() ? 'check_circle' : 'cloud_upload' }}
+            </span>
+            <p class="text-sm font-black text-slate-700">{{ importFile() ? importFile()?.name : 'Selecione uma imagem' }}</p>
+            <p class="text-[10px] text-slate-400 font-bold mt-1">Formatos suportados: PNG, JPG, JPEG</p>
+            
+            <input type="file" accept="image/*" class="hidden" id="file_import_input" (change)="onImportFileSelected($event)">
+            <button onclick="document.getElementById('file_import_input').click()" 
+                    class="mt-4 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black uppercase tracking-wider rounded-lg cursor-pointer">
+              Procurar Arquivo
+            </button>
+          </div>
+
+          @if (importStatus()) {
+            <div class="text-xs font-bold p-3 rounded-xl flex gap-2"
+                 [class.bg-blue-50]="importStatus() === 'processing'"
+                 [class.text-blue-700]="importStatus() === 'processing'"
+                 [class.border-blue-200]="importStatus() === 'processing'"
+                 [class.bg-emerald-50]="importStatus() === 'success'"
+                 [class.text-emerald-700]="importStatus() === 'success'"
+                 [class.border-emerald-200]="importStatus() === 'success'"
+                 [class.bg-red-50]="importStatus() === 'error'"
+                 [class.text-red-700]="importStatus() === 'error'"
+                 [class.border-red-200]="importStatus() === 'error'">
+              <span class="material-icons text-sm" [class.animate-spin]="importStatus() === 'processing'">
+                {{ importStatus() === 'processing' ? 'refresh' : importStatus() === 'success' ? 'check_circle' : 'error_outline' }}
+              </span>
+              <span>{{ importMessage() }}</span>
+            </div>
+          }
+
+          <button (click)="processImport()" [disabled]="!importFile() || importStatus() === 'processing'"
+                  class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-3 rounded-xl uppercase tracking-wider shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 disabled:opacity-50">
+            <span class="material-icons text-sm">auto_awesome</span> Iniciar Importação
+          </button>
         </div>
       </div>
     </div>

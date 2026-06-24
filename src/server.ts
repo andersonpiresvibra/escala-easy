@@ -6,11 +6,64 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import {join} from 'node:path';
+import { GoogleGenAI } from '@google/genai';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
+
+// Parse JSON payloads for API requests
+app.use(express.json({ limit: '50mb' }));
+
+app.post('/api/parse-scale', async (req, res) => {
+  try {
+    const { imageBase64, mimeType } = req.body;
+    if (!imageBase64 || !mimeType) {
+      res.status(400).json({ error: 'Missing imageBase64 or mimeType' });
+      return;
+    }
+
+    const ai = new GoogleGenAI({
+      apiKey: process.env['GEMINI_API_KEY'],
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.1-flash-lite',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: "Analise esta imagem contendo uma escala de trabalho. Quero que você extraia os dias que contêm 'X' para cada colaborador listado. Retorne estritamente um array JSON sem formatação markdown. Formato esperado:\n[\n  { \"name\": \"NOME DO COLABORADOR\", \"days\": [1, 5, 10, ...] },\n  ...\n]" },
+            { inlineData: { data: imageBase64, mimeType } }
+          ]
+        }
+      ],
+      config: {
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const text = response.text;
+    if (text) {
+      const data = JSON.parse(text);
+      res.json(data);
+    } else {
+      res.status(500).json({ error: 'Failed to generate response' });
+    }
+  } catch (error: unknown) {
+    console.error('Error parsing scale image:', error);
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message || 'Internal Server Error' });
+    } else {
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+});
 
 /**
  * Example Express Rest API endpoints can be defined here.

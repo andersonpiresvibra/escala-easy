@@ -104,29 +104,35 @@ export class ScaleService {
 
   constructor() {
     this.loadState();
-    this.loadFromSupabase(); // Sincroniza de forma assíncrona com o Supabase!
-    this.setupRealtimeSubscription(); // Inscreve nos canais de tempo real!
-    this.startLiveOperationsSimulator();
+    
+    if (typeof window !== 'undefined') {
+      this.loadFromSupabase(); // Sincroniza de forma assíncrona com o Supabase!
+      this.setupRealtimeSubscription(); // Inscreve nos canais de tempo real!
+      this.startLiveOperationsSimulator();
 
-    // Re-carrega automaticamente do Supabase quando o mês ou ano muda
-    effect(() => {
-      this.currentMonth();
-      this.currentYear();
-      untracked(() => {
-        this.loadFromSupabase();
+      // Re-carrega automaticamente do Supabase quando o mês ou ano muda
+      effect(() => {
+        this.currentMonth();
+        this.currentYear();
+        untracked(() => {
+          if (typeof window !== 'undefined') {
+            this.loadFromSupabase();
+          }
+        });
       });
-    });
 
-    // Fallback polling de contingência a cada 10 segundos para máxima reatividade
-    setInterval(() => {
-      this.loadFromSupabase();
-    }, 10000);
+      // Fallback polling de contingência a cada 10 segundos para máxima reatividade
+      setInterval(() => {
+        this.loadFromSupabase();
+      }, 10000);
+    }
   }
 
   // Set up real-time subscription for Supabase tables
   setupRealtimeSubscription() {
     try {
       const client = this.supabaseService.client;
+      if (!client) return;
 
       // Inscrição para escutar alterações em tempo real nas tabelas principais
       client
@@ -185,6 +191,7 @@ export class ScaleService {
     try {
       console.log('🔄 Baixando dados reais do Supabase...');
       const client = this.supabaseService.client;
+      if (!client) return;
 
       // 1. Fetch colaboradores
       const { data: colabs, error: colabsErr } = await client
@@ -327,7 +334,9 @@ export class ScaleService {
         this.collaborators.set(mappedColabs);
         
         // Save current synced state in local storage as local cache
-        localStorage.setItem('es_collaborators', JSON.stringify(mappedColabs));
+        if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+          localStorage.setItem('es_collaborators', JSON.stringify(mappedColabs));
+        }
 
         // 6. Atualizar o grid com os dados baixados do Supabase
         if (typedEscala && typedEscala.length > 0) {
@@ -387,10 +396,15 @@ export class ScaleService {
             }));
 
           this.grid.set(cleanedGrid);
-          localStorage.setItem('es_grid', JSON.stringify(cleanedGrid));
+          if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+            localStorage.setItem('es_grid', JSON.stringify(cleanedGrid));
+          }
         } else {
           // Se escala_diaria retornou vazia mas temos dados locais, populamos o Supabase com eles
-          const localGrid = localStorage.getItem('es_grid');
+          let localGrid = null;
+          if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+             localGrid = localStorage.getItem('es_grid');
+          }
           if (localGrid) {
             try {
               const parsed = JSON.parse(localGrid) as ShiftCell[];
@@ -405,7 +419,9 @@ export class ScaleService {
                   year: c.year || y
                 }));
               this.grid.set(cleaned);
-              localStorage.setItem('es_grid', JSON.stringify(cleaned));
+              if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+                localStorage.setItem('es_grid', JSON.stringify(cleaned));
+              }
             } catch (err) {
               console.warn('Erro ao restaurar grid local de contingência:', err);
             }
@@ -432,6 +448,7 @@ export class ScaleService {
   async saveCollaboratorToSupabase(c: Collaborator) {
     try {
       const client = this.supabaseService.client;
+      if (!client) return;
       const { error } = await client.from('colaboradores').upsert({
         id: c.id,
         name: c.name,
@@ -454,6 +471,7 @@ export class ScaleService {
   async deleteCollaboratorFromSupabase(id: string) {
     try {
       const client = this.supabaseService.client;
+      if (!client) return;
       const { error } = await client.from('colaboradores').delete().eq('id', id);
       if (error) throw error;
       console.log(`✅ Colaborador ${id} removido do Supabase.`);
@@ -477,6 +495,7 @@ export class ScaleService {
       const currentY = year || this.currentYear();
 
       const client = this.supabaseService.client;
+      if (!client) return;
       const { error } = await client.from('escala_diaria').upsert({
         collaborator_id: collaboratorId,
         day,
@@ -524,6 +543,7 @@ export class ScaleService {
 
     try {
       const client = this.supabaseService.client;
+      if (!client) return;
       const cells = this.grid();
       if (cells.length === 0) return;
 
@@ -624,6 +644,7 @@ export class ScaleService {
   async saveMagnaDateToSupabase(collabId: string, label: string, date: string, priority: number) {
     try {
       const client = this.supabaseService.client;
+      if (!client) return;
       const dateParts = date.split('-');
       const year = dateParts[0] ? parseInt(dateParts[0]) : null;
       const month = dateParts[1] ? parseInt(dateParts[1]) : 1;
@@ -649,6 +670,7 @@ export class ScaleService {
   async addTrainingToSupabase(collabId: string, title: string, completion_date: string, expiration_date: string | null, status: 'CONCLUÍDO' | 'EXPIRADO' | 'EM_CURSO') {
     try {
       const client = this.supabaseService.client;
+      if (!client) return;
       const { error } = await client.from('treinamentos').insert({
         collaborator_id: collabId,
         title,
@@ -668,6 +690,7 @@ export class ScaleService {
   async addCourseToSupabase(collabId: string, name: string, institution: string, issue_date: string, certificate_code: string | null) {
     try {
       const client = this.supabaseService.client;
+      if (!client) return;
       const { error } = await client.from('cursos_certificacoes').insert({
         collaborator_id: collabId,
         name,
