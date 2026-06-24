@@ -181,6 +181,40 @@
   <!-- MAIN CONTAINER GRID -->
   <main class="flex-1 w-full flex flex-col gap-6 transition-all duration-200 p-0 md:py-6" id="app_content">
 
+    <!-- WARNING: Supabase Table escala_diaria Missing -->
+    @if (scaleService.isSchemaMissing()) {
+      <div class="mx-6 p-4 rounded-xl border border-red-200 bg-red-50 text-red-900 animate-fade-in flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm" id="supabase_missing_table_warning">
+        <div class="flex items-start gap-3">
+          <span class="material-icons text-red-500 mt-0.5">warning</span>
+          <div>
+            <h3 class="text-xs font-black uppercase tracking-wider text-red-800">Tabela de Escala Diária Pendente no Supabase</h3>
+            <p class="text-[11px] text-red-700 mt-1 max-w-2xl leading-relaxed">
+              A sincronização em tempo real das folgas e turnos requer a tabela <code class="font-mono bg-red-100 px-1 py-0.5 rounded text-red-900">escala_diaria</code> no seu banco de dados do Supabase. Para corrigir o erro de sincronização e salvar seus dados na nuvem, execute o script SQL abaixo no editor do seu painel do Supabase.
+            </p>
+            <div class="mt-2.5 max-w-xl bg-slate-900 rounded-lg p-3 text-left font-mono text-[9px] text-slate-300 overflow-x-auto shadow-inner relative group border border-slate-800">
+              <span class="absolute right-2 top-2 text-[8px] font-black uppercase tracking-widest text-slate-500 bg-slate-800/80 px-1.5 py-0.5 rounded select-none">SQL Script</span>
+              <pre class="whitespace-pre">CREATE TABLE escala_diaria (
+    collaborator_id VARCHAR(50) NOT NULL REFERENCES colaboradores(id) ON DELETE CASCADE,
+    day INT NOT NULL,
+    month INT NOT NULL,
+    year INT NOT NULL,
+    value VARCHAR(50) NOT NULL DEFAULT '',
+    PRIMARY KEY (collaborator_id, day, month, year)
+);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE escala_diaria;</pre>
+            </div>
+          </div>
+        </div>
+        <div class="flex shrink-0">
+          <button (click)="scaleService.saveGridToSupabase()" class="px-3.5 py-2 text-[10px] font-black uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors select-none">
+            <span class="material-icons text-xs">sync</span>
+            Tentar Criar / Forçar Envio
+          </button>
+        </div>
+      </div>
+    }
+
     <!-- OPERATIONAL WORKSPACE -->
     
     <!-- PERSPECTIVE A & B: SPREADSHEET MAIN VIEWS (SUPERVISOR & LÍDER OF TURNO) -->

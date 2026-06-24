@@ -4,6 +4,7 @@
 -- =====================================================================
 
 -- Limpeza de tabelas antigas (Garante um recomeço limpo)
+DROP TABLE IF EXISTS escala_diaria CASCADE;
 DROP TABLE IF EXISTS cursos_certificacoes CASCADE;
 DROP TABLE IF EXISTS treinamentos CASCADE;
 DROP TABLE IF EXISTS datas_magnas CASCADE;
@@ -62,6 +63,19 @@ CREATE TABLE cursos_certificacoes (
 CREATE INDEX idx_datas_magnas_colab ON datas_magnas(collaborator_id);
 CREATE INDEX idx_treinamentos_colab ON treinamentos(collaborator_id);
 CREATE INDEX idx_cursos_colab ON cursos_certificacoes(collaborator_id);
+
+-- 5. Tabela de Escalas e Turnos Diários (Células da Grade)
+-- Guarda em tempo real as folgas e turnos de cada colaborador por dia
+CREATE TABLE escala_diaria (
+    collaborator_id VARCHAR(50) NOT NULL REFERENCES colaboradores(id) ON DELETE CASCADE,
+    day INT NOT NULL,
+    month INT NOT NULL,
+    year INT NOT NULL,
+    value VARCHAR(50) NOT NULL DEFAULT '', -- ex: 'F' (Folga), 'M' (Manhã), 'T' (Tarde), 'N' (Noite), 'BH', etc.
+    PRIMARY KEY (collaborator_id, day, month, year)
+);
+
+CREATE INDEX idx_escala_diaria_colab ON escala_diaria(collaborator_id);
 
 
 -- =====================================================================
@@ -228,4 +242,5 @@ alter publication supabase_realtime add table colaboradores;
 alter publication supabase_realtime add table datas_magnas;
 alter publication supabase_realtime add table treinamentos;
 alter publication supabase_realtime add table cursos_certificacoes;
+alter publication supabase_realtime add table escala_diaria;
 

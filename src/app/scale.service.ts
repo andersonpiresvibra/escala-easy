@@ -87,6 +87,7 @@ export class ScaleService {
   // Sync state signals for UI
   isSyncing = signal<boolean>(false);
   lastSyncTime = signal<string>('');
+  isSchemaMissing = signal<boolean>(false);
 
   // Custom Saved Profiles Slots
   savedProfiles = signal<SavedScaleProfile[]>([]);
@@ -152,6 +153,14 @@ export class ScaleService {
             this.loadFromSupabase();
           }
         )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'escala_diaria' },
+          (payload) => {
+            console.log('⚡ [Realtime] Mudança detectada na tabela escala_diaria:', payload);
+            this.loadFromSupabase();
+          }
+        )
         .subscribe((status) => {
           console.log(`📡 [Realtime] Conexão com canais de tempo real do Supabase: ${status}`);
         });
@@ -195,7 +204,26 @@ export class ScaleService {
 
       if (cursosErr) throw cursosErr;
 
-      console.log(`✅ Dados do Supabase baixados com sucesso! Colaboradores: ${colabs?.length}, Datas: ${magnas?.length}, Treinamentos: ${treinos?.length}, Cursos: ${cursos?.length}`);
+      // 5. Fetch escala_diaria (Com tratamento silencioso caso a tabela não exista ou esteja inacessível)
+      let typedEscala: { collaborator_id: string; day: number; month: number; year: number; value: string }[] = [];
+      try {
+        const { data: escala, error: escalaErr } = await client
+          .from('escala_diaria')
+          .select('*');
+        if (!escalaErr && escala) {
+          typedEscala = escala;
+          this.isSchemaMissing.set(false);
+        } else if (escalaErr) {
+          console.warn('⚠️ [Aviso] Falha ao ler escala_diaria do Supabase:', escalaErr.message);
+          if (escalaErr.message?.includes('Could not find') || escalaErr.code === 'PGRST116') {
+            this.isSchemaMissing.set(true);
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ [Aviso] Exceção ao ler tabela escala_diaria do Supabase:', err);
+      }
+
+      console.log(`✅ Dados do Supabase baixados com sucesso! Colaboradores: ${colabs?.length}, Datas: ${magnas?.length}, Treinamentos: ${treinos?.length}, Cursos: ${cursos?.length}, Escalas diárias: ${typedEscala?.length}`);
 
       if (colabs && colabs.length > 0) {
         const typedColabs = colabs as DbCollaborator[];
@@ -261,6 +289,80 @@ export class ScaleService {
         
         // Save current synced state in local storage as local cache
         localStorage.setItem('es_collaborators', JSON.stringify(mappedColabs));
+
+        // 6. Atualizar o grid com os dados baixados do Supabase
+        if (typedEscala && typedEscala.length > 0) {
+          const mappedGrid: ShiftCell[] = typedEscala.map(item => ({
+            collaboratorId: item.collaborator_id,
+            day: item.day,
+            month: item.month || this.currentMonth(),
+            year: item.year || this.currentYear(),
+            value: item.value || ''
+          }));
+
+          // Garantir que temos todas as células completas para o mês e ano corrente para todos os colaboradores
+          const month = this.currentMonth();
+          const year = this.currentYear();
+          const numDays = new Date(year, month, 0).getDate();
+
+          let mergedGrid = [...mappedGrid];
+          const missingCells: ShiftCell[] = [];
+
+          mappedColabs.forEach(colab => {
+            for (let day = 1; day <= numDays; day++) {
+              const exists = mergedGrid.some(c => c.collaboratorId === colab.id && c.day === day && c.month === month && c.year === year);
+              if (!exists) {
+                missingCells.push({
+                  collaboratorId: colab.id,
+                  day,
+                  month,
+                  year,
+                  value: ''
+                });
+              }
+            }
+          });
+
+          if (missingCells.length > 0) {
+            mergedGrid = [...mergedGrid, ...missingCells];
+          }
+
+          // Filtra o grid para conter apenas colaboradores válidos e preencher propriedades nulas/indefinidas
+          const validCollabIds = new Set(mappedColabs.map(colab => colab.id));
+          const cleanedGrid = mergedGrid
+            .filter(c => c && c.collaboratorId && validCollabIds.has(c.collaboratorId))
+            .map(c => ({
+              ...c,
+              month: c.month || month,
+              year: c.year || year
+            }));
+
+          this.grid.set(cleanedGrid);
+          localStorage.setItem('es_grid', JSON.stringify(cleanedGrid));
+        } else {
+          // Se escala_diaria retornou vazia mas temos dados locais, populamos o Supabase com eles
+          const localGrid = localStorage.getItem('es_grid');
+          if (localGrid) {
+            try {
+              const parsed = JSON.parse(localGrid) as ShiftCell[];
+              const validCollabIds = new Set(mappedColabs.map(colab => colab.id));
+              const m = this.currentMonth();
+              const y = this.currentYear();
+              const cleaned = parsed
+                .filter(c => c && c.collaboratorId && validCollabIds.has(c.collaboratorId))
+                .map(c => ({
+                  ...c,
+                  month: c.month || m,
+                  year: c.year || y
+                }));
+              this.grid.set(cleaned);
+              localStorage.setItem('es_grid', JSON.stringify(cleaned));
+            } catch (err) {
+              console.warn('Erro ao restaurar grid local de contingência:', err);
+            }
+          }
+          this.saveGridToSupabase();
+        }
       }
     } catch (err) {
       console.error('❌ Erro ao carregar dados do Supabase:', err);
@@ -301,6 +403,91 @@ export class ScaleService {
       console.log(`✅ Colaborador ${id} removido do Supabase.`);
     } catch (err) {
       console.error(`❌ Erro ao remover colaborador do Supabase:`, err);
+    }
+  }
+
+  // Save specific daily scale cell to Supabase
+  async saveCellToSupabase(collaboratorId: string, day: number, month: number, year: number, value: string) {
+    try {
+      // Validar se o colaborador realmente existe
+      const validCollabs = this.collaborators();
+      const exists = validCollabs.some(colab => colab.id === collaboratorId);
+      if (!exists) {
+        console.warn(`⚠️ [Aviso] Tentativa de salvar escala para colaborador inexistente: ${collaboratorId}`);
+        return;
+      }
+
+      const currentM = month || this.currentMonth();
+      const currentY = year || this.currentYear();
+
+      const client = this.supabaseService.client;
+      const { error } = await client.from('escala_diaria').upsert({
+        collaborator_id: collaboratorId,
+        day,
+        month: currentM,
+        year: currentY,
+        value: value || ''
+      });
+      if (error) {
+        console.error(`❌ Erro ao salvar célula (${collaboratorId}, dia ${day}) no Supabase:`, error.message);
+        if (error.message?.includes('Could not find') || error.code === 'PGRST116') {
+          this.isSchemaMissing.set(true);
+        }
+      } else {
+        this.isSchemaMissing.set(false);
+        console.log(`✅ Célula (${collaboratorId}, ${day}/${currentM}/${currentY}) salva como "${value}" no Supabase.`);
+      }
+    } catch (err) {
+      console.error('❌ Erro na conexão para salvar célula no Supabase:', err);
+    }
+  }
+
+  // Save the entire grid to Supabase
+  async saveGridToSupabase() {
+    try {
+      const client = this.supabaseService.client;
+      const cells = this.grid();
+      if (cells.length === 0) return;
+
+      const validCollabs = this.collaborators();
+      const validCollabIds = new Set(validCollabs.map(colab => colab.id));
+      const currentM = this.currentMonth();
+      const currentY = this.currentYear();
+
+      const validCells = cells.filter(c => c && c.collaboratorId && validCollabIds.has(c.collaboratorId));
+
+      console.log(`🔄 Salvando lote de escalas (${validCells.length} de ${cells.length} células válidas) no Supabase...`);
+      const rows = validCells.map(c => ({
+        collaborator_id: c.collaboratorId,
+        day: c.day,
+        month: c.month || currentM,
+        year: c.year || currentY,
+        value: c.value || ''
+      }));
+
+      // Fat-batch upsert em blocos de 300 registros para garantir alta performance e evitar limites de tamanho de payload
+      const chunkSize = 300;
+      let hasError = false;
+      for (let i = 0; i < rows.length; i += chunkSize) {
+        const chunk = rows.slice(i, i + chunkSize);
+        const { error } = await client
+          .from('escala_diaria')
+          .upsert(chunk, { onConflict: 'collaborator_id,day,month,year' });
+        
+        if (error) {
+          hasError = true;
+          console.error(`❌ Erro no upsert do lote ${i} de escalas no Supabase:`, error.message);
+          if (error.message?.includes('Could not find') || error.code === 'PGRST116') {
+            this.isSchemaMissing.set(true);
+          }
+        }
+      }
+      if (!hasError) {
+        this.isSchemaMissing.set(false);
+        console.log('✅ Escalas (grid) salvas com sucesso no Supabase.');
+      }
+    } catch (err) {
+      console.error('❌ Erro na conexão para salvar grid de escalas no Supabase:', err);
     }
   }
 
@@ -694,6 +881,7 @@ export class ScaleService {
       'Todas as células da escala foram limpas com sucesso.'
     );
     this.saveState();
+    this.saveGridToSupabase(); // Sincroniza a limpeza completa com o banco de dados Supabase
   }
 
   generateAutoScale() {
@@ -1068,6 +1256,7 @@ export class ScaleService {
     });
 
     this.saveState();
+    this.saveGridToSupabase(); // Envia em lote toda a escala gerada de forma automatizada ao Supabase
   }
 
   // Edit cell value directly
@@ -1098,6 +1287,9 @@ export class ScaleService {
       `Alterado dia ${day}/${month}/${year} do colaborador ${collab?.name || collaboratorId} para: "${upperValue || 'TRABALHO'}"`
     );
     this.saveState();
+
+    // Salva a alteração da célula diretamente no banco de dados Supabase!
+    this.saveCellToSupabase(collaboratorId, day, month, year, upperValue);
   }
 
 
@@ -1187,6 +1379,9 @@ export class ScaleService {
       }
     }
     this.saveState();
+    if (affectedTrade && affectedTrade.status === 'SUPERVISOR_HOMOLOGADO') {
+      this.saveGridToSupabase(); // Grava as alterações decorrentes da permuta aprovada no Supabase!
+    }
   }
 
   addMagnaDate(collabId: string, label: string, date: string, priority: number) {
