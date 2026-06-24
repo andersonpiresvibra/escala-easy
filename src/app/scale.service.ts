@@ -333,6 +333,38 @@ export class ScaleService {
         // Set state reactive signal
         this.collaborators.set(mappedColabs);
         
+        // Sync any new collaborators from INITIAL_COLLABORATORS that are not in the database
+        const missingInitialCollabs = INITIAL_COLLABORATORS.filter(
+          initial => !mappedColabs.some(mc => mc.id === initial.id)
+        );
+
+        if (missingInitialCollabs.length > 0) {
+          console.log(`Encontrados ${missingInitialCollabs.length} novos colaboradores na configuração local. Sincronizando com Supabase...`);
+          try {
+            const client = this.supabaseService.client;
+            if (client) {
+              const rows = missingInitialCollabs.map(c => ({
+                id: c.id,
+                name: c.name,
+                role: c.role,
+                schedule: c.schedule,
+                grupo: c.group,
+                shift: c.shift,
+                sector: c.sector,
+                bh_balance: c.bhBalance,
+                score: c.score
+              }));
+              await client.from('colaboradores').upsert(rows);
+              
+              // Push them to mappedColabs and update signal
+              mappedColabs.push(...(missingInitialCollabs as unknown as typeof mappedColabs[0][]));
+              this.collaborators.set([...mappedColabs]);
+            }
+          } catch (e) {
+            console.error('Falha ao sincronizar novos colaboradores com o banco de dados:', e);
+          }
+        }
+        
         // Save current synced state in local storage as local cache
         if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
           localStorage.setItem('es_collaborators', JSON.stringify(mappedColabs));

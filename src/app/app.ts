@@ -103,9 +103,9 @@ export class App implements OnInit {
           throw new Error(errorMsg);
         }
 
-        const data: {name: string, days: number[]}[] = await response.json();
+        const data: {name: string, schedule: Record<string, string>}[] = await response.json();
         
-        // Atualiza a grid com os dados processados (só "X" por enquanto, como o usuário pediu)
+        // Atualiza a grid com os dados processados e preenche brancos com 'T'
         let updatedCells = 0;
         const currentMonth = this.scaleService.currentMonth();
         const currentYear = this.scaleService.currentYear();
@@ -121,20 +121,25 @@ export class App implements OnInit {
             );
             
             if (collab) {
-              item.days.forEach(day => {
+              for (let day = 1; day <= 31; day++) {
+                const dayStr = day.toString();
+                // Se a API retornou um valor para o dia (X, BH, F, etc), usa. Se não, é T (Trabalho)
+                const val = item.schedule[dayStr] || 'T';
+                
                 let exists = false;
                 newGrid = newGrid.map(cell => {
                   if (cell.collaboratorId === collab.id && cell.day === day && cell.month === currentMonth && cell.year === currentYear) {
                     exists = true;
-                    return { ...cell, value: 'X' };
+                    return { ...cell, value: val };
                   }
                   return cell;
                 });
+                
                 if (!exists) {
-                  newGrid.push({ collaboratorId: collab.id, day, month: currentMonth, year: currentYear, value: 'X' });
+                  newGrid.push({ collaboratorId: collab.id, day, month: currentMonth, year: currentYear, value: val });
                 }
                 updatedCells++;
-              });
+              }
             }
           });
           return newGrid;
