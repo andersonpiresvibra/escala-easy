@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ScaleService } from './scale.service';
 import { SupabaseService } from './supabase.service';
 import { checkContingentViolation, isWeekday, isHoliday, getHolidayName, Collaborator, SHIFT_COLORS } from './data';
+import { jsPDF } from 'jspdf';
 
 @Component({
   selector: 'app-root',
@@ -176,7 +177,7 @@ export class App implements OnInit {
   }
 
   // Track active sub-tab for granular workspace
-  public activeSubTab = signal<'matrix' | 'backups' | 'shifts' | 'dashboard'>('matrix');
+  public activeSubTab = signal<'matrix' | 'backups' | 'shifts'>('matrix');
 
   // Track if option/tools dropdown menu is open
   public isDropdownOpen = signal<boolean>(false);
@@ -184,115 +185,530 @@ export class App implements OnInit {
   // Track state of grid cell editor modal/popover
   activeEditor = signal<{ collaboratorId: string; day: number } | null>(null);
 
-  // Dashboard Analytics Signals
-  dashboardStats = computed(() => {
-    const grid = this.scaleService.grid();
-    const collabs = this.scaleService.collaborators();
+  // Collaborator Profile View state
+  selectedCollaboratorProfile = signal<string | null>(null);
+  collaboratorProfileDarkMode = signal<boolean>(false);
+  collaboratorProfileSearchQuery = signal<string>('');
+
+  selectedProfileDay = signal<number>(new Date().getDate());
+  selectedProfileTab = signal<'calendar' | 'day_scale'>('calendar');
+  showFatigueModal = signal<boolean>(false);
+  isNotificationOpen = signal<boolean>(false);
+  
+  notifications = signal<{ id: string; timestamp: string; message: string; read: boolean; type: 'publish' | 'alert' | 'trade' }[]>([
+    {
+      id: 'notif-1',
+      timestamp: '25 Jun 2026, 08:30',
+      message: 'Nova escala oficial de pátio publicada para o período atual. Verifique seu cronograma.',
+      read: false,
+      type: 'publish'
+    },
+    {
+      id: 'notif-2',
+      timestamp: '24 Jun 2026, 14:15',
+      message: 'Alteração operacional detectada: Seu LT reajustou a escala do dia 15.',
+      read: false,
+      type: 'alert'
+    },
+    {
+      id: 'notif-3',
+      timestamp: '23 Jun 2026, 11:00',
+      message: 'Sua solicitação de troca de folga para o dia 22 foi HOMOLOGADA com sucesso.',
+      read: true,
+      type: 'trade'
+    }
+  ]);
+
+  unreadNotificationsCount = computed(() => {
+    return this.notifications().filter(n => !n.read).length;
+  });
+
+  addNotification(message: string, type: 'publish' | 'alert' | 'trade') {
+    const now = new Date();
+    const timeStr = `${now.getDate()} ${this.getMonthAbbreviation(now.getMonth() + 1)} ${now.getFullYear()}, ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    this.notifications.update(prev => [
+      {
+        id: 'notif-' + Date.now(),
+        timestamp: timeStr,
+        message,
+        read: false,
+        type
+      },
+      ...prev
+    ]);
+  }
+
+  markNotificationAsRead(id: string) {
+    this.notifications.update(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  }
+
+  markAllNotificationsAsRead() {
+    this.notifications.update(prev => prev.map(n => ({ ...n, read: true })));
+  }
+
+  changeSelectedProfileDay(offset: number) {
+    const daysInMonth = this.getDaysInCurrentMonth();
+    let nextDay = this.selectedProfileDay() + offset;
+    if (nextDay < 1) nextDay = 1;
+    if (nextDay > daysInMonth) nextDay = daysInMonth;
+    this.selectedProfileDay.set(nextDay);
+  }
+
+  getDaysInCurrentMonth(): number {
     const month = this.scaleService.currentMonth();
     const year = this.scaleService.currentYear();
-    
-    // Helper to check if a day is weekend
-    const isWeekend = (day: number) => {
+    return new Date(year, month, 0).getDate();
+  }
+
+  getProfileDaysArray(): number[] {
+    const total = this.getDaysInCurrentMonth();
+    return Array.from({ length: total }).map((_, i) => i + 1);
+  }
+
+  getDayOfWeekLabelLong(dayNum: number): string {
+    const month = this.scaleService.currentMonth();
+    const year = this.scaleService.currentYear();
+    const date = new Date(year, month - 1, dayNum);
+    const names = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+    return names[date.getDay()];
+  }
+
+  toInt(val: unknown): number {
+    if (val === undefined || val === null) return 1;
+    return parseInt(val.toString(), 10) || 1;
+  }
+
+  getMonthAbbreviation(m: number): string {
+    const names = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    return names[m - 1] || '';
+  }
+
+  selectedCollaboratorData = computed(() => {
+    const id = this.selectedCollaboratorProfile();
+    if (!id) return null;
+    const collab = this.scaleService.collaborators().find(c => c.id === id);
+    if (!collab) return null;
+
+    const month = this.scaleService.currentMonth();
+    const year = this.scaleService.currentYear();
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const grid = this.scaleService.grid();
+    const allCollabs = this.scaleService.collaborators();
+    const searchQuery = this.collaboratorProfileSearchQuery().toLowerCase().trim();
+
+    // Get shift types dynamic classifications
+    const shiftTypes = this.scaleService.shiftTypes();
+    const folgaOrFeriasCodes = shiftTypes
+      .filter(s => s.category === 'FOLGAS' || s.category === 'FERIAS')
+      .map(s => s.code);
+    const eventCodes = shiftTypes
+      .filter(s => s.category === 'CURSOS_TREINAMENTO' || s.category === 'REUNIOES' || s.category === 'AFASTAMENTO_SAUDE' || s.category === 'AUSENCIA_INJUSTIFICADA')
+      .map(s => s.code);
+
+    // Days structure
+    const monthDays: { day: number; isOff: boolean; isEvent: boolean; type: string; coworkers: string[] }[] = [];
+    let weekendsOff = 0;
+    let dobradinhas = 0;
+    let prevDayWasOff = false;
+
+    // Build data
+    for (let day = 1; day <= daysInMonth; day++) {
+      const cell = grid.find(c => c.collaboratorId === id && c.month === month && c.year === year && c.day === day);
+      const val = cell?.value || '';
+      const isOff = folgaOrFeriasCodes.includes(val);
+      const isEvent = eventCodes.includes(val);
+      const isWork = !isOff && !isEvent;
+
       const date = new Date(year, month - 1, day);
-      return date.getDay() === 0 || date.getDay() === 6;
-    };
+      const isWeekendDay = date.getDay() === 0 || date.getDay() === 6;
 
-    const statsByCollab = collabs.map(c => {
-      const colGrid = grid.filter(cell => cell.collaboratorId === c.id && cell.month === month && cell.year === year).sort((a, b) => a.day - b.day);
-      
-      let maxConsecutiveWork = 0;
-      let currentConsecutiveWork = 0;
-      let weekendsOff = 0;
-      let holidaysOff = 0; // Simplified for now
-      let dobradinhas = 0;
-      
-      let prevDayWasOff = false;
+      if (isOff) {
+        if (isWeekendDay) weekendsOff++;
+        if (prevDayWasOff) dobradinhas++;
+        prevDayWasOff = true;
+      } else {
+        prevDayWasOff = false;
+      }
 
-      colGrid.forEach(cell => {
-        const isWork = cell.value === 'T' || cell.value === '' || cell.value === '5' || cell.value === '7' || cell.value === '21';
-        const isOff = cell.value === 'X' || cell.value === 'F' || cell.value === 'FO' || cell.value === 'BH';
-        
-        if (isWork) {
-          currentConsecutiveWork++;
-          maxConsecutiveWork = Math.max(maxConsecutiveWork, currentConsecutiveWork);
-          prevDayWasOff = false;
-        } else if (isOff) {
-          currentConsecutiveWork = 0;
-          if (isWeekend(cell.day)) weekendsOff++;
-          if (prevDayWasOff) dobradinhas++;
-          prevDayWasOff = true;
-        } else {
-          // Exames, Atestados don't break the streak strictly, but let's reset work streak
-          currentConsecutiveWork = 0;
-          prevDayWasOff = false;
+      // Find coworkers
+      let coworkers: string[] = [];
+      if (isWork) {
+        coworkers = allCollabs.filter(c => {
+          if (c.id === id) return false;
+          if (c.shift !== collab.shift) return false;
+          const cCell = grid.find(gc => gc.collaboratorId === c.id && gc.month === month && gc.year === year && gc.day === day);
+          const cVal = cCell?.value || '';
+          
+          // Coworker works if they have no code or a code that doesn't have discounts or has regular shift category
+          const typeObj = shiftTypes.find(s => s.code === cVal);
+          const isCoworkerWorking = !cVal || (typeObj ? (typeObj.category === 'TURNO' || !typeObj.discounts) : true);
+          return isCoworkerWorking;
+        }).map(c => c.name);
+
+        if (searchQuery) {
+          coworkers = coworkers.filter(name => name.toLowerCase().includes(searchQuery));
         }
-      });
+      }
 
-      // Calculate a "Health Risk Factor" (0-100)
-      // Higher is worse.
-      let riskScore = 0;
-      if (maxConsecutiveWork >= 7) riskScore += 50;
-      else if (maxConsecutiveWork === 6) riskScore += 30;
-      else if (maxConsecutiveWork === 5) riskScore += 15;
-      
-      if (c.bhBalance < 0) riskScore += Math.min(Math.abs(c.bhBalance) * 5, 30);
-      if (c.score < 90) riskScore += (90 - c.score) * 2;
-      
-      riskScore = Math.min(riskScore, 100);
+      monthDays.push({ day, isOff, isEvent, type: val, coworkers });
+    }
 
-      // Benefit Score (Equidade)
-      let benefitScore = (weekendsOff * 10) + (dobradinhas * 15);
+    const firstDayDate = new Date(year, month - 1, 1).getDay();
+    const emptySlots = Array.from({ length: firstDayDate }).map((_, i) => i);
 
-      return {
-        ...c,
-        maxConsecutiveWork,
-        weekendsOff,
-        dobradinhas,
-        riskScore,
-        benefitScore
-      };
-    });
+    // Calculate last 3 months off-days & BH trend for sparklines
+    const m0 = month;
+    const y0 = year;
 
-    const byShift: Record<string, typeof statsByCollab> = {
-      'MADRUGADA': statsByCollab.filter(c => c.shift === 'MADRUGADA').sort((a, b) => b.riskScore - a.riskScore),
-      'MANHÃ': statsByCollab.filter(c => c.shift === 'MANHÃ').sort((a, b) => b.riskScore - a.riskScore),
-      'TARDE': statsByCollab.filter(c => c.shift === 'TARDE').sort((a, b) => b.riskScore - a.riskScore),
+    let m1 = m0 - 1;
+    let y1 = y0;
+    if (m1 === 0) {
+      m1 = 12;
+      y1 = y0 - 1;
+    }
+
+    let m2 = m1 - 1;
+    let y2 = y1;
+    if (m2 === 0) {
+      m2 = 12;
+      y2 = y1 - 1;
+    }
+
+    const countOff = (m: number, y: number) => {
+      return grid.filter(c => c.collaboratorId === id && c.month === m && c.year === y && folgaOrFeriasCodes.includes(c.value)).length;
     };
 
-    const topAtRisk = [...statsByCollab].sort((a, b) => b.riskScore - a.riskScore).slice(0, 10);
-    const topBenefited = [...statsByCollab].sort((a, b) => b.benefitScore - a.benefitScore).slice(0, 10);
+    const offDaysM2 = countOff(m2, y2);
+    const offDaysM1 = countOff(m1, y1);
+    const offDaysM0 = monthDays.filter(d => d.isOff).length;
 
-    // Distribution for pie chart
-    const riskDistribution = {
-      high: statsByCollab.filter(c => c.riskScore >= 50).length,
-      medium: statsByCollab.filter(c => c.riskScore >= 20 && c.riskScore < 50).length,
-      low: statsByCollab.filter(c => c.riskScore < 20).length
+    // Estimate bh balance progression backwards from current balance
+    const bhM0 = collab.bhBalance;
+    const bhM1 = bhM0 - (offDaysM0 - 8) * 8;
+    const bhM2 = bhM1 - (offDaysM1 - 8) * 8;
+
+    const sparklines = {
+      offDays: [offDaysM2, offDaysM1, offDaysM0],
+      bhTrend: [bhM2, bhM1, bhM0]
     };
 
-    // Heatmap data: Count of people working on each day of the month
-    const heatmapData = Array.from({ length: 31 }, (_, i) => {
-      const day = i + 1;
-      let working = 0;
-      let off = 0;
-      grid.filter(cell => cell.month === month && cell.year === year && cell.day === day).forEach(cell => {
-        const isWork = cell.value === 'T' || cell.value === '' || cell.value === '5' || cell.value === '7' || cell.value === '21';
-        if (isWork) working++;
-        else off++;
-      });
-      return { day, working, off, intensity: (working / (working + off || 1)) * 100 };
-    });
+    // Map values of offDays to sparkline SVG path coordinates (width 100, height 30)
+    const getOffDaysY = (val: number) => {
+      const max = Math.max(offDaysM2, offDaysM1, offDaysM0, 10);
+      const min = Math.min(offDaysM2, offDaysM1, offDaysM0, 0);
+      return 30 - ((val - min) / (max - min || 1)) * 24 - 3;
+    };
+
+    const getBhY = (val: number) => {
+      const max = Math.max(bhM2, bhM1, bhM0, 10);
+      const min = Math.min(bhM2, bhM1, bhM0, -10);
+      return 30 - ((val - min) / (max - min || 1)) * 24 - 3;
+    };
+
+    const offDaysPath = `M 10,${getOffDaysY(offDaysM2)} L 50,${getOffDaysY(offDaysM1)} L 90,${getOffDaysY(offDaysM0)}`;
+    const bhPath = `M 10,${getBhY(bhM2)} L 50,${getBhY(bhM1)} L 90,${getBhY(bhM0)}`;
+
+    const sparklinesData = {
+      offDays: {
+        points: sparklines.offDays,
+        path: offDaysPath,
+        yCoords: [getOffDaysY(offDaysM2), getOffDaysY(offDaysM1), getOffDaysY(offDaysM0)],
+        labels: [
+          { month: this.getMonthAbbreviation(m2), val: offDaysM2 },
+          { month: this.getMonthAbbreviation(m1), val: offDaysM1 },
+          { month: this.getMonthAbbreviation(m0), val: offDaysM0 }
+        ]
+      },
+      bhTrend: {
+        points: sparklines.bhTrend,
+        path: bhPath,
+        yCoords: [getBhY(bhM2), getBhY(bhM1), getBhY(bhM0)],
+        labels: [
+          { month: this.getMonthAbbreviation(m2), val: Math.round(bhM2) },
+          { month: this.getMonthAbbreviation(m1), val: Math.round(bhM1) },
+          { month: this.getMonthAbbreviation(m0), val: bhM0 }
+        ]
+      }
+    };
 
     return {
-      statsByCollab,
-      byShift,
-      topAtRisk,
-      topBenefited,
-      riskDistribution,
-      heatmapData
+      collab,
+      monthDays,
+      workDays: monthDays.filter(d => !d.isOff && !d.isEvent),
+      stats: { weekendsOff, dobradinhas },
+      emptySlots,
+      sparklinesData
     };
   });
 
-  // End of Dashboard Analytics
+  fatigueAnalysis = computed(() => {
+    const data = this.selectedCollaboratorData();
+    if (!data) return null;
+    
+    const limit = this.scaleService.antiFatigueLimit();
+    const days = data.monthDays;
+    
+    let maxConsecutive = 0;
+    let currentConsecutive = 0;
+    let limitExceeded = false;
+    let startDayOfViolation = -1;
+    let endDayOfViolation = -1;
+    
+    for (let i = 0; i < days.length; i++) {
+      const isWork = !days[i].isOff && !days[i].isEvent;
+      if (isWork) {
+        currentConsecutive++;
+        if (currentConsecutive > maxConsecutive) {
+          maxConsecutive = currentConsecutive;
+        }
+        if (currentConsecutive > limit) {
+          limitExceeded = true;
+          if (startDayOfViolation === -1) {
+            startDayOfViolation = i + 1 - (currentConsecutive - 1);
+          }
+          endDayOfViolation = i + 1;
+        }
+      } else {
+        currentConsecutive = 0;
+      }
+    }
+    
+    let suggestion = '';
+    if (limitExceeded) {
+      suggestion = `O colaborador atingiu ${maxConsecutive} dias consecutivos de trabalho (limite de segurança: ${limit} dias). Sugere-se inserir uma folga (X) ou banco de horas (BH) para mitigar o risco de fadiga e garantir a segurança operacional das operações de abastecimento.`;
+    } else {
+      suggestion = `Escala equilibrada! O colaborador possui no máximo ${maxConsecutive} dias de trabalho consecutivos, respeitando o limite operacional de ${limit} dias.`;
+    }
+    
+    return {
+      maxConsecutive,
+      limitExceeded,
+      limit,
+      startDayOfViolation,
+      endDayOfViolation,
+      suggestion
+    };
+  });
+
+  selectedProfileDayData = computed(() => {
+    const data = this.selectedCollaboratorData();
+    if (!data) return null;
+    const dayNum = this.selectedProfileDay();
+    const dayInfo = data.monthDays.find(d => d.day === dayNum);
+    return dayInfo || null;
+  });
+
+  getMonthName(m: number): string {
+    const names = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    return names[m - 1] || '';
+  }
+
+  exportCollaboratorCardPDF() {
+    const data = this.selectedCollaboratorData();
+    if (!data) return;
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const collab = data.collab;
+    const month = this.scaleService.currentMonth();
+    const year = this.scaleService.currentYear();
+    const monthName = this.getMonthName(month);
+
+    // --- Elegant PDF Header (JetFuel / Aviation theme style) ---
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, 210, 38, 'F');
+
+    // Title / Logo
+    doc.setTextColor(16, 185, 129); // emerald-500
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('MALHA JETFUEL', 15, 14);
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('SISTEMA DE GESTÃO DE ESCALA E TELEMETRIA', 15, 19);
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`CRONOGRAMA DE ESCALA - ${monthName.toUpperCase()} / ${year}`, 15, 28);
+
+    // Right Side: Date of Generation
+    doc.setTextColor(148, 163, 184); // slate-400
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    const now = new Date();
+    doc.text(`Gerado em: ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR')}`, 145, 14);
+    doc.text('STATUS: HOMOLOGADO', 145, 19);
+
+    // --- Collab Info Box ---
+    doc.setFillColor(248, 250, 252); // slate-50
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.rect(15, 45, 180, 22, 'FD');
+
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('COLABORADOR:', 20, 52);
+    doc.text('FUNÇÃO:', 20, 58);
+    doc.text('TURNO:', 20, 63);
+
+    doc.setTextColor(15, 23, 42); // slate-900
+    doc.setFontSize(10);
+    doc.text(collab.name.toUpperCase(), 50, 52);
+    doc.text(collab.role, 50, 58);
+    doc.text(`${collab.shift} (${collab.schedule || 'N/D'})`, 50, 63);
+
+    // Right of Box: Sector & Balance
+    doc.setTextColor(71, 85, 105);
+    doc.setFontSize(8);
+    doc.text('SETOR:', 120, 52);
+    doc.text('BANCO DE HORAS:', 120, 58);
+    doc.text('SCORE GAMIFICADO:', 120, 63);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(10);
+    doc.text(collab.sector, 160, 52);
+    doc.text(`${collab.bhBalance}h`, 160, 58);
+    doc.text(`${collab.score} pts`, 160, 63);
+
+    // --- Statistics ---
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ESTATÍSTICAS DA ESCALA MENSAL', 15, 76);
+    doc.setDrawColor(16, 185, 129);
+    doc.setLineWidth(0.5);
+    doc.line(15, 78, 45, 78);
+
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.1);
+    doc.setFillColor(255, 255, 255);
+    
+    // Stats grid
+    const stats = [
+      { label: 'Finais de Semana Livres', val: data.stats.weekendsOff },
+      { label: 'Folgas Consecutivas (Dobradinhas)', val: data.stats.dobradinhas },
+      { label: 'Total de Folgas no Mês', val: this.getFolgasCount(collab.id) },
+      { label: 'Dias de Serviço Programados', val: data.workDays.length }
+    ];
+
+    stats.forEach((st, i) => {
+      const x = 15 + i * 45;
+      doc.rect(x, 82, 40, 18, 'D');
+      doc.setTextColor(100, 116, 139); // slate-500
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(st.label.toUpperCase().split(' (')[0], x + 3, 87);
+      
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(String(st.val), x + 3, 96);
+    });
+
+    // --- Monthly Scale Calendar View ---
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('VISÃO GERAL DO CALENDÁRIO', 15, 110);
+    doc.setDrawColor(16, 185, 129);
+    doc.setLineWidth(0.5);
+    doc.line(15, 112, 45, 112);
+
+    // Calendar Header
+    const colWidth = 24.5;
+    const rowHeight = 12;
+    const weekdays = ['DOMINGO', 'SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO'];
+    doc.setFillColor(241, 245, 249); // slate-100
+    doc.setFontSize(7);
+    doc.setTextColor(71, 85, 105);
+    doc.setFont('helvetica', 'bold');
+    weekdays.forEach((wd, i) => {
+      doc.rect(15 + i * colWidth, 116, colWidth, 6, 'F');
+      doc.text(wd, 15 + i * colWidth + 2, 120);
+    });
+
+    // Calendar Days
+    doc.setFontSize(8);
+    const startX = 15;
+    let startY = 122;
+    let currentColumn = new Date(year, month - 1, 1).getDay();
+
+    // Empty slots
+    for (let i = 0; i < currentColumn; i++) {
+      doc.setDrawColor(241, 245, 249);
+      doc.rect(startX + i * colWidth, startY, colWidth, rowHeight, 'D');
+    }
+
+    data.monthDays.forEach((d) => {
+      const x = startX + currentColumn * colWidth;
+      const y = startY;
+
+      // Color backgrounds
+      if (d.isOff) {
+        doc.setFillColor(240, 253, 250); // emerald-50
+        doc.setDrawColor(110, 231, 183); // emerald-300
+        doc.rect(x, y, colWidth, rowHeight, 'FD');
+        doc.setTextColor(4, 120, 87); // emerald-700
+        doc.setFont('helvetica', 'bold');
+      } else if (d.isEvent) {
+        doc.setFillColor(254, 253, 242); // amber-50
+        doc.setDrawColor(252, 211, 77); // amber-300
+        doc.rect(x, y, colWidth, rowHeight, 'FD');
+        doc.setTextColor(180, 83, 9); // amber-700
+        doc.setFont('helvetica', 'bold');
+      } else {
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(226, 232, 240); // slate-200
+        doc.rect(x, y, colWidth, rowHeight, 'FD');
+        doc.setTextColor(71, 85, 105); // slate-600
+        doc.setFont('helvetica', 'normal');
+      }
+
+      // Day Number
+      doc.setFontSize(8);
+      doc.text(String(d.day), x + 2, y + 4.5);
+
+      // Day Type (Off / Event label)
+      if (d.isOff || d.isEvent) {
+        doc.setFontSize(6);
+        doc.text(d.type, x + 2, y + 9.5);
+      }
+
+      currentColumn++;
+      if (currentColumn > 6) {
+        currentColumn = 0;
+        startY += rowHeight;
+      }
+    });
+
+    // --- Signatures & Footnote ---
+    const footerY = Math.max(startY + 20, 245);
+    doc.setDrawColor(203, 213, 225); // slate-300
+    doc.line(15, footerY, 90, footerY);
+    doc.line(120, footerY, 195, footerY);
+
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text('ASSINATURA DO OPERADOR', 15, footerY + 4);
+    doc.text('ASSINATURA DO LT / SUPERVISOR', 120, footerY + 4);
+
+    doc.setFontSize(6.5);
+    doc.text('MALHA JETFUEL - GESTÃO OPERACIONAL DE AVIAÇÃO GOL LINHAS AÉREAS', 15, footerY + 15);
+    doc.text('CONFIDENCIAL - PARA USO EXCLUSIVO DO AERÓDROMO E CONTINGENTE OPERACIONAL', 15, footerY + 18);
+
+    doc.save(`Escala_${collab.name}_${monthName}_${year}.pdf`);
+    this.showToast(`Escala de ${collab.name} exportada com sucesso como PDF.`);
+  }
+
+  // Shift filter for Parent Grid spreadsheet view
   selectedShiftFilter = signal<'MADRUGADA' | 'MANHÃ' | 'TARDE' | 'ADMINISTRATIVO' | 'TODOS'>('TODOS');
 
   // New Backup Slot form signals
@@ -918,6 +1334,12 @@ export class App implements OnInit {
     }
 
     this.scaleService.updateCell(editor.collaboratorId, editor.day, code);
+    
+    // Add notification
+    const collab = this.scaleService.collaborators().find(c => c.id === editor.collaboratorId);
+    const collabName = collab ? collab.name : 'Colaborador';
+    this.addNotification(`Turno de ${collabName} para o dia ${editor.day} foi atualizado para "${code || 'T'}"`, 'alert');
+
     this.activeEditor.set(null);
     this.showToast(`Planilha Mãe Atualizada para o dia ${editor.day}.`);
   }
@@ -934,6 +1356,12 @@ export class App implements OnInit {
     }
 
     this.scaleService.updateCell(editor.collaboratorId, editor.day, cleanVal);
+
+    // Add notification
+    const collab = this.scaleService.collaborators().find(c => c.id === editor.collaboratorId);
+    const collabName = collab ? collab.name : 'Colaborador';
+    this.addNotification(`Ajuste de horário manual: ${collabName} no dia ${editor.day} alterado para "${cleanVal || 'T'}"`, 'alert');
+
     this.activeEditor.set(null);
     this.showToast(`Fórmula manual aplicada na célula: "${cleanVal || 'Vazio/Trabalho'}"`);
   }
@@ -1182,6 +1610,12 @@ export class App implements OnInit {
     }
 
     this.scaleService.addTradeRequest(sourceDay, targetId, targetDay);
+
+    // Add notification
+    const sourceCollab = this.scaleService.collaborators().find(c => c.id === loggedOpId);
+    const targetCollab = this.scaleService.collaborators().find(c => c.id === targetId);
+    this.addNotification(`Nova proposta de permuta enviada por ${sourceCollab?.name || 'Operador'} para trocar o dia ${sourceDay} com o dia ${targetDay} de ${targetCollab?.name || 'Colega'}`, 'trade');
+
     this.showToast('Sua proposta de permuta foi enviada para validação e auditoria.');
   }
 
