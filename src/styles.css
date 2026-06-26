@@ -1,50 +1,5 @@
-/* You can add global styles to this file, and also import other style files */
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700;800&display=swap');
-@import "tailwindcss";
-
-@theme {
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
-  --color-brand: #2563eb; /* Royal blue-600 */
-  --animate-fade-in: fade-in 0.3s ease-out;
-
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-}
-
+/* Global Stylesheet for Escala Easy VIBRA */
 body {
-  font-family: var(--font-sans);
-  background-color: #f1f5f9; /* slate-100 */
-  color: #0f172a; /* slate-900 */
   margin: 0;
+  padding: 0;
 }
-
-.folga-cell {
-  background-color: #00ff38 !important;
-  font-weight: bold !important;
-  color: #ffffff !important;
-  font-size: 11px !important;
-  font-family: Verdana, sans-serif !important;
-  line-height: 12px !important;
-  border-color: #00d02c !important;
-}
-
-.highlighted-column-header {
-  background-color: #fef08a !important; /* Tailwind Yellow 200 */
-}
-
-.highlighted-column-cell {
-  background-color: #fef9c3 !important; /* Tailwind Yellow 100 */
-}
-
-
-

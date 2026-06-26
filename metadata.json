@@ -1,6 +1,11 @@
 {
   "name": "Escala Easy VIBRA",
-  "description": "Sistema inteligente de planejamento e gestão de escalas operacionais com validação anti-fadiga e controle de contingente mínimo para abastecimento de combustível de aeronaves.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "description": "Sistema de Gestão de Escala de Combustível de Aviação (JETFUEL) - Pátio de Hidrantes e Caminhões CTA",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

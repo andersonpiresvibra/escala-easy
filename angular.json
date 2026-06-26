@@ -1,30 +1,31 @@
 {
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
-  "cli": {
-    "packageManager": "npm",
-    "schematicCollections": [
-      "angular-eslint"
-    ]
-  },
   "newProjectRoot": "projects",
   "projects": {
     "app": {
       "projectType": "application",
-      "schematics": {},
+      "schematics": {
+        "@schematics/angular:component": {
+          "inlineTemplate": true,
+          "inlineStyle": true,
+          "style": "css",
+          "skipTests": true
+        }
+      },
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular/build:application",
+          "builder": "@angular-devkit/build-angular:application",
           "options": {
+            "outputPath": "dist",
+            "index": "src/index.html",
             "browser": "src/main.ts",
-            "server": "src/main.server.ts",
-            "outputMode": "server",
-            "ssr": {
-              "entry": "src/server.ts"
-            },
+            "polyfills": [
+              "zone.js"
+            ],
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {
@@ -34,7 +35,8 @@
             ],
             "styles": [
               "src/styles.css"
-            ]
+            ],
+            "scripts": []
           },
           "configurations": {
             "production": {
@@ -42,7 +44,7 @@
                 {
                   "type": "initial",
                   "maximumWarning": "2MB",
-                  "maximumError": "4MB"
+                  "maximumError": "5MB"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -55,14 +57,13 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true,
-              "externalDependencies": ["@google/genai"]
+              "sourceMap": true
             }
           },
           "defaultConfiguration": "production"
         },
         "serve": {
-          "builder": "@angular/build:dev-server",
+          "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
               "buildTarget": "app:build:production"
@@ -73,17 +74,8 @@
           },
           "defaultConfiguration": "development"
         },
-        "test": {
-          "builder": "@angular/build:unit-test"
-        },
-        "lint": {
-          "builder": "@angular-eslint/builder:lint",
-          "options": {
-            "lintFilePatterns": [
-              "src/**/*.ts",
-              "src/**/*.html"
-            ]
-          }
+        "extract-i18n": {
+          "builder": "@angular-devkit/build-angular:extract-i18n"
         }
       }
     }
