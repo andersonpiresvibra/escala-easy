@@ -1,6 +1,7 @@
 {
   "name": "ai-studio-angular-app",
   "version": "0.0.0",
+  "description": "Escala Easy VIBRA - Gestão de escalas de operadores em pátios aeroportuários",
   "scripts": {
     "ng": "ng",
     "start": "npx node inject-env.js && ng serve --host 0.0.0.0 --port 3000 --disable-host-check",
