@@ -53,46 +53,16 @@
          <span class="material-icons text-xs font-bold">grid_on</span>
         Matriz de Escala
       </button>
-      <button (click)="activeSubTab.set('ger.turnos')"
-              class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-pointer rounded-md select-none border-none outline-none"
-              [class]="activeSubTab() === 'ger.turnos' ? 'bg-[#005cfa] text-white shadow-md shadow-blue-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800/40'">
-        <span class="material-icons text-xs font-bold">tune</span>
-        Ger. Turnos
-      </button>
-      <button (click)="activeSubTab.set('siglas')"
-              class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-pointer rounded-md select-none border-none outline-none"
-              [class]="activeSubTab() === 'siglas' ? 'bg-[#005cfa] text-white shadow-md shadow-blue-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800/40'">
-        <span class="material-icons text-xs font-bold">label</span>
-        Ger. Siglas
-      </button>
-      <button (click)="activeSubTab.set('backups')"
-              class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-pointer rounded-md select-none border-none outline-none"
-              [class]="activeSubTab() === 'backups' ? 'bg-[#005cfa] text-white shadow-md shadow-blue-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800/40'">
-        <span class="material-icons text-xs font-bold">history</span>
-        Auditoria & Logs
-      </button>
       <button (click)="activeSubTab.set('team')"
               class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-pointer rounded-md select-none border-none outline-none"
               [class]="activeSubTab() === 'team' ? 'bg-[#005cfa] text-white shadow-md shadow-blue-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800/40'">
         <span class="material-icons text-xs font-bold">group</span>
-        Equipe / Colaboradores
-      </button>
-      <button (click)="activeSubTab.set('dev')"
-              class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-pointer rounded-md select-none border-none outline-none"
-              [class]="activeSubTab() === 'dev' ? 'bg-[#10b981] text-white shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800/40'">
-        <span class="material-icons text-xs font-bold">construction</span>
-        Em Desenvolvimento
+        Colaboradores
       </button>
     </div>
 
     <!-- RIGHT UTILITIES ROW -->
     <div class="flex flex-wrap items-center gap-2.5 justify-end">
-      <!-- Digital Aviation Clock -->
-      <div class="bg-[#071426] border border-[#10213b] px-3 py-2 rounded-lg text-slate-300 font-mono text-[10px] font-black tracking-widest flex items-center gap-1.5 shadow-sm">
-        <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
-        {{ currentTimeString() }}
-      </div>
-
       <!-- Notification Bell with unread badge -->
       <div class="relative inline-block text-left">
          <button (click)="isNotificationOpen.set(!isNotificationOpen())"
@@ -234,8 +204,34 @@
               </button>
             </div>
 
+            <!-- Gerenciamento (Turnos & Siglas) -->
+            <div class="py-1.5 bg-[#030a14] border-t border-[#10213b]">
+              <span class="block px-4 py-1 text-[8px] font-black uppercase text-slate-500 tracking-wider select-none">Gerenciamento</span>
+              
+              <button (click)="activeSubTab.set('ger.turnos'); isDropdownOpen.set(false)"
+                      class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none"
+                      [class]="activeSubTab() === 'ger.turnos' ? 'text-blue-400 bg-blue-950/20' : 'text-slate-300 hover:bg-[#0b1e36]'">
+                <span class="material-icons text-sm" [class]="activeSubTab() === 'ger.turnos' ? 'text-blue-400' : 'text-slate-400'">tune</span>
+                Turno
+              </button>
+
+              <button (click)="activeSubTab.set('siglas'); isDropdownOpen.set(false)"
+                      class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none"
+                      [class]="activeSubTab() === 'siglas' ? 'text-blue-400 bg-blue-950/20' : 'text-slate-300 hover:bg-[#0b1e36]'">
+                <span class="material-icons text-sm" [class]="activeSubTab() === 'siglas' ? 'text-blue-400' : 'text-slate-400'">label</span>
+                Siglas
+              </button>
+
+              <button (click)="activeSubTab.set('team-mgmt'); isDropdownOpen.set(false)"
+                      class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none"
+                      [class]="activeSubTab() === 'team-mgmt' ? 'text-blue-400 bg-blue-950/20' : 'text-slate-300 hover:bg-[#0b1e36]'">
+                <span class="material-icons text-sm" [class]="activeSubTab() === 'team-mgmt' ? 'text-blue-400' : 'text-slate-400'">manage_accounts</span>
+                Cadastro de Colaboradores
+              </button>
+            </div>
+
             <!-- Management Tools (Admin only) -->
-            <div class="py-1.5 bg-[#071426] rounded-b-xl">
+            <div class="py-1.5 bg-[#071426] border-t border-[#10213b] rounded-b-xl">
               @if (scaleService.currentRole() !== 'OPERADOR') {
                 <button (click)="togglePaintbrushPanel(); isDropdownOpen.set(false)"
                         class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none"
@@ -935,50 +931,345 @@
         </div>
       }
 
-      <!-- SUB-TAB 3: AUDITORIA & BACKUPS WORKSPACE -->
-      @if (activeSubTab() === 'backups') {
-        <div class="p-6 bg-[#071426] border border-[#10213b] rounded-xl shadow-xl space-y-6 animate-fade-in font-sans" id="backups_tab_content">
-          <div class="pb-3 border-b border-[#10213b]">
-            <h3 class="font-black text-sm uppercase tracking-tight text-white flex items-center gap-1.5">
-              <span class="material-icons text-[#005cfa]">history</span>
-              Auditoria de Escala & Backups Seguros
-            </h3>
-            <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
-              Histórico rastreável das modificações das escalas. Atende integralmente aos requisitos de auditoria operacional VIBRA.
-            </p>
+      <!-- SUB-TAB 4: PAINEL OPERACIONAL DE COLABORADORES (CARDS & FADIGA) -->
+      @if (activeSubTab() === 'team') {
+        <div class="p-6 bg-[#071426] border border-[#10213b] rounded-xl shadow-xl space-y-6 animate-fade-in font-sans" id="team_gallery_tab_content">
+          <!-- Page Header -->
+          <div class="pb-3 border-b border-[#10213b] flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 class="font-black text-sm uppercase tracking-tight text-white flex items-center gap-1.5">
+                <span class="material-icons text-emerald-500">group</span>
+                Painel de Perfis & Indicadores de Fadiga (JETFUEL)
+              </h3>
+              <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                Visualização operacional de pátio com monitoramento preventivo de fadiga biológica, calendário de folgas e escala individualizada de missão crítica.
+              </p>
+            </div>
+            
+            <!-- Quick search & metrics summary -->
+            <div class="flex items-center gap-3">
+              <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono bg-[#030a14] px-3 py-1.5 rounded-lg border border-[#10213b]">
+                Total Ativos: <span class="text-emerald-400 font-black">{{ scaleService.collaborators().length }}</span>
+              </span>
+            </div>
           </div>
 
-          <!-- HISTORIC LIST -->
-          <div class="space-y-3">
-            @for (log of scaleService.auditHistory(); track log.id) {
-              <div class="bg-[#030a14] border border-[#10213b] rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div class="flex items-start gap-3">
-                  <div class="p-1.5 rounded bg-blue-950 text-blue-400 mt-0.5">
-                    <span class="material-icons text-base">history_toggle_off</span>
-                  </div>
-                  <div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-[10px] bg-blue-500/10 text-[#005cfa] border border-blue-500/20 px-1.5 py-0.5 rounded font-black font-mono tracking-widest">{{ log.action }}</span>
-                      <span class="text-xs font-bold text-white">{{ log.description }}</span>
-                    </div>
-                    <div class="mt-1 text-[9px] text-slate-500 font-bold uppercase flex items-center gap-3">
-                      <span>Autor: <span class="text-slate-300 font-mono">{{ log.author }}</span></span>
-                      <span>•</span>
-                      <span>ID Registro: <span class="text-slate-400 font-mono">{{ log.id }}</span></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="text-[10px] text-slate-400 font-mono font-bold whitespace-nowrap bg-[#071426] px-2.5 py-1 rounded-lg border border-[#10213b]">
-                  {{ log.timestamp }}
+          <!-- Master-Detail Grid -->
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            
+            <!-- LEFT COLUMN: CARDS GALLERY (1/3 Width on desktop) -->
+            <div class="xl:col-span-1 space-y-4">
+              <div class="bg-[#030a14] border border-[#10213b] rounded-xl p-4 space-y-3">
+                <span class="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Filtro de Seleção Rápida</span>
+                
+                <!-- Search within tab -->
+                <div class="relative">
+                  <span class="material-icons absolute left-3 top-2 text-slate-500 text-sm select-none">search</span>
+                  <input type="text"
+                         [value]="collabSearchQuery()"
+                         (input)="collabSearchQuery.set($any($event.target).value)"
+                         placeholder="Filtrar por nome..."
+                         class="w-full bg-[#071426] border border-[#10213b] text-white text-xs px-3 py-2 pl-8 rounded-lg outline-none focus:border-blue-500 placeholder:text-slate-600 font-semibold font-sans">
                 </div>
               </div>
-            }
+
+              <!-- List of Cards -->
+              <div class="space-y-3 overflow-y-auto max-h-[600px] pr-1 scrollbar-thin">
+                @let filteredList = filteredCollaborators();
+                @if (filteredList.length === 0) {
+                  <div class="py-8 text-center text-xs text-slate-500 italic bg-[#030a14]/50 border border-dashed border-[#10213b] rounded-xl">
+                    Nenhum colaborador corresponde aos filtros ativos.
+                  </div>
+                } @else {
+                  @for (collab of filteredList; track collab.id) {
+                    @let isSelected = selectedProfileCollabId() === collab.id || (!selectedProfileCollabId() && filteredList[0].id === collab.id);
+                    
+                    <div (click)="selectedProfileCollabId.set(collab.id)"
+                         class="p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 text-left relative overflow-hidden group select-none"
+                         [class]="isSelected ? 'bg-gradient-to-r from-blue-950/40 to-[#071426] border-[#005cfa] shadow-lg' : 'bg-[#030a14]/80 border-[#10213b] hover:border-slate-700 hover:bg-[#071426]'">
+                      
+                      <!-- Ambient overlay indicator -->
+                      @if (isSelected) {
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#005cfa]"></div>
+                      }
+
+                      <!-- Left side: Avatar + Name / Role info -->
+                      <div class="flex items-center gap-3 col-span-2">
+                        <div class="relative">
+                          <img [src]="getCollabPhoto(collab)" 
+                               alt="Foto de {{ collab.name }}"
+                               referrerpolicy="no-referrer"
+                               class="w-10 h-10 rounded-lg object-cover border border-[#10213b] shadow-md bg-slate-900">
+                          
+                          <!-- Pulse indicator for online status simulation or shift badge -->
+                          <span class="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-slate-950 border border-[#10213b] text-[8px] font-bold font-mono"
+                                [style.color]="getShiftOrSiglaColor(collab.shift)"
+                                title="Turno: {{ collab.shift }}">
+                            {{ collab.shift | slice:0:1 }}
+                          </span>
+                        </div>
+                        
+                        <div class="flex flex-col min-w-0">
+                          <span class="font-black text-xs text-white uppercase tracking-tight block truncate">{{ collab.name }}</span>
+                          <span class="text-[9px] text-slate-400 font-bold tracking-widest uppercase font-mono mt-0.5">{{ collab.role }} · {{ collab.sector }}</span>
+                          
+                          <!-- Badges row -->
+                          <div class="flex items-center gap-1.5 mt-1">
+                            <span class="text-[8px] bg-[#0b1e36] text-blue-400 px-1 py-0.5 rounded font-black font-mono">{{ collab.group }}</span>
+                            <span class="text-[8px] text-slate-500 font-mono font-bold">BH: {{ collab.bhBalance >= 0 ? '+' : '' }}{{ collab.bhBalance }}h</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Right side: Score / Indicators -->
+                      <div class="flex flex-col items-end gap-1 shrink-0">
+                        <span class="text-[10px] font-black font-mono text-emerald-400">{{ collab.score }}%</span>
+                        <span class="text-[8px] uppercase tracking-widest text-slate-500 font-bold">Score</span>
+                        
+                        <!-- Mini indicator -->
+                        <span class="w-2.5 h-2.5 rounded-full"
+                              [style.background-color]="getShiftOrSiglaColor(collab.shift)"
+                              [title]="'Alocado no turno de código ' + collab.shift"></span>
+                      </div>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+
+            <!-- RIGHT COLUMN: DETAILED VIEW (2/3 Width on desktop) -->
+            <div class="xl:col-span-2 space-y-6">
+              @let selectedCol = selectedProfileCollab();
+              @let stats = collabStats();
+              
+              @if (!selectedCol) {
+                <div class="py-24 text-center text-xs text-slate-500 italic bg-[#030a14] border border-dashed border-[#10213b] rounded-xl">
+                  Selecione um colaborador à esquerda para carregar o prontuário e análises de pátio.
+                </div>
+              } @else {
+                <!-- COLLABORATOR DETAIL CARD CONTAINER -->
+                <div class="bg-[#030a14] border border-[#10213b] rounded-xl p-6 shadow-2xl space-y-6 animate-fade-in">
+                  
+                  <!-- Profile Main Header -->
+                  <div class="p-5 bg-gradient-to-r from-[#071426] to-[#030a14] rounded-xl border border-[#10213b] flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+                    <div class="absolute right-0 top-0 bottom-0 opacity-10 select-none pointer-events-none flex items-center pr-6">
+                      <span class="material-icons text-9xl text-slate-500 font-bold">person</span>
+                    </div>
+
+                    <div class="flex items-center gap-4 relative z-10">
+                      <!-- Glowing Avatar Container -->
+                      <div class="relative shrink-0">
+                        <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-xl blur opacity-30"></div>
+                        <img [src]="getCollabPhoto(selectedCol)" 
+                             alt="Foto de {{ selectedCol.name }}"
+                             referrerpolicy="no-referrer"
+                             class="w-16 h-16 rounded-xl object-cover border-2 border-blue-500/20 shadow-xl bg-slate-900 relative z-10">
+                      </div>
+
+                      <div class="flex flex-col">
+                        <div class="flex flex-wrap items-center gap-2">
+                          <h4 class="font-black text-base text-white uppercase tracking-tight">{{ selectedCol.name }}</h4>
+                          <span class="px-2 py-0.5 rounded text-[8px] font-black tracking-widest uppercase bg-blue-950 text-blue-400 border border-blue-500/20">
+                            {{ selectedCol.role }}
+                          </span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1 flex items-center gap-1.5">
+                          <span class="material-icons text-slate-500 text-xs">local_airport</span>
+                          Setor de Atuação: <span class="text-white">{{ selectedCol.sector }}</span>
+                          <span class="text-slate-600 font-normal">|</span>
+                          <span class="material-icons text-slate-500 text-xs">group_work</span>
+                          Grupo: <span class="text-white font-mono">{{ selectedCol.group }}</span>
+                        </span>
+                        
+                        <!-- Simulated active status label -->
+                        <span class="text-[9px] font-bold text-slate-500 mt-2 flex items-center gap-1">
+                          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                          Operador Ativo no Sistema · Escala de Junho 2026
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Shift Time Badge -->
+                    <div class="bg-[#030a14]/90 border border-[#10213b] p-3 rounded-lg flex flex-col justify-center text-right shrink-0 md:max-w-xs relative z-10">
+                      <span class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Jornada Contratual</span>
+                      <span class="text-xs font-black text-white mt-1 uppercase tracking-wide">Turno {{ selectedCol.shift }}</span>
+                      <span class="text-xs font-black text-emerald-400 font-mono mt-0.5 flex items-center gap-1 justify-end">
+                        <span class="material-icons text-xs text-emerald-400 select-none">schedule</span>
+                        {{ stats?.entryTime }} às {{ stats?.exitTime }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Statistics Bento Widgets Grid (Indicators) -->
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    
+                    <!-- WIDGET 1: WORKDAYS VS RESTDAYS -->
+                    <div class="p-4 bg-[#071426] border border-[#10213b] rounded-xl flex flex-col justify-between space-y-3">
+                      <div>
+                        <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                          <span class="material-icons text-xs text-blue-400">equalizer</span>
+                          Aproveitamento Escala
+                        </span>
+                        <p class="text-[8px] text-slate-500 mt-0.5 leading-relaxed">Dias ativos escalados em Junho de 2026.</p>
+                      </div>
+
+                      <div class="flex items-end justify-between">
+                        <div class="flex flex-col">
+                          <span class="text-xl font-black text-white font-mono leading-none">{{ stats?.workDays }}d</span>
+                          <span class="text-[8px] uppercase tracking-wider text-blue-400 font-bold mt-1">Trabalho</span>
+                        </div>
+                        <div class="text-right flex flex-col">
+                          <span class="text-xl font-black text-slate-300 font-mono leading-none">{{ stats?.offDays }}d</span>
+                          <span class="text-[8px] uppercase tracking-wider text-slate-500 font-bold mt-1">Folgas</span>
+                        </div>
+                      </div>
+
+                      <!-- Mini visual progress bar -->
+                      @if (stats) {
+                        @let workPercentage = (stats.workDays / 30) * 100;
+                        <div class="space-y-1">
+                          <div class="w-full bg-[#030a14] rounded-full h-1.5 overflow-hidden">
+                            <div class="bg-blue-500 h-1.5 rounded-full" [style.width]="workPercentage + '%'"></div>
+                          </div>
+                          <div class="flex justify-between text-[8px] font-bold text-slate-500 font-mono">
+                            <span>Frequência: {{ workPercentage | number:'1.0-0' }}%</span>
+                          </div>
+                        </div>
+                      }
+                    </div>
+
+                    <!-- WIDGET 2: FATIGUE RISK INDICATOR -->
+                    <div class="p-4 bg-[#071426] border border-[#10213b] rounded-xl flex flex-col justify-between space-y-3">
+                      <div>
+                        <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                          <span class="material-icons text-xs text-rose-400">warning</span>
+                          Índice de Fadiga
+                        </span>
+                        <p class="text-[8px] text-slate-500 mt-0.5 leading-relaxed">Prevenção contra erros de reabastecimento.</p>
+                      </div>
+
+                      <div class="flex items-center gap-2">
+                        <span class="text-xs font-black px-2 py-1 rounded font-mono uppercase tracking-widest border border-solid"
+                              [class]="stats?.fatigueColor">
+                          {{ stats?.fatigueRisk }}
+                        </span>
+                        <div class="flex flex-col min-w-0">
+                          <span class="text-white font-bold text-xs">{{ stats?.maxWorkStreak }} dias seguidos</span>
+                          <span class="text-[8px] text-slate-500 font-bold uppercase tracking-widest leading-none mt-0.5">Maior sequência</span>
+                        </div>
+                      </div>
+
+                      <!-- Explanatory caution subtitle -->
+                      <p class="text-[8px] text-slate-400 leading-tight block truncate font-medium" [title]="stats?.fatigueDescription">
+                        {{ stats?.fatigueDescription }}
+                      </p>
+                    </div>
+
+                    <!-- WIDGET 3: RECOVERY AND REST INDEX -->
+                    <div class="p-4 bg-[#071426] border border-[#10213b] rounded-xl flex flex-col justify-between space-y-3">
+                      <div>
+                        <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                          <span class="material-icons text-xs text-emerald-400">volunteer_activism</span>
+                          Descanso Ativo
+                        </span>
+                        <p class="text-[8px] text-slate-500 mt-0.5 leading-relaxed">Sequência de repouso consecutivo regulamentar.</p>
+                      </div>
+
+                      <div class="flex items-end justify-between">
+                        <div class="flex flex-col">
+                          <span class="text-xl font-black text-emerald-400 font-mono leading-none">+{{ stats?.maxOffStreak }}d</span>
+                          <span class="text-[8px] uppercase tracking-wider text-emerald-500 font-bold mt-1">Descanso Contínuo</span>
+                        </div>
+                        <div class="p-1.5 rounded bg-emerald-950/20 border border-emerald-500/10 text-emerald-400 text-center flex items-center justify-center">
+                          <span class="material-icons text-sm">done</span>
+                        </div>
+                      </div>
+
+                      <!-- Compliance Note -->
+                      <div class="pt-1.5 border-t border-[#10213b]/60 flex items-center justify-between text-[8px] font-bold text-slate-400">
+                        <span>Requisito de 36h:</span>
+                        <span class="text-emerald-400">CONFORME</span>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  <!-- June 2026 Days Off / Work Calendar section -->
+                  <div class="pt-4 border-t border-[#10213b] space-y-3">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                      <div>
+                        <span class="text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-1.5">
+                          <span class="material-icons text-blue-500 text-sm">calendar_month</span>
+                          Calendário Mensal de Escalas & Folgas (Junho 2026)
+                        </span>
+                        <p class="text-[8px] text-slate-500 mt-0.5 leading-relaxed">
+                          Visão consolidada da escala do operador. Dias com cor correspondem aos turnos alocados; dias escuros correspondem às folgas regulamentares (F) ou afastamentos.
+                        </p>
+                      </div>
+
+                      <!-- Subtitle Legend -->
+                      <div class="flex flex-wrap items-center gap-2.5 text-[8px] font-bold uppercase tracking-wider text-slate-400 bg-[#071426] px-2.5 py-1.5 rounded border border-[#10213b]">
+                        <span class="flex items-center gap-1">
+                          <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                          Trabalho (M, T, N, etc)
+                        </span>
+                        <span class="flex items-center gap-1">
+                          <span class="w-1.5 h-1.5 rounded-full bg-slate-700"></span>
+                          Folga (F)
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Compact Calendar Render -->
+                    <div class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-10 gap-2">
+                      @for (day of daysInMonth; track day) {
+                        @let sVal = selectedCol.scale[day] || 'F';
+                        @let isOff = sVal === 'F' || sVal === 'FE' || sVal === 'LM';
+                        
+                        <div class="aspect-video sm:aspect-square rounded-lg border flex flex-col items-center justify-between p-2 select-none transition-transform hover:scale-[1.03] duration-150"
+                             [style.background-color]="getShiftOrSiglaColor(sVal)"
+                             [style.border-color]="isOff ? '#10213b' : getShiftOrSiglaColor(sVal) + '50'">
+                          
+                          <!-- Header: Day Number + Day of the week initial -->
+                          <div class="w-full flex justify-between text-[8px] font-bold font-mono opacity-80"
+                               [style.color]="getShiftOrSiglaTextColor(sVal)">
+                            <span>Dia {{ day }}</span>
+                          </div>
+
+                          <!-- Value Badge -->
+                          <div class="font-black text-xs font-mono mt-1"
+                               [style.color]="getShiftOrSiglaTextColor(sVal)">
+                            {{ sVal }}
+                          </div>
+
+                          <!-- Status subtitle -->
+                          <div class="text-[7px] font-bold uppercase font-sans tracking-wide truncate max-w-full mt-0.5 text-center"
+                               [style.color]="getShiftOrSiglaTextColor(sVal)"
+                               [class.opacity-50]="isOff">
+                            {{ isOff ? 'Folga' : 'Trabalho' }}
+                          </div>
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Informational warning footer -->
+                    <div class="p-3 bg-blue-950/20 rounded-lg border border-blue-500/10 text-[8px] text-blue-400 font-bold flex items-center gap-2">
+                      <span class="material-icons text-xs text-blue-400 select-none">info</span>
+                      <span>Nota: Os afastamentos (FE - Férias, LM - Licença Médica) e permutas aprovadas alteram dinamicamente a contagem de folgas e o índice de risco do operador.</span>
+                    </div>
+
+                  </div>
+
+                </div>
+              }
+            </div>
+
           </div>
         </div>
       }
 
-      <!-- SUB-TAB 4: EQUIPE DE PATIO WORKSPACE -->
-      @if (activeSubTab() === 'team') {
+      <!-- SUB-TAB 4-MGMT: CADASTRO E GERENCIAMENTO DE ATIVOS -->
+      @if (activeSubTab() === 'team-mgmt') {
         <div class="p-6 bg-[#071426] border border-[#10213b] rounded-xl shadow-xl space-y-6 animate-fade-in font-sans" id="team_tab_content">
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
@@ -1241,133 +1532,7 @@
         </div>
       }
 
-      <!-- SUB-TAB 6: EM DESENVOLVIMENTO -->
-      @if (activeSubTab() === 'dev') {
-        <div class="p-6 bg-[#071426] border border-[#10213b] rounded-xl shadow-xl space-y-6 animate-fade-in font-sans" id="dev_tab_content">
-          <div class="pb-3 border-b border-[#10213b]">
-            <h3 class="font-black text-sm uppercase tracking-tight text-white flex items-center gap-1.5 animate-pulse">
-              <span class="material-icons text-emerald-500">construction</span>
-              Espaço em Desenvolvimento & Recursos Depreciados
-            </h3>
-            <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
-              Esta seção é dedicada para visualização e armazenamento temporário de códigos e seções que foram removidos das visualizações principais para reaproveitamento futuro de código.
-            </p>
-          </div>
 
-          <!-- PERSPECTIVE C: COLABORADOR INTERACTIVE PORTAL (FRENTE C) -->
-          <section class="bg-[#030a14] border border-[#10213b] rounded-xl p-5 shadow-xl flex flex-col" id="collab_portal_view">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#10213b]">
-              <div class="flex items-center gap-2">
-                <span class="material-icons text-emerald-500 animate-pulse">lock_person</span>
-                <div>
-                  <h3 class="font-black text-xs uppercase tracking-tight text-white">Portal do Colaborador (Frente C)</h3>
-                  <span class="text-[9px] text-slate-400">Espaço dedicado para os funcionários visualizarem escalas e proporem permutas.</span>
-                </div>
-              </div>
-
-              <!-- Select simulated collaborator -->
-              <div class="flex items-center gap-2">
-                <label for="simulation_collab_select" class="text-[9px] font-bold uppercase tracking-wide text-slate-400 font-sans">Simular Visão de:</label>
-                <select id="simulation_collab_select"
-                        [value]="selectedSimulatedCollabId() || ''"
-                        (change)="selectedSimulatedCollabId.set($any($event.target).value || null)"
-                        class="bg-[#071426] border border-[#10213b] text-white text-[10px] font-bold px-2 py-1 rounded outline-none focus:border-emerald-500">
-                  <option value="">-- Selecionar Colaborador --</option>
-                  @for (c of scaleService.collaborators(); track c.id) {
-                    <option [value]="c.id">{{ c.name }} ({{ c.shift }})</option>
-                  }
-                </select>
-              </div>
-            </div>
-
-            @if (!selectedSimulatedCollabId()) {
-              <div class="py-12 text-center text-[11px] text-slate-500 italic">
-                Selecione um colaborador acima para acessar o Portal de Autoatendimento e permutas.
-              </div>
-            } @else {
-              @let activeCol = getLoggedCollab()!;
-              <div class="mt-4 p-4 rounded-xl border border-blue-500/10 transition-all space-y-4"
-                   [class]="collaboratorProfileDarkMode() ? 'bg-[#030a14] text-slate-200' : 'bg-white text-slate-900 border-slate-200'">
-                
-                <!-- PORTAL HEADER -->
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded bg-emerald-500 text-white flex items-center justify-center font-black text-xs font-mono shadow-sm">
-                      {{ activeCol.name | slice:0:2 | uppercase }}
-                    </div>
-                    <div>
-                      <h4 class="font-black text-[11px] uppercase tracking-wide" [class.text-slate-800]="!collaboratorProfileDarkMode()" [class.text-white]="collaboratorProfileDarkMode()">{{ activeCol.name }}</h4>
-                      <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-sans">{{ activeCol.role }} · {{ activeCol.sector }}</span>
-                    </div>
-                  </div>
-
-                  <!-- Mode Toggle inside Portal -->
-                  <button (click)="collaboratorProfileDarkMode.set(!collaboratorProfileDarkMode())"
-                          class="p-1.5 rounded border border-[#10213b] hover:border-emerald-500 bg-transparent text-slate-400 hover:text-white transition-colors cursor-pointer outline-none flex items-center justify-center">
-                    <span class="material-icons text-sm">{{ collaboratorProfileDarkMode() ? 'light_mode' : 'dark_mode' }}</span>
-                  </button>
-                </div>
-
-                <!-- CARDS ROW -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div class="p-3 bg-[#071426] border border-[#10213b] rounded-lg">
-                    <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Meu Setor</span>
-                    <span class="text-xs font-black text-white block mt-0.5">{{ activeCol.sector }}</span>
-                  </div>
-                  <div class="p-3 bg-[#071426] border border-[#10213b] rounded-lg">
-                    <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Saldo BH</span>
-                    <span class="text-xs font-black block mt-0.5" [class.text-emerald-400]="activeCol.bhBalance >= 0" [class.text-red-400]="activeCol.bhBalance < 0">
-                      {{ activeCol.bhBalance >= 0 ? '+' : '' }}{{ activeCol.bhBalance }}h
-                    </span>
-                  </div>
-                  <div class="p-3 bg-[#071426] border border-[#10213b] rounded-lg">
-                    <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Performance Score</span>
-                    <span class="text-xs font-black text-white block mt-0.5 font-mono">{{ activeCol.score }}%</span>
-                  </div>
-                </div>
-
-                <!-- PERSONAL CALENDAR & TRADE SIMULATOR -->
-                <div class="space-y-2">
-                  <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest block">Minhas Escalas de Junho 2026:</span>
-                  
-                  <div class="grid grid-cols-5 md:grid-cols-10 gap-1.5">
-                    @for (day of daysInMonth; track day) {
-                      @let sVal = activeCol.scale[day] || 'F';
-                      <div (click)="openPermutaModal(day)"
-                           class="aspect-square flex flex-col items-center justify-center rounded cursor-pointer transition-transform hover:scale-105 select-none relative group-calendar"
-                           [style.background-color]="getShiftOrSiglaColor(sVal)"
-                           [style.color]="getShiftOrSiglaTextColor(sVal)"
-                           title="Dia {{ day }} - Turno: {{ sVal }}. Clique para propor permuta.">
-                        <span class="text-[8px] font-bold font-sans opacity-80 leading-none">{{ day }}</span>
-                        <span class="text-[9px] font-black font-mono mt-0.5 leading-none">{{ sVal }}</span>
-                      </div>
-                    }
-                  </div>
-                  <span class="text-[8px] text-slate-500 italic block mt-1">* Dica: Clique em qualquer dia acima para solicitar ou propor permuta rápida com um colega de trabalho do mesmo setor.</span>
-                </div>
-
-                <!-- Colleagues on same shift today -->
-                <div class="pt-3 border-t border-[#10213b]">
-                  <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-2">Trabalhando Comigo Hoje (Turno Concomitante):</span>
-                  <div class="flex flex-wrap gap-2">
-                    @let peers = getConcomitantColegues(26); <!-- Assuring day index 26 June as simulation -->
-                    @if (peers.length === 0) {
-                      <span class="text-[9px] text-slate-500 italic">Nenhum colega concomitante registrado no seu turno hoje ou você está de folga.</span>
-                    } @else {
-                      @for (p of peers; track p.id) {
-                        <div class="px-2 py-1 bg-[#071426] border border-[#10213b] rounded flex items-center gap-1.5 text-[9px] font-bold text-white">
-                          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          {{ p.name }} ({{ p.group }})
-                        </div>
-                      }
-                    }
-                  </div>
-                </div>
-              </div>
-            }
-          </section>
-        </div>
-      }
     </section>
   </main>
 

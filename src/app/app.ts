@@ -20,8 +20,137 @@ interface AppNotification {
 export class AppComponent {
   public scaleService = inject(ScaleService);
 
-  // Sub tab navigation: 'matrix' | 'ger.turnos' | 'siglas' | 'backups' | 'team' | 'dev'
-  public activeSubTab = signal<'matrix' | 'ger.turnos' | 'siglas' | 'backups' | 'team' | 'dev'>('matrix');
+  // Sub tab navigation: 'matrix' | 'ger.turnos' | 'siglas' | 'team' | 'team-mgmt'
+  public activeSubTab = signal<'matrix' | 'ger.turnos' | 'siglas' | 'team' | 'team-mgmt'>('matrix');
+
+  // Selected collaborator for detailed profile view
+  selectedProfileCollabId = signal<string | null>(null);
+
+  // Computes the active collaborator, falling back to the first one in the list
+  selectedProfileCollab = computed(() => {
+    const list = this.scaleService.collaborators();
+    if (list.length === 0) return null;
+    const id = this.selectedProfileCollabId();
+    if (id) {
+      const found = list.find(c => c.id === id);
+      if (found) return found;
+    }
+    return list[0]; // fallback to first
+  });
+
+  // Dynamically computes stats, fatigue indexes, and shift hours for the selected collaborator
+  collabStats = computed(() => {
+    const collab = this.selectedProfileCollab();
+    if (!collab) return null;
+
+    const scale = collab.scale || {};
+    let workDays = 0;
+    let offDays = 0;
+    
+    // Calculate sequences
+    let currentWorkStreak = 0;
+    let maxWorkStreak = 0;
+    
+    let currentOffStreak = 0;
+    let maxOffStreak = 0;
+
+    for (let d = 1; d <= 30; d++) {
+      const val = scale[d] || 'F';
+      
+      // We consider F (Folga), FE (Férias), LM (Licença Médica) as rest/off days
+      const isRest = val === 'F' || val === 'FE' || val === 'LM';
+      
+      if (!isRest) {
+        workDays++;
+        currentWorkStreak++;
+        maxWorkStreak = Math.max(maxWorkStreak, currentWorkStreak);
+        
+        currentOffStreak = 0;
+      } else {
+        offDays++;
+        currentOffStreak++;
+        maxOffStreak = Math.max(maxOffStreak, currentOffStreak);
+        
+        currentWorkStreak = 0;
+      }
+    }
+
+    // Fatigue classification
+    let fatigueRisk: 'Baixo' | 'Moderado' | 'Crítico' = 'Baixo';
+    let fatigueColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+    let fatigueDescription = 'Ciclo de descanso balanceado. Excelente recuperação biológica.';
+
+    if (maxWorkStreak >= 6) {
+      fatigueRisk = 'Crítico';
+      fatigueColor = 'text-rose-400 bg-rose-500/10 border-rose-500/20 animate-pulse';
+      fatigueDescription = 'Risco elevado de fadiga acumulada. Sequência contínua de ' + maxWorkStreak + ' dias no pátio. Recomenda-se escala de folga imediata para evitar incidentes com combustível.';
+    } else if (maxWorkStreak === 5) {
+      fatigueRisk = 'Moderado';
+      fatigueColor = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+      fatigueDescription = 'Atenção. Sequência de 5 dias trabalhados. Nível de alerta operacional intermediário.';
+    }
+
+    // Map shift to times
+    let entryTime = '07:00';
+    let exitTime = '15:20';
+    if (collab.shift === 'MANHÃ') {
+      entryTime = '06:00';
+      exitTime = '14:00';
+    } else if (collab.shift === 'TARDE') {
+      entryTime = '14:00';
+      exitTime = '22:00';
+    } else if (collab.shift === 'MADRUGADA' || collab.shift === 'NOITE') {
+      entryTime = '22:00';
+      exitTime = '06:00';
+    } else if (collab.shift === 'ADMINISTRATIVO') {
+      entryTime = '08:00';
+      exitTime = '17:00';
+    }
+
+    return {
+      workDays,
+      offDays,
+      maxWorkStreak,
+      maxOffStreak,
+      fatigueRisk,
+      fatigueColor,
+      fatigueDescription,
+      entryTime,
+      exitTime
+    };
+  });
+
+  getCollabPhoto(collab: any): string {
+    if (!collab) return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+    
+    // Curated high quality portrait placeholders that match pátio aviation staff
+    const photos: { [id: string]: string } = {
+      'PR-01': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      'PR-02': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      'PR-03': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+      'PR-04': 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    };
+    
+    if (photos[collab.id]) {
+      return photos[collab.id];
+    }
+    
+    // Seeded portrait from Unsplash
+    const seed = collab.name.length % 10;
+    const fallbackPortraits = [
+      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80'
+    ];
+    return fallbackPortraits[seed];
+  }
 
   // Real-time aviation clock
   currentTimeString = signal<string>('');
