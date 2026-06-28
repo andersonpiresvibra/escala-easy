@@ -1,9 +1,9 @@
 <!-- MAIN WRAPPER: PREMIUM JETFUEL DARK MODE -->
-<div class="min-h-screen bg-[#020813] font-sans text-slate-100 flex flex-col antialiased selection:bg-blue-600 selection:text-white" id="main_app_layout">
+<div class="h-screen bg-[#020813] font-sans text-slate-100 flex flex-col antialiased selection:bg-emerald-600 selection:text-white overflow-hidden" id="main_app_layout">
 
   <!-- TOAST ALERTS BANNER -->
   @if (toastMessage()) {
-    <div class="fixed top-4 right-4 z-50 bg-[#005cfa] text-white p-4 rounded-xl shadow-2xl flex items-center gap-3 animate-fade-in max-w-sm border border-blue-500/50" id="toast_notification">
+    <div class="fixed top-4 right-4 z-50 bg-[#10b981] text-white p-4 rounded-lg shadow-2xl flex items-center gap-3 animate-fade-in max-w-sm border border-emerald-500/50" id="toast_notification">
       <span class="material-icons select-none text-white text-xl animate-bounce">verified</span>
       <span class="text-sm font-bold tracking-wide">{{ toastMessage() }}</span>
     </div>
@@ -13,13 +13,12 @@
   <header class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 select-none px-6 pt-4 pb-4 border-b border-[#10213b] bg-[#020813]" id="global_master_header">
     <div class="flex items-center gap-3 select-none">
       <!-- Logo Square Emblem -->
-      <div class="w-10 h-10 bg-[#005cfa] rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/15 border border-blue-400/20">
+      <div class="w-10 h-10 bg-[#10b981] rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/15 border border-emerald-400/20">
         <span class="material-icons text-white text-xl">calendar_month</span>
       </div>
       <div class="flex flex-col select-none">
         <div class="flex items-center gap-1">
-          <span class="text-base font-black tracking-tighter text-white leading-none">ESCALA<span class="text-[#005cfa]">.</span>EASY</span>
-          <span class="text-[8px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 font-black tracking-widest font-mono">VIBRA</span>
+          <span class="text-base font-black tracking-tighter text-white leading-none">ESCALA<span class="text-[#10b981]">.</span>EASY</span>
         </div>
         
         <!-- Database Status & Realtime Sync Indicator -->
@@ -40,7 +39,6 @@
               <span class="text-[7px] font-bold uppercase tracking-widest text-red-600">Erro</span>
             }
           </div>
-          <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider">· JUNHO 2026 · CONTROLE DE ESCALAS</span>
         </div>
       </div>
     </div>
@@ -49,15 +47,21 @@
     <div class="flex flex-wrap items-center gap-1 p-1 border border-[#10213b] bg-[#071426] rounded-lg w-full xl:w-auto">
       <button (click)="activeSubTab.set('matrix')"
               class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-pointer rounded-md select-none border-none outline-none"
-              [class]="activeSubTab() === 'matrix' ? 'bg-[#005cfa] text-white shadow-md shadow-blue-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800/40'">
+              [class]="activeSubTab() === 'matrix' ? 'bg-[#10b981] text-white shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800/40'">
          <span class="material-icons text-xs font-bold">grid_on</span>
-        Matriz de Escala
+        Escala
       </button>
       <button (click)="activeSubTab.set('team')"
               class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-pointer rounded-md select-none border-none outline-none"
-              [class]="activeSubTab() === 'team' ? 'bg-[#005cfa] text-white shadow-md shadow-blue-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800/40'">
+              [class]="activeSubTab() === 'team' ? 'bg-[#10b981] text-white shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800/40'">
         <span class="material-icons text-xs font-bold">group</span>
         Colaboradores
+      </button>
+      <button (click)="activeSubTab.set('portal')"
+              class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-pointer rounded-md select-none border-none outline-none"
+              [class]="activeSubTab() === 'portal' ? 'bg-[#10b981] text-white shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800/40'">
+        <span class="material-icons text-xs font-bold">contact_page</span>
+        Portal do Colaborador
       </button>
     </div>
 
@@ -77,11 +81,11 @@
          </button>
 
          @if (isNotificationOpen()) {
-           <div class="absolute right-0 mt-2 w-80 rounded-xl bg-[#071426] border border-[#10213b] shadow-2xl z-50 divide-y divide-[#10213b] animate-fade-in max-h-[400px] overflow-y-auto"
+           <div class="absolute right-0 mt-2 w-80 rounded-lg bg-[#071426] border border-[#10213b] shadow-2xl z-50 divide-y divide-[#10213b] animate-fade-in max-h-[400px] overflow-y-auto"
                 id="notification_dropdown">
-              <div class="p-3 flex items-center justify-between bg-[#030a14] rounded-t-xl border-b border-[#10213b]">
+              <div class="p-3 flex items-center justify-between bg-[#030a14] rounded-t-lg border-b border-[#10213b]">
                  <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Notificações Recentes</span>
-                 <button (click)="markAllNotificationsAsRead(); $event.stopPropagation()" class="text-[8px] font-bold uppercase tracking-widest text-[#005cfa] hover:text-blue-400 bg-transparent border-none cursor-pointer">
+                 <button (click)="markAllNotificationsAsRead(); $event.stopPropagation()" class="text-[8px] font-bold uppercase tracking-widest text-[#10b981] hover:text-emerald-400 bg-transparent border-none cursor-pointer">
                     Marcar todas
                  </button>
               </div>
@@ -118,12 +122,12 @@
 
       <!-- ADMINISTRATOR BADGE PROFILE -->
       <div class="flex items-center gap-2 p-1.5 bg-[#071426] border border-[#10213b] rounded-lg shadow-sm">
-        <div class="w-7 h-7 rounded bg-[#005cfa] text-white flex items-center justify-center font-bold text-xs shadow-sm border border-blue-400/20 font-mono">
-          {{ (scaleService.selectedCollabName() || 'AD') | slice:0:2 | uppercase }}
+        <div class="w-7 h-7 rounded bg-[#10b981] text-white flex items-center justify-center font-bold text-xs shadow-sm border border-emerald-400/20 font-mono">
+          {{ (scaleService.selectedCollabName() || 'US') | slice:0:2 | uppercase }}
         </div>
         <div class="flex flex-col pr-2 justify-center select-none">
-          <span class="text-[9px] font-black uppercase text-white leading-tight tracking-wider">{{ scaleService.selectedCollabName() || 'ADMINISTRADOR' }}</span>
-          <span class="text-[8px] font-bold text-slate-400 uppercase leading-tight tracking-widest">{{ scaleService.currentRole() === 'SUPERVISOR' ? 'SUPERVISOR GERAL' : scaleService.currentRole() === 'LIDER' ? 'LÍDER DE TURNO' : 'COLABORADOR' }}</span>
+          <span class="text-[9px] font-black uppercase text-white leading-tight tracking-wider">{{ scaleService.selectedCollabName() || 'USUÁRIO' }}</span>
+          <span class="text-[8px] font-bold text-slate-400 uppercase leading-tight tracking-widest">{{ scaleService.currentRole() === 'SUPERVISOR' ? 'ADMIN' : scaleService.currentRole() === 'LIDER' ? 'LÍDER DE TURNO' : 'COLABORADOR' }}</span>
         </div>
       </div>
 
@@ -138,9 +142,9 @@
         </button>
 
         @if (isDropdownOpen()) {
-          <div class="absolute right-0 mt-2 w-56 rounded-xl bg-[#071426] border border-[#10213b] shadow-2xl z-50 divide-y divide-[#10213b] animate-fade-in" id="dropdown_options_menu">
+          <div class="absolute right-0 mt-2 w-56 rounded-lg bg-[#071426] border border-[#10213b] shadow-2xl z-50 divide-y divide-[#10213b] animate-fade-in" id="dropdown_options_menu">
             <!-- Account Info / Login Simulation -->
-            <div class="py-1.5 rounded-t-xl bg-[#071426]">
+            <div class="py-1.5 rounded-t-lg bg-[#071426]">
               <span class="block px-4 py-1 text-[8px] font-black uppercase text-slate-500 tracking-wider select-none">Conta de Acesso</span>
               @if (!scaleService.selectedCollabName()) {
                 <button (click)="openAuthModal('LOGIN'); isDropdownOpen.set(false)"
@@ -155,53 +159,6 @@
                   Sair do Perfil
                 </button>
               }
-            </div>
-
-            <!-- Fast Role Simulator Presets -->
-            <div class="py-1.5 bg-[#030a14]">
-              <span class="block px-4 py-1 text-[8px] font-black uppercase text-slate-500 tracking-wider select-none">Simulação Rápida (Perfis)</span>
-
-              <button (click)="changeRole('SUPERVISOR'); isDropdownOpen.set(false)"
-                      class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center justify-between cursor-pointer border-none outline-none"
-                      [ngClass]="{ 'bg-[#005cfa]/10': scaleService.currentRole() === 'SUPERVISOR' }"
-                      [class.text-[#005cfa]]="scaleService.currentRole() === 'SUPERVISOR'"
-                      [class.text-slate-300]="scaleService.currentRole() !== 'SUPERVISOR'">
-                <span class="flex items-center gap-2">
-                  <span class="material-icons text-slate-400 text-sm">admin_panel_settings</span>
-                  Supervisor (Master)
-                </span>
-                @if (scaleService.currentRole() === 'SUPERVISOR') {
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#005cfa]"></span>
-                }
-              </button>
-
-              <button (click)="changeRole('LIDER'); isDropdownOpen.set(false)"
-                      class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center justify-between cursor-pointer border-none outline-none"
-                      [ngClass]="{ 'bg-[#005cfa]/10': scaleService.currentRole() === 'LIDER' }"
-                      [class.text-[#005cfa]]="scaleService.currentRole() === 'LIDER'"
-                      [class.text-slate-300]="scaleService.currentRole() !== 'LIDER'">
-                <span class="flex items-center gap-2">
-                  <span class="material-icons text-slate-400 text-sm">assignment_ind</span>
-                  Líder de Turno (LT)
-                </span>
-                @if (scaleService.currentRole() === 'LIDER') {
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#005cfa]"></span>
-                }
-              </button>
-
-              <button (click)="changeRole('OPERADOR'); isDropdownOpen.set(false)"
-                      class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center justify-between cursor-pointer border-none outline-none"
-                      [ngClass]="{ 'bg-[#005cfa]/10': scaleService.currentRole() === 'OPERADOR' }"
-                      [class.text-[#005cfa]]="scaleService.currentRole() === 'OPERADOR'"
-                      [class.text-slate-300]="scaleService.currentRole() !== 'OPERADOR'">
-                <span class="flex items-center gap-2">
-                  <span class="material-icons text-slate-400 text-sm">person_outline</span>
-                  Colaborador
-                </span>
-                @if (scaleService.currentRole() === 'OPERADOR') {
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#005cfa]"></span>
-                }
-              </button>
             </div>
 
             <!-- Gerenciamento (Turnos & Siglas) -->
@@ -231,31 +188,10 @@
             </div>
 
             <!-- Management Tools (Admin only) -->
-            <div class="py-1.5 bg-[#071426] border-t border-[#10213b] rounded-b-xl">
+            <div class="py-1.5 bg-[#071426] border-t border-[#10213b] rounded-b-lg">
               @if (scaleService.currentRole() !== 'OPERADOR') {
-                <button (click)="togglePaintbrushPanel(); isDropdownOpen.set(false)"
-                        class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none"
-                        [class]="showPaintbrushPanel() ? 'text-amber-500 bg-amber-950/20 hover:bg-amber-950/30' : 'text-slate-300 hover:bg-[#0b1e36]'">
-                  <span class="material-icons text-sm" [class]="showPaintbrushPanel() ? 'text-amber-400' : 'text-slate-400'">edit_calendar</span>
-                  {{ showPaintbrushPanel() ? 'Fechar Edição em Massa' : 'Editar em Massa' }}
-                </button>
-                <button (click)="scaleService.generateAutoScale(); isDropdownOpen.set(false)"
-                        class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-purple-400 hover:bg-purple-950/20 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none bg-purple-950/10">
-                  <span class="material-icons text-purple-400 text-sm">auto_awesome</span>
-                  Gerar Escala (IA)
-                </button>
-                <button (click)="openImportModal(); isDropdownOpen.set(false)"
-                        class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-emerald-400 hover:bg-emerald-950/20 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none bg-emerald-950/10">
-                  <span class="material-icons text-emerald-400 text-sm">document_scanner</span>
-                  Importar via Foto
-                </button>
-                <button (click)="scaleService.clearAllScales(); isDropdownOpen.set(false)"
-                        class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-red-500 hover:bg-red-950/20 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-t border-[#10213b] border-none outline-none">
-                  <span class="material-icons text-red-400 text-sm">cleaning_services</span>
-                  Limpar Toda a Escala
-                </button>
                 <button (click)="openDbConfigModal(); isDropdownOpen.set(false)"
-                        class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-blue-400 hover:bg-blue-950/20 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-t border-[#10213b] border-none outline-none">
+                        class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-blue-400 hover:bg-blue-950/20 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none">
                   <span class="material-icons text-blue-400 text-sm">storage</span>
                   Configurar Banco de Dados
                 </button>
@@ -270,20 +206,20 @@
   </header>
 
   <!-- MAIN OPERATIONAL WORKSPACE -->
-  <main class="flex-1 flex flex-col gap-6 p-6 overflow-hidden">
+  <main class="flex-1 flex flex-col overflow-hidden p-0">
 
     <!-- PRIMARY WORKSPACE WORKSPACE (FULL WIDTH) -->
-    <section class="w-full flex flex-col gap-6" id="primary_workspace_tabs">
+    <section class="w-full flex-1 flex flex-col overflow-hidden gap-0" id="primary_workspace_tabs">
       
       <!-- SUB-TAB 1: MATRIX GERAL WORKSPACE -->
       @if (activeSubTab() === 'matrix') {
-        <div class="bg-[#071426] border border-[#10213b] rounded-xl p-5 shadow-xl flex flex-col" id="matrix_general_card">
+        <div class="flex-1 flex flex-col w-full gap-0 overflow-hidden animate-fade-in" id="matrix_general_card">
           
           <!-- SEARCH & FILTER TOOLBAR -->
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#10213b]">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 md:px-6 py-4 border-b border-[#10213b] bg-[#020813]">
             <div class="flex items-center gap-2">
-              <span class="material-icons select-none text-[#005cfa] font-bold">grid_on</span>
-              <h3 class="font-black text-sm uppercase tracking-tight text-white">Matriz Geral de Escala de Trabalho</h3>
+              <span class="material-icons select-none text-[#10b981] font-bold">grid_on</span>
+              <h3 class="font-black text-sm uppercase tracking-tight text-white">Escala</h3>
             </div>
             
             <div class="flex flex-wrap items-center gap-2.5">
@@ -294,15 +230,14 @@
                        [value]="collabSearchQuery()"
                        (input)="collabSearchQuery.set($any($event.target).value)"
                        placeholder="Buscar colaborador..."
-                       class="bg-[#030a14] border border-[#10213b] text-white text-xs px-3 py-1.5 pl-8 rounded-lg outline-none focus:border-blue-500 placeholder:text-slate-600 font-semibold font-sans w-48">
+                       class="bg-[#030a14] border border-[#10213b] text-white text-xs px-3 py-1.5 pl-8 rounded-lg outline-none focus:border-emerald-500 placeholder:text-slate-600 font-semibold font-sans w-48">
               </div>
 
               <!-- Role filter -->
               <select [value]="selectedFilterRole()"
                       (change)="selectedFilterRole.set($any($event.target).value)"
-                      class="bg-[#030a14] border border-[#10213b] text-white text-xs px-3 py-1.5 rounded-lg outline-none focus:border-blue-500 font-bold">
-                <option value="TODOS">TODOS OS CARGOS</option>
-                <option value="SUPERVISOR">SUPERVISORES</option>
+                      class="bg-[#030a14] border border-[#10213b] text-white text-xs pl-2 pr-5 py-1.5 rounded-lg outline-none focus:border-emerald-500 hover:border-emerald-500 font-bold cursor-pointer transition-colors w-[140px]">
+                <option value="TODOS">Função</option>
                 <option value="LIDER">LÍDERES DE TURNO (LT)</option>
                 <option value="OPERADOR">OPERADORES</option>
               </select>
@@ -310,8 +245,8 @@
               <!-- Sector filter -->
               <select [value]="selectedFilterSector()"
                       (change)="selectedFilterSector.set($any($event.target).value)"
-                      class="bg-[#030a14] border border-[#10213b] text-white text-xs px-3 py-1.5 rounded-lg outline-none focus:border-blue-500 font-bold">
-                <option value="TODOS">TODOS OS SETORES</option>
+                      class="bg-[#030a14] border border-[#10213b] text-white text-xs pl-2 pr-5 py-1.5 rounded-lg outline-none focus:border-emerald-500 hover:border-emerald-500 font-bold cursor-pointer transition-colors w-[140px]">
+                <option value="TODOS">Pátios</option>
                 <option value="AERÓDROMO">AERÓDROMO</option>
                 <option value="VIP">VIP</option>
               </select>
@@ -319,125 +254,230 @@
               <!-- Shift filter -->
               <select [value]="selectedFilterShift()"
                       (change)="selectedFilterShift.set($any($event.target).value)"
-                      class="bg-[#030a14] border border-[#10213b] text-white text-xs px-3 py-1.5 rounded-lg outline-none focus:border-blue-500 font-bold">
-                <option value="TODOS">TODOS OS TURNOS</option>
+                      class="bg-[#030a14] border border-[#10213b] text-white text-xs pl-2 pr-5 py-1.5 rounded-lg outline-none focus:border-emerald-500 hover:border-emerald-500 font-bold cursor-pointer transition-colors w-[140px]">
+                <option value="TODOS">Turnos</option>
                 <option value="MANHÃ">MANHÃ</option>
                 <option value="TARDE">TARDE</option>
-                <option value="MADRUGADA">MADRUGADA</option>
-                <option value="ADMINISTRATIVO">ADMINISTRATIVO</option>
+                <option value="MADRUGADA">NOITE</option>
               </select>
+
+              <!-- Specific Section Options Dropdown Button -->
+              <div class="relative inline-block text-left" id="matrix_options_container">
+                <button (click)="isMatrixOptionsOpen.set(!isMatrixOptionsOpen())"
+                        class="bg-[#030a14] border border-[#10213b] text-slate-300 hover:text-white px-3 py-1.5 rounded-lg outline-none focus:border-emerald-500 hover:border-emerald-500 font-bold text-xs flex items-center gap-1.5 cursor-pointer select-none"
+                        id="btn_matrix_options_dropdown">
+                  <span class="material-icons text-sm text-slate-400">tune</span>
+                  Opções de Escala
+                  <span class="material-icons text-[10px] transition-transform duration-200" [class.rotate-180]="isMatrixOptionsOpen()">expand_more</span>
+                </button>
+
+                @if (isMatrixOptionsOpen()) {
+                  <div class="absolute right-0 mt-2 w-52 rounded-lg bg-[#071426] border border-[#10213b] shadow-2xl z-50 divide-y divide-[#10213b] animate-fade-in" id="matrix_options_dropdown_menu">
+                    @if (scaleService.currentRole() !== 'OPERADOR') {
+                      <div class="py-1">
+                        <!-- Editar em massa -->
+                        <button (click)="togglePaintbrushPanel(); isMatrixOptionsOpen.set(false)"
+                                class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none bg-transparent"
+                                [class]="showPaintbrushPanel() ? 'text-amber-500 hover:bg-[#0b1e36]/30' : 'text-slate-300 hover:bg-[#0b1e36]'">
+                          <span class="material-icons text-sm" [class]="showPaintbrushPanel() ? 'text-amber-400' : 'text-slate-400'">edit_calendar</span>
+                          {{ showPaintbrushPanel() ? 'Fechar Edição em Massa' : 'Editar em Massa' }}
+                        </button>
+                        
+                        <!-- Gerar Escala -->
+                        <button (click)="scaleService.generateAutoScale(); isMatrixOptionsOpen.set(false)"
+                                class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-purple-400 hover:bg-purple-950/20 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none bg-transparent">
+                          <span class="material-icons text-purple-400 text-sm">auto_awesome</span>
+                          Gerar Escala
+                        </button>
+
+                        <!-- Importar -->
+                        <button (click)="openImportModal(); isMatrixOptionsOpen.set(false)"
+                                class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-emerald-400 hover:bg-emerald-950/20 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none bg-transparent">
+                          <span class="material-icons text-emerald-400 text-sm">document_scanner</span>
+                          Importar
+                        </button>
+                      </div>
+
+                      <!-- Resetar Escala -->
+                      <div class="py-1">
+                        <button (click)="scaleService.clearAllScales(); isMatrixOptionsOpen.set(false)"
+                                class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-red-500 hover:bg-red-950/20 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none bg-transparent">
+                          <span class="material-icons text-red-400 text-sm">cleaning_services</span>
+                          Resetar Escala
+                        </button>
+                      </div>
+                    } @else {
+                      <div class="p-4 text-center text-[10px] text-slate-500 italic">
+                        Opções restritas para Administradores
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
             </div>
           </div>
 
-          <!-- PAINTBRUSH MASS-EDIT PANEL -->
+          <!-- PAINTBRUSH MASS-EDIT PANEL (UX OPTIMIZED FOR LAPTOPS - ULTRA-THIN SINGLE ROW) -->
           @if (showPaintbrushPanel()) {
-            <div class="my-4 p-4 bg-amber-950/15 border border-amber-500/30 rounded-xl flex flex-col gap-3 animate-fade-in select-none">
-              <div class="flex items-center justify-between gap-3">
-                <div class="flex items-center gap-2">
-                  <span class="material-icons text-amber-500">brush</span>
-                  <div>
-                    <span class="text-[10px] font-black uppercase text-amber-500 tracking-wider block">Modo de Pintura de Escala</span>
-                    <span class="text-[9px] text-slate-400">Escolha um código e clique em qualquer célula da grade de escala para pintá-lo diretamente.</span>
-                  </div>
-                </div>
-                @if (activePaintbrush()) {
-                  <button (click)="activePaintbrush.set(null)"
-                          class="text-[9px] bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/25 px-2 py-1 rounded font-bold uppercase transition-all cursor-pointer">
-                    Limpar Pincel
+            <div class="mx-4 md:mx-6 my-2 p-2 bg-[#091524] border border-amber-500/20 rounded flex items-center justify-between gap-4 animate-fade-in select-none" id="paintbrush_laptop_optimized_panel">
+              <!-- Left: Small indicator and instructions -->
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="material-icons text-amber-500 text-xs animate-pulse">brush</span>
+                <span class="text-[9px] font-black uppercase text-amber-500 tracking-wider">Modo Pintura:</span>
+                <span class="text-[8px] text-slate-400 hidden xl:inline">Escolha uma sigla e clique nas células</span>
+              </div>
+
+              <!-- Center: Single continuous horizontal list of ALL codes side-by-side -->
+              <div class="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar flex-1 justify-start">
+                <!-- Shift types -->
+                @for (shift of scaleService.shiftTypes(); track shift.code) {
+                  <button (click)="selectPaintbrush(shift.code)"
+                          class="px-2 py-1 rounded text-[9px] font-black cursor-pointer transition-all hover:scale-105 shrink-0 flex items-center gap-0.5"
+                          [style.background-color]="shift.color"
+                          [style.outline]="activePaintbrush() === shift.code ? '2px solid #ffffff' : 'none'"
+                          [style.outline-offset]="activePaintbrush() === shift.code ? '1px' : '0px'"
+                          [class.text-white]="shift.code !== 'F'"
+                          [class.text-slate-300]="shift.code === 'F'"
+                          [title]="shift.label + ' (' + shift.hours + ')'">
+                    <span>{{ shift.code }}</span>
+                  </button>
+                }
+
+                <!-- Separation bar -->
+                <div class="h-4 w-[1px] bg-slate-700 shrink-0 mx-1"></div>
+
+                <!-- Siglas/Afastamentos -->
+                @for (sigla of scaleService.siglaTypes(); track sigla.code) {
+                  <button (click)="selectPaintbrush(sigla.code)"
+                          class="px-2 py-1 rounded text-[9px] font-black cursor-pointer transition-all hover:scale-105 text-white shrink-0"
+                          [style.background-color]="sigla.color"
+                          [style.outline]="activePaintbrush() === sigla.code ? '2px solid #ffffff' : 'none'"
+                          [style.outline-offset]="activePaintbrush() === sigla.code ? '1px' : '0px'"
+                          [title]="sigla.label">
+                    <span>{{ sigla.code }}</span>
                   </button>
                 }
               </div>
 
-              <div class="flex flex-col gap-2.5 pt-2 border-t border-amber-500/20">
-                <!-- Turnos de Pátio -->
-                <div class="flex flex-col md:flex-row md:items-center gap-2">
-                  <span class="text-[8px] font-black text-amber-400 uppercase tracking-widest min-w-[70px]">Turnos Pátio:</span>
-                  <div class="flex flex-wrap gap-1.5">
-                    @for (shift of scaleService.shiftTypes(); track shift.code) {
-                      <button (click)="selectPaintbrush(shift.code)"
-                              class="px-2.5 py-1.5 rounded text-[10px] font-black border-none cursor-pointer flex items-center gap-1 transition-transform hover:scale-105"
-                              [style.background-color]="shift.color"
-                              [style.border]="activePaintbrush() === shift.code ? '2px solid white' : 'none'"
-                              [class.text-white]="shift.code !== 'F'"
-                              [class.text-slate-300]="shift.code === 'F'">
-                        <span>{{ shift.code }}</span>
-                        <span class="text-[8px] font-bold opacity-80">({{ shift.hours }})</span>
-                      </button>
-                    }
+              <!-- Right: Clean Actions -->
+              <div class="flex items-center gap-2 shrink-0">
+                @if (activePaintbrush()) {
+                  <div class="flex items-center gap-1.5 bg-[#0b1a30] border border-[#10213b] px-2 py-1 rounded">
+                    <span class="text-[8px] font-bold text-slate-400 uppercase">Ativo:</span>
+                    <span class="text-[9px] font-black text-amber-400 px-1.5 py-0.5 rounded"
+                          [style.background-color]="getShiftOrSiglaColor(activePaintbrush() || '')">
+                      {{ activePaintbrush() }}
+                    </span>
                   </div>
-                </div>
-
-                <!-- Siglas / Afastamentos -->
-                <div class="flex flex-col md:flex-row md:items-center gap-2">
-                  <span class="text-[8px] font-black text-amber-400 uppercase tracking-widest min-w-[70px]">Afastamentos:</span>
-                  <div class="flex flex-wrap gap-1.5">
-                    @for (sigla of scaleService.siglaTypes(); track sigla.code) {
-                      <button (click)="selectPaintbrush(sigla.code)"
-                              class="px-2.5 py-1.5 rounded text-[10px] font-black border-none cursor-pointer flex items-center gap-1 transition-transform hover:scale-105 text-white"
-                              [style.background-color]="sigla.color"
-                              [style.border]="activePaintbrush() === sigla.code ? '2px solid white' : 'none'">
-                        <span>{{ sigla.code }}</span>
-                      </button>
-                    }
-                  </div>
-                </div>
+                }
+                
+                <button (click)="activePaintbrush.set(null)"
+                        [disabled]="!activePaintbrush()"
+                        [class.opacity-40]="!activePaintbrush()"
+                        class="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2 py-1 rounded font-black uppercase transition-all cursor-pointer">
+                  Limpar
+                </button>
               </div>
             </div>
           }
 
           <!-- MATRIX TABULAR GRID -->
-          <div class="mt-4 overflow-x-auto border border-[#10213b] rounded-xl bg-[#030a14]">
+          <div class="flex-1 overflow-auto w-full bg-[#020813] border-b border-[#10213b]" id="matrix_table_scroll_container">
             <table class="w-full text-left border-collapse select-none">
               <thead>
                 <!-- Months & Header Days Row -->
-                <tr class="border-b border-[#10213b] bg-[#071426] text-slate-400 text-[8px] font-black tracking-widest uppercase select-none">
-                  <th class="py-3 px-3 min-w-[160px] sticky left-0 bg-[#071426] border-r border-[#10213b] z-10 shadow-md">Colaboradores</th>
+                <tr class="border-b border-[#10213b] bg-[#071426] text-slate-400 text-[8px] font-black tracking-widest uppercase select-none sticky top-0 z-30">
+                  <th class="py-3 px-4 md:px-6 min-w-[180px] sticky top-0 left-0 bg-[#071426] border-r border-[#10213b] z-40 shadow-md">Colaboradores</th>
                   @for (day of daysInMonth; track day) {
-                    <th class="py-2 px-1 text-center min-w-[32px] border-r border-[#10213b]"
-                        [ngClass]="{ 'bg-[#005cfa]/10': isDayWeekend(day) }"
+                    <th class="py-2 px-1 text-center min-w-[32px] border-r border-[#10213b] sticky top-0 bg-[#071426] z-30"
+                        [ngClass]="{ 'bg-[#10b981]/10': isDayWeekend(day) }"
                         [class.text-slate-200]="isDayWeekend(day)">
                       <div class="flex flex-col items-center">
                         <span>{{ day | number:'2.0-0' }}</span>
-                        <span class="text-[7px] font-bold mt-0.5" [class.text-[#005cfa]]="isDayWeekend(day)">{{ getDayOfWeekLabel(day) }}</span>
+                        <span class="text-[7px] font-bold mt-0.5" [class.text-[#10b981]]="isDayWeekend(day)">{{ getDayOfWeekLabel(day) }}</span>
                       </div>
                     </th>
                   }
+                  <th class="py-3 px-0.5 text-center w-12 min-w-[44px] sticky top-0 right-0 bg-[#071426] border-l border-[#10213b] z-40 shadow-md text-[8px]">Ações</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-[#10213b] font-mono text-[10px]">
                 @if (filteredCollaborators().length === 0) {
                   <tr>
-                    <td [attr.colspan]="31" class="py-10 text-center text-slate-500 italic">
+                    <td [attr.colspan]="32" class="py-10 text-center text-slate-500 italic">
                       Nenhum colaborador corresponde aos filtros selecionados.
                     </td>
                   </tr>
                 } @else {
                   @for (collab of filteredCollaborators(); track collab.id) {
-                    <tr class="hover:bg-[#0b1e36]/10 transition-colors">
+                    <tr class="hover:bg-[#0b1e36]/10 transition-colors" [class.bg-amber-950]="editingRowCollabId() === collab.id">
                       <!-- Collab details sticky col -->
-                      <td class="py-2 px-3 sticky left-0 bg-[#030a14] border-r border-[#10213b] z-10 shadow-sm flex items-center justify-between">
-                        <div class="flex flex-col min-w-0 pr-1.5">
-                          <span class="font-sans font-black text-white truncate text-[11px]">{{ collab.name }}</span>
-                          <span class="font-sans text-[8px] text-slate-500 font-bold uppercase truncate">{{ collab.role === 'LIDER' ? 'LÍDER TURNO' : collab.role }} · {{ collab.group }}</span>
+                      <td class="py-2 pl-4 pr-3 md:pl-6 md:pr-4 sticky left-0 bg-[#030a14] border-r border-[#10213b] z-10 shadow-sm flex items-center justify-between gap-2 min-w-[180px]">
+                        <div class="flex items-center gap-2 min-w-0 flex-1">
+                          <!-- Avatar Provisório -->
+                          <div class="relative shrink-0">
+                            <img [src]="getCollabPhoto(collab)" 
+                                 alt="Avatar"
+                                 referrerpolicy="no-referrer"
+                                 class="w-7 h-7 rounded-full object-cover border border-emerald-500/20 bg-slate-900 shadow-sm">
+                          </div>
+                          
+                          <div class="flex flex-col min-w-0">
+                            <span class="font-sans font-black text-white truncate text-[11px]">{{ collab.name }}</span>
+                            <span class="font-sans text-[8px] text-slate-500 font-bold uppercase truncate">{{ collab.role === 'LIDER' ? 'LÍDER TURNO' : collab.role }} · {{ collab.group }}</span>
+                          </div>
                         </div>
-                        <span class="text-[8px] font-sans font-bold bg-[#10213b] px-1 py-0.5 rounded text-slate-400" title="Setor Logístico">{{ collab.sector | slice:0:3 }}</span>
+                        <span class="text-[8px] font-sans font-bold bg-[#10213b] px-1 py-0.5 rounded text-slate-400 shrink-0" title="Setor Logístico">{{ collab.sector | slice:0:3 }}</span>
                       </td>
 
                       <!-- Month Calendar cells -->
                       @for (day of daysInMonth; track day) {
-                        @let cellVal = collab.scale[day] || 'F';
-                        <td class="py-2.5 px-0.5 text-center border-r border-[#10213b] relative cursor-pointer group-cell"
-                            (click)="applyPaintbrush(collab.id, day)"
-                            [ngClass]="{ 'bg-[#005cfa]/5': isDayWeekend(day) && cellVal === 'F' }">
+                        @let cellVal = editingRowCollabId() === collab.id ? (editingRowScaleDraft()[day] || '-') : (collab.scale[day] || '-');
+                        <td class="py-2 px-0.5 text-center border-r border-[#10213b] relative cursor-pointer group-cell"
+                            (click)="editingRowCollabId() === collab.id ? paintDraftCell(day) : (editingRowCollabId() !== null ? null : applyPaintbrush(collab.id, day))"
+                            [ngClass]="{ 'bg-[#10b981]/5': isDayWeekend(day) && (cellVal === 'F' || cellVal === '-') }">
                           
-                          <!-- Render dynamic cell colors based on values -->
+                          <!-- Render dynamic cell colors based on values (either draft or saved) -->
                           <div class="w-6 h-6 mx-auto rounded flex items-center justify-center font-bold text-[9px] transition-transform hover:scale-105 active:scale-95 shadow-sm"
                                [style.background-color]="getShiftOrSiglaColor(cellVal)"
-                               [style.color]="getShiftOrSiglaTextColor(cellVal)">
+                               [style.color]="getShiftOrSiglaTextColor(cellVal)"
+                               [class.ring-2]="editingRowCollabId() === collab.id"
+                               [class.ring-amber-500]="editingRowCollabId() === collab.id">
                             {{ cellVal }}
                           </div>
                         </td>
                       }
+
+                      <!-- Direct Row Actions Column sticky to right -->
+                      <td class="py-2 px-0.5 sticky right-0 bg-[#030a14] border-l border-[#10213b] z-10 shadow-sm text-center w-12 min-w-[44px]">
+                        @if (editingRowCollabId() === collab.id) {
+                          <div class="flex items-center justify-center gap-1">
+                            <!-- SAVE BUTTON -->
+                            <button (click)="saveRowScale(collab)" 
+                                    class="w-5 h-5 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 flex items-center justify-center cursor-pointer transition-colors"
+                                    title="Salvar alterações desta linha">
+                              <span class="material-icons text-[10px]">check</span>
+                            </button>
+                            <!-- CANCEL BUTTON -->
+                            <button (click)="cancelRowScale()" 
+                                    class="w-5 h-5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 flex items-center justify-center cursor-pointer transition-colors"
+                                    title="Descartar alterações">
+                              <span class="material-icons text-[10px]">close</span>
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="flex items-center justify-center">
+                            <!-- EDIT BUTTON -->
+                            <button (click)="startRowScaleEdit(collab)" 
+                                    [disabled]="scaleService.currentRole() === 'OPERADOR'"
+                                    [class.opacity-40]="scaleService.currentRole() === 'OPERADOR'"
+                                    class="w-5 h-5 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 flex items-center justify-center cursor-pointer transition-colors"
+                                    title="Editar escala desta linha">
+                              <span class="material-icons text-[10px]">edit</span>
+                            </button>
+                          </div>
+                        }
+                      </td>
                     </tr>
                   }
                 }
@@ -446,7 +486,7 @@
           </div>
 
           <!-- SIGNATURES EXPLANATIONS FOOTER -->
-          <div class="mt-4 pt-4 border-t border-[#10213b] flex flex-col sm:flex-row gap-4 items-center justify-between select-none">
+          <div class="mt-0 px-4 md:px-6 py-4 border-t border-[#10213b] bg-[#020813] flex flex-col sm:flex-row gap-4 items-center justify-between select-none">
             <div class="flex flex-wrap gap-x-4 gap-y-2 items-center text-[9px] font-sans font-bold uppercase text-slate-400">
               <span class="text-white">Legenda Turnos:</span>
               @for (shift of scaleService.shiftTypes(); track shift.code) {
@@ -472,7 +512,7 @@
 
       <!-- SUB-TAB 2: GERENCIAMENTO DE TURNOS OPERACIONAIS -->
       @if (activeSubTab() === 'ger.turnos') {
-        <div class="p-6 bg-[#071426] border border-[#10213b] rounded-xl shadow-xl space-y-6 animate-fade-in font-sans" id="shifts_tab_content">
+        <div class="p-4 md:p-6 space-y-6 animate-fade-in font-sans w-full" id="shifts_tab_content">
           <div class="pb-3 border-b border-[#10213b] flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h3 class="font-black text-sm uppercase tracking-tight text-white flex items-center gap-1.5 animate-pulse">
@@ -492,7 +532,7 @@
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- SHIFTS TABLE LIST (Span 2) -->
             <div class="lg:col-span-2 space-y-4">
-              <div class="border border-[#10213b] rounded-xl overflow-hidden bg-[#030a14]">
+              <div class="border border-[#10213b] rounded-lg overflow-hidden bg-[#030a14]">
                 <div class="bg-[#071426] px-4 py-3 border-b border-[#10213b] flex items-center justify-between">
                   <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
                     <span class="material-icons text-xs text-blue-500">list</span>
@@ -581,7 +621,7 @@
               </div>
  
               <!-- Quick Explanation Note -->
-              <div class="bg-blue-500/5 border border-blue-500/10 rounded-xl p-4 flex gap-3">
+              <div class="bg-blue-500/5 border border-blue-500/10 rounded-lg p-4 flex gap-3">
                 <span class="material-icons text-blue-400">psychology</span>
                 <div class="text-[10px] text-slate-400 leading-relaxed">
                   <span class="text-white font-bold block mb-0.5">Automação de Alocação de Pista:</span>
@@ -594,7 +634,7 @@
             <div class="space-y-6">
               
               <!-- SHIFT CREATION / EDITING CARD -->
-              <div class="bg-[#030a14] border border-[#10213b] rounded-xl p-5 shadow-xl">
+              <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-5 shadow-xl">
                 <div class="flex items-center justify-between pb-2 border-b border-[#10213b] mb-4">
                   <h4 class="font-black text-xs text-white uppercase tracking-wider flex items-center gap-1.5">
                     <span class="material-icons text-blue-500 text-sm">
@@ -719,7 +759,7 @@
                   <!-- Action Buttons -->
                   <div class="pt-2 flex gap-2">
                     <button (click)="saveShiftType()"
-                            class="flex-1 bg-[#005cfa] hover:bg-blue-600 text-white font-black py-2.5 rounded uppercase tracking-wider transition-all cursor-pointer border-none shadow-md outline-none">
+                            class="flex-1 bg-[#10b981] hover:bg-emerald-600 text-white font-black py-2.5 rounded uppercase tracking-wider transition-all cursor-pointer border-none shadow-md outline-none">
                       {{ editingShiftCode() ? 'Salvar Alterações' : 'Criar Turno' }}
                     </button>
                     
@@ -742,7 +782,7 @@
 
       <!-- SUB-TAB: GERENCIAMENTO DE SIGLAS -->
       @if (activeSubTab() === 'siglas') {
-        <div class="p-6 bg-[#071426] border border-[#10213b] rounded-xl shadow-xl space-y-6 animate-fade-in font-sans" id="siglas_tab_content">
+        <div class="p-4 md:p-6 space-y-6 animate-fade-in font-sans w-full" id="siglas_tab_content">
           <div class="pb-3 border-b border-[#10213b] flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h3 class="font-black text-sm uppercase tracking-tight text-white flex items-center gap-1.5 animate-pulse">
@@ -762,7 +802,7 @@
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- SIGLAS TABLE LIST (Span 2) -->
             <div class="lg:col-span-2 space-y-4">
-              <div class="border border-[#10213b] rounded-xl overflow-hidden bg-[#030a14]">
+              <div class="border border-[#10213b] rounded-lg overflow-hidden bg-[#030a14]">
                 <div class="bg-[#071426] px-4 py-3 border-b border-[#10213b] flex items-center justify-between">
                   <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
                     <span class="material-icons text-xs text-blue-500">list</span>
@@ -835,7 +875,7 @@
               </div>
 
               <!-- Quick Explanation Note -->
-              <div class="bg-blue-500/5 border border-blue-500/10 rounded-xl p-4 flex gap-3">
+              <div class="bg-blue-500/5 border border-blue-500/10 rounded-lg p-4 flex gap-3">
                 <span class="material-icons text-blue-400">psychology</span>
                 <div class="text-[10px] text-slate-400 leading-relaxed">
                   <span class="text-white font-bold block mb-0.5">Independência de Siglas:</span>
@@ -847,7 +887,7 @@
             <!-- RIGHT COLUMN: SIGLA FORM -->
             <div class="space-y-6">
               <!-- SIGLA CREATION / EDITING CARD -->
-              <div class="bg-[#030a14] border border-[#10213b] rounded-xl p-5 shadow-xl">
+              <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-5 shadow-xl">
                 <div class="flex items-center justify-between pb-2 border-b border-[#10213b] mb-4">
                   <h4 class="font-black text-xs text-white uppercase tracking-wider flex items-center gap-1.5">
                     <span class="material-icons text-blue-500 text-sm">
@@ -913,7 +953,7 @@
                   <!-- Action Buttons -->
                   <div class="pt-2 flex gap-2">
                     <button (click)="saveSiglaType()"
-                            class="flex-1 bg-[#005cfa] hover:bg-blue-600 text-white font-black py-2.5 rounded uppercase tracking-wider transition-all cursor-pointer border-none shadow-md outline-none">
+                            class="flex-1 bg-[#10b981] hover:bg-emerald-600 text-white font-black py-2.5 rounded uppercase tracking-wider transition-all cursor-pointer border-none shadow-md outline-none">
                       {{ editingSiglaCode() ? 'Salvar Alterações' : 'Criar Sigla' }}
                     </button>
                     
@@ -933,7 +973,7 @@
 
       <!-- SUB-TAB 4: PAINEL OPERACIONAL DE COLABORADORES (CARDS & FADIGA) -->
       @if (activeSubTab() === 'team') {
-        <div class="p-6 bg-[#071426] border border-[#10213b] rounded-xl shadow-xl space-y-6 animate-fade-in font-sans" id="team_gallery_tab_content">
+        <div class="p-4 md:p-6 space-y-6 animate-fade-in font-sans w-full" id="team_gallery_tab_content">
           <!-- Page Header -->
           <div class="pb-3 border-b border-[#10213b] flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
@@ -959,7 +999,7 @@
             
             <!-- LEFT COLUMN: CARDS GALLERY (1/3 Width on desktop) -->
             <div class="xl:col-span-1 space-y-4">
-              <div class="bg-[#030a14] border border-[#10213b] rounded-xl p-4 space-y-3">
+              <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-4 space-y-3">
                 <span class="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Filtro de Seleção Rápida</span>
                 
                 <!-- Search within tab -->
@@ -977,7 +1017,7 @@
               <div class="space-y-3 overflow-y-auto max-h-[600px] pr-1 scrollbar-thin">
                 @let filteredList = filteredCollaborators();
                 @if (filteredList.length === 0) {
-                  <div class="py-8 text-center text-xs text-slate-500 italic bg-[#030a14]/50 border border-dashed border-[#10213b] rounded-xl">
+                  <div class="py-8 text-center text-xs text-slate-500 italic bg-[#030a14]/50 border border-dashed border-[#10213b] rounded-lg">
                     Nenhum colaborador corresponde aos filtros ativos.
                   </div>
                 } @else {
@@ -985,12 +1025,12 @@
                     @let isSelected = selectedProfileCollabId() === collab.id || (!selectedProfileCollabId() && filteredList[0].id === collab.id);
                     
                     <div (click)="selectedProfileCollabId.set(collab.id)"
-                         class="p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 text-left relative overflow-hidden group select-none"
-                         [class]="isSelected ? 'bg-gradient-to-r from-blue-950/40 to-[#071426] border-[#005cfa] shadow-lg' : 'bg-[#030a14]/80 border-[#10213b] hover:border-slate-700 hover:bg-[#071426]'">
+                         class="p-4 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-3 text-left relative overflow-hidden group select-none"
+                         [class]="isSelected ? 'bg-gradient-to-r from-emerald-950/40 to-[#071426] border-[#10b981] shadow-lg' : 'bg-[#030a14]/80 border-[#10213b] hover:border-slate-700 hover:bg-[#071426]'">
                       
                       <!-- Ambient overlay indicator -->
                       @if (isSelected) {
-                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#005cfa]"></div>
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#10b981]"></div>
                       }
 
                       <!-- Left side: Avatar + Name / Role info -->
@@ -1043,15 +1083,15 @@
               @let stats = collabStats();
               
               @if (!selectedCol) {
-                <div class="py-24 text-center text-xs text-slate-500 italic bg-[#030a14] border border-dashed border-[#10213b] rounded-xl">
+                <div class="py-24 text-center text-xs text-slate-500 italic bg-[#030a14] border border-dashed border-[#10213b] rounded-lg">
                   Selecione um colaborador à esquerda para carregar o prontuário e análises de pátio.
                 </div>
               } @else {
                 <!-- COLLABORATOR DETAIL CARD CONTAINER -->
-                <div class="bg-[#030a14] border border-[#10213b] rounded-xl p-6 shadow-2xl space-y-6 animate-fade-in">
+                <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-6 shadow-2xl space-y-6 animate-fade-in">
                   
                   <!-- Profile Main Header -->
-                  <div class="p-5 bg-gradient-to-r from-[#071426] to-[#030a14] rounded-xl border border-[#10213b] flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+                  <div class="p-5 bg-gradient-to-r from-[#071426] to-[#030a14] rounded-lg border border-[#10213b] flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
                     <div class="absolute right-0 top-0 bottom-0 opacity-10 select-none pointer-events-none flex items-center pr-6">
                       <span class="material-icons text-9xl text-slate-500 font-bold">person</span>
                     </div>
@@ -1059,17 +1099,17 @@
                     <div class="flex items-center gap-4 relative z-10">
                       <!-- Glowing Avatar Container -->
                       <div class="relative shrink-0">
-                        <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-xl blur opacity-30"></div>
+                        <div class="absolute -inset-0.5 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-lg blur opacity-30"></div>
                         <img [src]="getCollabPhoto(selectedCol)" 
                              alt="Foto de {{ selectedCol.name }}"
                              referrerpolicy="no-referrer"
-                             class="w-16 h-16 rounded-xl object-cover border-2 border-blue-500/20 shadow-xl bg-slate-900 relative z-10">
+                             class="w-16 h-16 rounded-lg object-cover border-2 border-emerald-500/20 shadow-xl bg-slate-900 relative z-10">
                       </div>
 
                       <div class="flex flex-col">
                         <div class="flex flex-wrap items-center gap-2">
                           <h4 class="font-black text-base text-white uppercase tracking-tight">{{ selectedCol.name }}</h4>
-                          <span class="px-2 py-0.5 rounded text-[8px] font-black tracking-widest uppercase bg-blue-950 text-blue-400 border border-blue-500/20">
+                          <span class="px-2 py-0.5 rounded text-[8px] font-black tracking-widest uppercase bg-emerald-950 text-emerald-400 border border-emerald-500/20">
                             {{ selectedCol.role }}
                           </span>
                         </div>
@@ -1104,10 +1144,10 @@
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     
                     <!-- WIDGET 1: WORKDAYS VS RESTDAYS -->
-                    <div class="p-4 bg-[#071426] border border-[#10213b] rounded-xl flex flex-col justify-between space-y-3">
+                    <div class="p-4 bg-[#071426] border border-[#10213b] rounded-lg flex flex-col justify-between space-y-3">
                       <div>
                         <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                          <span class="material-icons text-xs text-blue-400">equalizer</span>
+                          <span class="material-icons text-xs text-emerald-400">equalizer</span>
                           Aproveitamento Escala
                         </span>
                         <p class="text-[8px] text-slate-500 mt-0.5 leading-relaxed">Dias ativos escalados em Junho de 2026.</p>
@@ -1116,7 +1156,7 @@
                       <div class="flex items-end justify-between">
                         <div class="flex flex-col">
                           <span class="text-xl font-black text-white font-mono leading-none">{{ stats?.workDays }}d</span>
-                          <span class="text-[8px] uppercase tracking-wider text-blue-400 font-bold mt-1">Trabalho</span>
+                          <span class="text-[8px] uppercase tracking-wider text-emerald-400 font-bold mt-1">Trabalho</span>
                         </div>
                         <div class="text-right flex flex-col">
                           <span class="text-xl font-black text-slate-300 font-mono leading-none">{{ stats?.offDays }}d</span>
@@ -1129,7 +1169,7 @@
                         @let workPercentage = (stats.workDays / 30) * 100;
                         <div class="space-y-1">
                           <div class="w-full bg-[#030a14] rounded-full h-1.5 overflow-hidden">
-                            <div class="bg-blue-500 h-1.5 rounded-full" [style.width]="workPercentage + '%'"></div>
+                            <div class="bg-emerald-500 h-1.5 rounded-full" [style.width]="workPercentage + '%'"></div>
                           </div>
                           <div class="flex justify-between text-[8px] font-bold text-slate-500 font-mono">
                             <span>Frequência: {{ workPercentage | number:'1.0-0' }}%</span>
@@ -1139,13 +1179,13 @@
                     </div>
 
                     <!-- WIDGET 2: FATIGUE RISK INDICATOR -->
-                    <div class="p-4 bg-[#071426] border border-[#10213b] rounded-xl flex flex-col justify-between space-y-3">
+                    <div class="p-4 bg-[#071426] border border-[#10213b] rounded-lg flex flex-col justify-between space-y-3">
                       <div>
                         <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
                           <span class="material-icons text-xs text-rose-400">warning</span>
                           Índice de Fadiga
                         </span>
-                        <p class="text-[8px] text-slate-500 mt-0.5 leading-relaxed">Prevenção contra erros de reabastecimento.</p>
+                        <p class="text-[8px] text-slate-500 mt-0.5 leading-relaxed">Prevenção contra erros operacionais.</p>
                       </div>
 
                       <div class="flex items-center gap-2">
@@ -1166,7 +1206,7 @@
                     </div>
 
                     <!-- WIDGET 3: RECOVERY AND REST INDEX -->
-                    <div class="p-4 bg-[#071426] border border-[#10213b] rounded-xl flex flex-col justify-between space-y-3">
+                    <div class="p-4 bg-[#071426] border border-[#10213b] rounded-lg flex flex-col justify-between space-y-3">
                       <div>
                         <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
                           <span class="material-icons text-xs text-emerald-400">volunteer_activism</span>
@@ -1270,14 +1310,14 @@
 
       <!-- SUB-TAB 4-MGMT: CADASTRO E GERENCIAMENTO DE ATIVOS -->
       @if (activeSubTab() === 'team-mgmt') {
-        <div class="p-6 bg-[#071426] border border-[#10213b] rounded-xl shadow-xl space-y-6 animate-fade-in font-sans" id="team_tab_content">
+        <div class="p-4 md:p-6 space-y-6 animate-fade-in font-sans w-full" id="team_tab_content">
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             <!-- TEAM MEMBERS LIST CARD (SPAN 2) -->
-            <div class="lg:col-span-2 bg-[#071426] border border-[#10213b] rounded-xl p-5 flex flex-col shadow-xl">
+            <div class="lg:col-span-2 bg-[#071426] border border-[#10213b] rounded-lg p-5 flex flex-col shadow-xl">
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#10213b]">
                 <div class="flex items-center gap-2">
-                  <span class="material-icons select-none text-[#005cfa] font-bold">group</span>
+                  <span class="material-icons select-none text-[#10b981] font-bold">group</span>
                   <h3 class="font-black text-sm uppercase tracking-tight text-white">Quadro Oficial de Colaboradores</h3>
                 </div>
                 <div class="text-xs text-slate-400 font-bold">
@@ -1305,9 +1345,10 @@
                         <!-- Colaborador Nome -->
                         <td class="py-3.5 px-2">
                           <div class="flex items-center gap-2">
-                            <div class="w-7 h-7 rounded bg-[#005cfa]/10 text-[#005cfa] flex items-center justify-center font-black text-[10px] border border-blue-500/10">
-                              {{ collab.name | slice:0:2 | uppercase }}
-                            </div>
+                            <img [src]="getCollabPhoto(collab)" 
+                                 alt="Avatar"
+                                 referrerpolicy="no-referrer"
+                                 class="w-7 h-7 rounded-full object-cover border border-emerald-500/20 bg-slate-900 shadow-sm shrink-0">
                             <div class="flex flex-col">
                               <span class="font-bold text-white">{{ collab.name }}</span>
                               <span class="text-[8px] text-slate-500 font-mono">ID: {{ collab.id.substring(0, 8) }}</span>
@@ -1318,7 +1359,7 @@
                         <!-- Função / Cargo -->
                         <td class="py-3.5 px-2">
                           <span class="px-2 py-0.5 rounded text-[9px] font-black tracking-wider uppercase inline-block font-sans"
-                                [class]="collab.role === 'SUPERVISOR' ? 'bg-purple-950 text-purple-400 border border-purple-800/30' : collab.role === 'LIDER' ? 'bg-amber-950 text-amber-400 border border-amber-800/30' : 'bg-blue-950 text-blue-400 border border-blue-800/30'">
+                                [class]="collab.role === 'SUPERVISOR' ? 'bg-purple-950 text-purple-400 border border-purple-800/30' : collab.role === 'LIDER' ? 'bg-amber-950 text-amber-400 border border-amber-800/30' : 'bg-emerald-950 text-emerald-400 border border-emerald-800/30'">
                             {{ collab.role === 'LIDER' ? 'LÍDER DE TURNO' : collab.role }}
                           </span>
                         </td>
@@ -1332,7 +1373,7 @@
                         <!-- Setor -->
                         <td class="py-3.5 px-2">
                           <span class="px-1.5 py-0.5 rounded text-[9px] font-bold"
-                                [class]="collab.sector === 'AERÓDROMO' ? 'bg-[#0f172a] text-[#005cfa]' : collab.sector === 'VIP' ? 'bg-[#1e1b4b] text-indigo-400' : 'bg-emerald-950 text-emerald-400'">
+                                [class]="collab.sector === 'AERÓDROMO' ? 'bg-[#0f172a] text-[#10b981]' : collab.sector === 'VIP' ? 'bg-[#1e1b4b] text-indigo-400' : 'bg-emerald-950 text-emerald-400'">
                             {{ collab.sector }}
                           </span>
                         </td>
@@ -1371,7 +1412,7 @@
             <!-- RIGHT SIDEBAR: REGISTER & ALLOCATION -->
             <div class="space-y-6">
               <!-- ADD TEAM MEMBER PANEL -->
-              <div class="bg-[#030a14] border border-[#10213b] rounded-xl p-5 shadow-xl h-fit">
+              <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-5 shadow-xl h-fit">
                 <div class="pb-3 border-b border-[#10213b] mb-4">
                   <h4 class="font-black text-sm text-white uppercase tracking-tight flex items-center gap-1.5">
                     <span class="material-icons text-blue-500">person_add</span>
@@ -1462,13 +1503,101 @@
                              #newCollabScore
                              type="number"
                              value="100"
-                             class="bg-[#071426] text-white border border-[#10213b] focus:border-blue-500 outline-none rounded-lg px-3 py-2 text-xs font-semibold font-mono">
+                             class="bg-[#071426] text-white border border-[#10213b] focus:border-emerald-500 outline-none rounded-lg px-3 py-2 text-xs font-semibold font-mono">
+                    </div>
+                  </div>
+
+                  <!-- Data do Aniversário -->
+                  <div class="flex flex-col gap-1.5">
+                    <label for="new_collab_birthday_input" class="font-black text-[9px] uppercase tracking-wider text-slate-400">Data de Aniversário</label>
+                    <input id="new_collab_birthday_input"
+                           #newCollabBirthday
+                           type="date"
+                           class="bg-[#071426] text-white border border-[#10213b] focus:border-blue-500 outline-none rounded-lg px-3 py-2 text-xs font-semibold">
+                  </div>
+
+                  <!-- Seção Datas Especiais (Máx 5 com prioridades) -->
+                  <div class="p-3 bg-[#071426]/50 border border-[#10213b] rounded-lg space-y-2.5">
+                    <div class="flex items-center justify-between border-b border-[#10213b] pb-1.5">
+                      <span class="block text-[9px] font-black uppercase tracking-wider text-slate-400">Cinco Datas Especiais &amp; Prioridades</span>
+                      <span class="text-[8px] bg-[#10213b] text-amber-500 px-2 py-0.5 rounded font-bold uppercase">P1 (Maior) a P5 (Menor)</span>
+                    </div>
+                    
+                    <!-- Linha Data Especial 1 (Prioridade 1) -->
+                    <div class="grid grid-cols-12 gap-2">
+                      <input type="text" #newCollabSD1Desc placeholder="Ex: Aniv. Casamento" class="col-span-6 bg-[#071426] text-white border border-[#10213b] rounded-lg px-2.5 py-1.5 text-[10px] font-medium outline-none">
+                      <input type="date" #newCollabSD1Date class="col-span-4 bg-[#071426] text-white border border-[#10213b] rounded-lg px-2.5 py-1.5 text-[10px] font-medium outline-none">
+                      <div class="col-span-2 text-center text-[10px] font-black text-amber-500 bg-[#071426] border border-[#10213b] py-1.5 rounded-lg flex items-center justify-center">P1</div>
+                    </div>
+
+                    <!-- Linha Data Especial 2 (Prioridade 2) -->
+                    <div class="grid grid-cols-12 gap-2">
+                      <input type="text" #newCollabSD2Desc placeholder="Ex: Aniv. Filho" class="col-span-6 bg-[#071426] text-white border border-[#10213b] rounded-lg px-2.5 py-1.5 text-[10px] font-medium outline-none">
+                      <input type="date" #newCollabSD2Date class="col-span-4 bg-[#071426] text-white border border-[#10213b] rounded-lg px-2.5 py-1.5 text-[10px] font-medium outline-none">
+                      <div class="col-span-2 text-center text-[10px] font-black text-amber-500 bg-[#071426] border border-[#10213b] py-1.5 rounded-lg flex items-center justify-center">P2</div>
+                    </div>
+
+                    <!-- Linha Data Especial 3 (Prioridade 3) -->
+                    <div class="grid grid-cols-12 gap-2">
+                      <input type="text" #newCollabSD3Desc placeholder="Ex: Aniv. Cônjuge" class="col-span-6 bg-[#071426] text-white border border-[#10213b] rounded-lg px-2.5 py-1.5 text-[10px] font-medium outline-none">
+                      <input type="date" #newCollabSD3Date class="col-span-4 bg-[#071426] text-white border border-[#10213b] rounded-lg px-2.5 py-1.5 text-[10px] font-medium outline-none">
+                      <div class="col-span-2 text-center text-[10px] font-black text-amber-500 bg-[#071426] border border-[#10213b] py-1.5 rounded-lg flex items-center justify-center">P3</div>
+                    </div>
+
+                    <!-- Linha Data Especial 4 (Prioridade 4) -->
+                    <div class="grid grid-cols-12 gap-2">
+                      <input type="text" #newCollabSD4Desc placeholder="Ex: Aniversário Mãe" class="col-span-6 bg-[#071426] text-white border border-[#10213b] rounded-lg px-2.5 py-1.5 text-[10px] font-medium outline-none">
+                      <input type="date" #newCollabSD4Date class="col-span-4 bg-[#071426] text-white border border-[#10213b] rounded-lg px-2.5 py-1.5 text-[10px] font-medium outline-none">
+                      <div class="col-span-2 text-center text-[10px] font-black text-amber-500 bg-[#071426] border border-[#10213b] py-1.5 rounded-lg flex items-center justify-center">P4</div>
+                    </div>
+
+                    <!-- Linha Data Especial 5 (Prioridade 5) -->
+                    <div class="grid grid-cols-12 gap-2">
+                      <input type="text" #newCollabSD5Desc placeholder="Ex: Outra Data Magna" class="col-span-6 bg-[#071426] text-white border border-[#10213b] rounded-lg px-2.5 py-1.5 text-[10px] font-medium outline-none">
+                      <input type="date" #newCollabSD5Date class="col-span-4 bg-[#071426] text-white border border-[#10213b] rounded-lg px-2.5 py-1.5 text-[10px] font-medium outline-none">
+                      <div class="col-span-2 text-center text-[10px] font-black text-amber-500 bg-[#071426] border border-[#10213b] py-1.5 rounded-lg flex items-center justify-center">P5</div>
+                    </div>
+                  </div>
+
+                  <!-- Foto de Perfil (Envio de Foto) -->
+                  <div class="flex flex-col gap-1.5">
+                    <label class="font-black text-[9px] uppercase tracking-wider text-slate-400">Foto de Perfil (Opcional)</label>
+                    <div class="flex items-center gap-3 bg-[#071426] border border-[#10213b] rounded-lg p-3 relative overflow-hidden group">
+                      @if (newCollabPhotoData()) {
+                        <div class="relative w-12 h-12 shrink-0 rounded-lg overflow-hidden border border-emerald-500/35 bg-slate-900">
+                          <img [src]="newCollabPhotoData()" 
+                               alt="Prévia da foto" 
+                               class="w-full h-full object-cover">
+                          <button (click)="newCollabPhotoData.set(null); $event.stopPropagation()"
+                                  class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity border-none cursor-pointer"
+                                  title="Remover foto">
+                            <span class="material-icons text-base">delete</span>
+                          </button>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <span class="text-[10px] text-emerald-400 font-bold block truncate">Imagem selecionada</span>
+                          <span class="text-[8px] text-slate-500 block">Pronta para salvar</span>
+                        </div>
+                      } @else {
+                        <div class="w-12 h-12 rounded-lg bg-slate-900 border border-[#10213b] flex items-center justify-center text-slate-600 shrink-0">
+                          <span class="material-icons text-xl">add_a_photo</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <span class="text-[10px] text-slate-400 font-bold block">Clique para enviar foto</span>
+                          <span class="text-[8px] text-slate-500 block">Suporta JPG, JPEG ou PNG</span>
+                        </div>
+                        <input type="file"
+                               (change)="onCollabPhotoSelected($event)"
+                               accept="image/*"
+                               class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+                      }
                     </div>
                   </div>
 
                   <!-- Register Button -->
-                  <button (click)="scaleService.addCollaborator(newCollabName.value, $any(newCollabRole.value), '7h20', $any(newCollabGroup.value), $any(newCollabShift.value), $any(newCollabSector.value), +newCollabBH.value || 0, +newCollabScore.value || 100); newCollabName.value = ''; showToast('Colaborador adicionado com sucesso!')"
-                          class="w-full bg-[#005cfa] hover:bg-blue-600 text-white font-black text-xs py-3 rounded-lg uppercase tracking-wider cursor-pointer border-none shadow-lg shadow-blue-500/15 flex items-center justify-center gap-1.5 select-none transition-all outline-none">
+                  <button (click)="registerCollaborator(newCollabName.value, $any(newCollabRole.value), $any(newCollabGroup.value), $any(newCollabShift.value), $any(newCollabSector.value), +newCollabBH.value || 0, +newCollabScore.value || 100, newCollabPhotoData() || undefined, newCollabBirthday.value, newCollabSD1Desc.value, newCollabSD1Date.value, newCollabSD2Desc.value, newCollabSD2Date.value, newCollabSD3Desc.value, newCollabSD3Date.value, newCollabSD4Desc.value, newCollabSD4Date.value, newCollabSD5Desc.value, newCollabSD5Date.value); newCollabName.value = ''; newCollabBirthday.value = ''; newCollabSD1Desc.value = ''; newCollabSD1Date.value = ''; newCollabSD2Desc.value = ''; newCollabSD2Date.value = ''; newCollabSD3Desc.value = ''; newCollabSD3Date.value = ''; newCollabSD4Desc.value = ''; newCollabSD4Date.value = ''; newCollabSD5Desc.value = ''; newCollabSD5Date.value = ''; newCollabPhotoData.set(null)"
+                          class="w-full bg-[#10b981] hover:bg-emerald-600 text-white font-black text-xs py-3 rounded-lg uppercase tracking-wider cursor-pointer border-none shadow-lg shadow-emerald-500/15 flex items-center justify-center gap-1.5 select-none transition-all outline-none"
+                          id="btn_save_collab_active">
                     <span class="material-icons text-sm">person_add_alt</span>
                     Salvar Ativo
                   </button>
@@ -1476,7 +1605,7 @@
               </div>
 
               <!-- EMPLOYEES SHIFT ALLOCATION / REASSIGNMENT CARD -->
-              <div class="bg-[#030a14] border border-[#10213b] rounded-xl p-5 shadow-xl">
+              <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-5 shadow-xl">
                 <h4 class="font-black text-xs text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <span class="material-icons text-emerald-500 text-sm">swap_horiz</span>
                   Alocar Colaborador em Turno
@@ -1532,6 +1661,340 @@
         </div>
       }
 
+      <!-- SECTION C: PORTAL DO COLABORADOR -->
+      @if (activeSubTab() === 'portal') {
+        <div class="space-y-6">
+          <!-- SIMULATION BAR & QUICK SWITCH -->
+          <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <h3 class="font-black text-sm text-white uppercase tracking-wider">Simulador de Sessão do Colaborador</h3>
+              </div>
+              <p class="text-[10px] text-slate-400 mt-1">
+                Selecione qualquer colaborador cadastrado na frota para simular sua seção pessoal e realizar escolhas de folgas.
+              </p>
+            </div>
+
+            <!-- Selector and Controls -->
+            <div class="flex flex-wrap items-center gap-4">
+              <!-- Select Collab to login -->
+              <div class="flex items-center gap-2">
+                <label for="portal_sim_collab" class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Colaborador:</label>
+                <select id="portal_sim_collab"
+                        [value]="selectedSimulatedCollabId() || ''"
+                        (change)="loginAsCollab($any($event.target).value)"
+                        class="bg-[#071426] text-white border border-[#10213b] rounded-lg px-3 py-1.5 text-xs font-bold outline-none focus:border-emerald-500">
+                  <option value="">-- Escolha um colaborador --</option>
+                  @for (c of scaleService.collaborators(); track c.id) {
+                    <option [value]="c.id">{{ c.name }} ({{ c.role }})</option>
+                  }
+                </select>
+              </div>
+
+              <!-- Simulated Date (Day of Month) -->
+              <div class="flex items-center gap-2 bg-[#071426] border border-[#10213b] p-1.5 rounded-lg">
+                <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider px-1.5">Dia Simulado:</span>
+                <input type="range" min="1" max="30" [value]="simulatedDayOfMonth()" (input)="simulatedDayOfMonth.set(+$any($event.target).value)" class="w-24 accent-emerald-500 cursor-pointer">
+                <span class="text-xs font-black text-white bg-slate-800 px-2.5 py-0.5 rounded font-mono">
+                  Dia {{ simulatedDayOfMonth() }} de Maio
+                </span>
+                <!-- Indicator Window (1-10 vs 11+) -->
+                @if (simulatedDayOfMonth() <= 10) {
+                  <span class="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Aberto (D1-10)
+                  </span>
+                } @else {
+                  <span class="text-[9px] bg-red-950 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Fechado (D11+)
+                  </span>
+                }
+              </div>
+            </div>
+          </div>
+
+          @if (!getLoggedCollab()) {
+            <!-- Welcome Alert State -->
+            <div class="bg-[#071426]/60 border border-[#10213b] rounded-lg p-12 text-center max-w-2xl mx-auto space-y-4">
+              <div class="w-16 h-16 bg-slate-900 border border-[#10213b] text-slate-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                <span class="material-icons text-3xl">lock</span>
+              </div>
+              <div class="space-y-1">
+                <h4 class="font-black text-sm text-white uppercase tracking-wider">Acesso Restrito ao Colaborador</h4>
+                <p class="text-[11px] text-slate-400 leading-relaxed max-w-md mx-auto">
+                  Por favor, escolha um colaborador no menu superior para visualizar sua área de trabalho, atualizar dados de aniversário, datas especiais e gerenciar escolhas de folga mensal.
+                </p>
+              </div>
+            </div>
+          } @else {
+            @let logged = getLoggedCollab()!;
+            <!-- PORTAL GRID -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              <!-- LEFT SIDEBAR: PROFILE & SPECIAL DATES -->
+              <div class="lg:col-span-5 space-y-6">
+                <!-- PROFILE MAIN CARD -->
+                <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-5 shadow-xl space-y-4 relative overflow-hidden">
+                  <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-full -mr-8 -mt-8 pointer-events-none"></div>
+                  
+                  <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-full border border-emerald-500/30 overflow-hidden bg-slate-900 shadow-lg">
+                      @if (logged.photoUrl) {
+                        <img [src]="logged.photoUrl" alt="Foto do Colaborador" class="w-full h-full object-cover">
+                      } @else {
+                        <div class="w-full h-full flex items-center justify-center text-slate-500 font-bold bg-slate-950 text-lg uppercase">
+                          {{ logged.name.charAt(0) }}
+                        </div>
+                      }
+                    </div>
+                    <div>
+                      <h4 class="font-black text-base text-white tracking-tight">{{ logged.name }}</h4>
+                      <div class="flex items-center gap-1.5 mt-0.5">
+                        <span class="text-[9px] font-black uppercase bg-[#10213b] text-emerald-400 px-2 py-0.5 rounded">
+                          {{ logged.role }}
+                        </span>
+                        <span class="text-[9px] text-slate-400 font-mono">ID: {{ logged.id }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-3 pt-3 border-t border-[#10213b]/60 text-[10px]">
+                    <div>
+                      <span class="text-slate-500 uppercase tracking-wider font-bold block text-[8px]">Turno Base:</span>
+                      <span class="text-white font-black uppercase">{{ logged.shift }}</span>
+                    </div>
+                    <div>
+                      <span class="text-slate-500 uppercase tracking-wider font-bold block text-[8px]">Grupo de Trabalho:</span>
+                      <span class="text-white font-black">{{ logged.group }}</span>
+                    </div>
+                    <div>
+                      <span class="text-slate-500 uppercase tracking-wider font-bold block text-[8px]">Setor Logístico:</span>
+                      <span class="text-emerald-400 font-black">{{ logged.sector }}</span>
+                    </div>
+                    <div>
+                      <span class="text-slate-500 uppercase tracking-wider font-bold block text-[8px]">Saldo de Banco de Horas:</span>
+                      <span class="text-white font-black font-mono" [class.text-red-400]="logged.bhBalance < 0" [class.text-emerald-400]="logged.bhBalance > 0">
+                        {{ logged.bhBalance }}h
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- BIRTHDAY & SPECIAL DATES FORM -->
+                <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-5 shadow-xl space-y-4">
+                  <div>
+                    <h4 class="font-black text-xs text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <span class="material-icons text-emerald-500 text-sm">cake</span>
+                      Minhas Datas de Importância Magna
+                    </h4>
+                    <p class="text-[9px] text-slate-400 mt-1 leading-relaxed">
+                      Gerencie suas datas prioritárias. Seu aniversário e as datas especiais de maior prioridade garantirão folga preferencial na formação da escala.
+                    </p>
+                  </div>
+
+                  <div class="space-y-3.5">
+                    <!-- Data de Aniversário -->
+                    <div class="flex flex-col gap-1">
+                      <label for="portal_birthday" class="font-black text-[9px] uppercase tracking-wider text-slate-500">Minha Data de Aniversário</label>
+                      <input id="portal_birthday" #portalBirthday type="date" [value]="logged.birthday || ''" class="bg-[#071426] border border-[#10213b] text-white text-xs font-bold rounded px-3 py-2 outline-none focus:border-blue-500">
+                    </div>
+
+                    <!-- 5 Special Dates with descriptions and priorities -->
+                    <div class="space-y-2">
+                      <label class="font-black text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Minhas 5 Datas de Alta Prioridade (Casamento, Filhos, etc.)</label>
+                      
+                      <!-- Linha Data Especial 1 (Prioridade 1) -->
+                      <div class="grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60">
+                        <div class="col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded">P1</div>
+                        <input type="text" #portalSD1Desc [value]="(logged.specialDates && logged.specialDates[0]) ? logged.specialDates[0].description : ''" placeholder="Ex: Aniversário de Casamento" class="col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none">
+                        <input type="date" #portalSD1Date [value]="(logged.specialDates && logged.specialDates[0]) ? logged.specialDates[0].date : ''" class="col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none">
+                      </div>
+
+                      <!-- Linha Data Especial 2 (Prioridade 2) -->
+                      <div class="grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60">
+                        <div class="col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded">P2</div>
+                        <input type="text" #portalSD2Desc [value]="(logged.specialDates && logged.specialDates[1]) ? logged.specialDates[1].description : ''" placeholder="Ex: Aniversário Filho" class="col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none">
+                        <input type="date" #portalSD2Date [value]="(logged.specialDates && logged.specialDates[1]) ? logged.specialDates[1].date : ''" class="col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none">
+                      </div>
+
+                      <!-- Linha Data Especial 3 (Prioridade 3) -->
+                      <div class="grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60">
+                        <div class="col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded">P3</div>
+                        <input type="text" #portalSD3Desc [value]="(logged.specialDates && logged.specialDates[2]) ? logged.specialDates[2].description : ''" placeholder="Ex: Aniversário Cônjuge" class="col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none">
+                        <input type="date" #portalSD3Date [value]="(logged.specialDates && logged.specialDates[2]) ? logged.specialDates[2].date : ''" class="col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none">
+                      </div>
+
+                      <!-- Linha Data Especial 4 (Prioridade 4) -->
+                      <div class="grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60">
+                        <div class="col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded">P4</div>
+                        <input type="text" #portalSD4Desc [value]="(logged.specialDates && logged.specialDates[3]) ? logged.specialDates[3].description : ''" placeholder="Ex: Aniversário Mãe" class="col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none">
+                        <input type="date" #portalSD4Date [value]="(logged.specialDates && logged.specialDates[3]) ? logged.specialDates[3].date : ''" class="col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none">
+                      </div>
+
+                      <!-- Linha Data Especial 5 (Prioridade 5) -->
+                      <div class="grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60">
+                        <div class="col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded">P5</div>
+                        <input type="text" #portalSD5Desc [value]="(logged.specialDates && logged.specialDates[4]) ? logged.specialDates[4].description : ''" placeholder="Ex: Outra Data Magna" class="col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none">
+                        <input type="date" #portalSD5Date [value]="(logged.specialDates && logged.specialDates[4]) ? logged.specialDates[4].date : ''" class="col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none">
+                      </div>
+                    </div>
+
+                    <!-- Save Profile Dates -->
+                    <button (click)="
+                      savePortalSpecialDates(
+                        portalBirthday.value,
+                        [
+                          { description: portalSD1Desc.value, date: portalSD1Date.value, priority: 1 },
+                          { description: portalSD2Desc.value, date: portalSD2Date.value, priority: 2 },
+                          { description: portalSD3Desc.value, date: portalSD3Date.value, priority: 3 },
+                          { description: portalSD4Desc.value, date: portalSD4Date.value, priority: 4 },
+                          { description: portalSD5Desc.value, date: portalSD5Date.value, priority: 5 }
+                        ]
+                      )
+                    "
+                            class="w-full bg-[#10b981] hover:bg-emerald-600 text-white font-black text-xs py-2.5 rounded uppercase tracking-wider transition-all cursor-pointer border-none flex items-center justify-center gap-1.5">
+                      <span class="material-icons text-sm">save</span>
+                      Atualizar Datas Pessoais
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- RIGHT CONTENT: CALENDAR & LEAVE REQUEST ENGINE -->
+              <div class="lg:col-span-7 space-y-6">
+                <!-- RULES CARD -->
+                <div class="bg-slate-900/40 border border-[#10213b] rounded-lg p-5 space-y-3">
+                  <h4 class="font-black text-xs text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <span class="material-icons text-amber-500 text-sm">info</span>
+                    Regulamento de Escolha de Folgas - Mês de Junho/2026
+                  </h4>
+                  <ul class="text-[10px] text-slate-300 space-y-2 list-none p-0 m-0">
+                    <li class="flex items-start gap-2">
+                      <span class="text-emerald-400 font-bold">✔</span>
+                      <span><strong>Limite de Escolhas:</strong> Você pode escolher no máximo <strong>3 dias</strong> de folga por mês.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-emerald-400 font-bold">✔</span>
+                      <span><strong>Janela de Escolhas:</strong> Disponível estritamente do <strong>dia 1 ao dia 10</strong> do mês anterior. No 11º dia em diante, a opção fica bloqueada.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-emerald-400 font-bold">✔</span>
+                      <span><strong>Garantia de Antiguidade:</strong> No máximo <strong>2 colaboradores</strong> podem escolher a mesma data. Quem escolher primeiro garante a preferência!</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-amber-400 font-bold">★</span>
+                      <span><strong>Aniversário:</strong> O seu aniversário é uma data especial e inegociável, garantindo sua folga automaticamente se cair no mês ativo!</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <!-- MY ACTIVE LEAVES TRACKER -->
+                <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-5 shadow-xl space-y-4">
+                  <div class="flex items-center justify-between pb-2 border-b border-[#10213b]">
+                    <h4 class="font-black text-xs text-white uppercase tracking-wider">
+                      Minhas Folgas Selecionadas ({{ logged.folgaRequests?.length || 0 }}/3)
+                    </h4>
+                    <span class="text-[9px] text-slate-400 font-medium">Junho de 2026</span>
+                  </div>
+
+                  @if (!logged.folgaRequests || logged.folgaRequests.length === 0) {
+                    <p class="text-[10px] text-slate-500 py-2 italic text-center">Nenhuma folga selecionada para Junho. Utilize o calendário abaixo para escolher.</p>
+                  } @else {
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      @for (req of logged.folgaRequests; track req.date) {
+                        <div [class]="req.isPreSelected ? 'p-3 bg-[#071426] border border-emerald-500/30 rounded-lg flex flex-col justify-between gap-2.5 relative overflow-hidden' : 'p-3 bg-[#071426] border border-[#10213b] rounded-lg flex flex-col justify-between gap-2.5 relative overflow-hidden'">
+                          @if (req.isPreSelected) {
+                            <div class="absolute top-0 right-0 bg-emerald-500/10 text-emerald-400 font-black text-[7px] uppercase px-1.5 py-0.5 rounded-bl">Inestimável</div>
+                          }
+                          <div>
+                            <span class="text-xs font-black text-white font-mono block">
+                              {{ req.date.split('-')[2] }}/06/2026
+                            </span>
+                            <span class="text-[9px] font-bold block mt-0.5" [class.text-emerald-400]="req.isPreSelected" [class.text-slate-400]="!req.isPreSelected">
+                              {{ req.isPreSelected ? '★ Auto Pré-Selecionada' : '● Solicitada Manual' }}
+                            </span>
+                          </div>
+
+                          @if (!req.isPreSelected) {
+                            <button (click)="removePortalFolga(req.date)"
+                                    class="w-full bg-red-950/40 hover:bg-red-950 hover:text-red-400 border border-red-500/20 text-slate-400 font-bold text-[9px] uppercase tracking-wider py-1 rounded cursor-pointer transition-colors">
+                              Remover Escolha
+                            </button>
+                          } @else {
+                            <div class="text-[8px] text-emerald-500 font-black uppercase text-center py-1 bg-emerald-950/30 rounded border border-emerald-500/10">Inalterável</div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <!-- DYNAMIC CALENDAR SELECTOR -->
+                <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-5 shadow-xl space-y-4">
+                  <div>
+                    <h4 class="font-black text-xs text-white uppercase tracking-wider">
+                      Calendário de Escala de Folgas - Junho 2026
+                    </h4>
+                    <p class="text-[9px] text-slate-400 mt-1">
+                      Clique em um dia para solicitar ou remover folga. Os dias em vermelho atingiram a cota máxima de 2 colaboradores.
+                    </p>
+                  </div>
+
+                  <!-- Calendar Days Grid -->
+                  <div class="grid grid-cols-7 gap-2 text-center text-xs">
+                    <!-- Weekday Headers -->
+                    <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Dom</div>
+                    <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Seg</div>
+                    <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Ter</div>
+                    <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Qua</div>
+                    <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Qui</div>
+                    <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Sex</div>
+                    <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Sáb</div>
+
+                    <!-- Offset days (June 2026 starts on a Monday, so we have 1 offset day for Sunday) -->
+                    <div class="bg-transparent border border-transparent p-2"></div>
+
+                    <!-- Days 1 to 30 -->
+                    @for (day of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30]; track day) {
+                      @let isChosenByMe = isChosenByLogged(day);
+                      @let isPreByMe = isPreSelectedByLogged(day);
+                      @let count = getFolgaRequestCount(day);
+
+                      <button (click)="isChosenByMe ? (isPreByMe ? showToast('Folga automática de alta prioridade não pode ser removida.') : removePortalFolgaDay(day)) : requestPortalFolgaDay(day)"
+                              [class]="getCalendarDayClass(isChosenByMe, count)">
+                        
+                        <div class="flex items-center justify-between w-full">
+                          <span class="font-black text-white font-mono text-[11px]">{{ day }}</span>
+                          @if (isChosenByMe) {
+                            <span class="text-[9px] text-emerald-400 font-bold">★</span>
+                          }
+                        </div>
+
+                        <!-- Slots Indicator -->
+                        <div class="w-full text-left">
+                          <span class="text-[8px] font-black font-mono block"
+                                [class.text-emerald-400]="count < 2 && !isChosenByMe"
+                                [class.text-amber-400]="isChosenByMe"
+                                [class.text-red-400]="count >= 2 && !isChosenByMe">
+                            {{ count }}/2 Vagas
+                          </span>
+                          <!-- Collaps who selected this -->
+                          <div class="text-[7px] text-slate-500 truncate font-semibold block h-3 leading-none">
+                            {{ getCollaboratorsForFolga(day).join(', ') }}
+                          </div>
+                        </div>
+
+                      </button>
+                    }
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          }
+        </div>
+      }
+
 
     </section>
   </main>
@@ -1539,7 +2002,7 @@
   <!-- AUTHENTICATION DIALOG / LOGIN SIMULATION MODAL -->
   @if (isAuthModalOpen()) {
     <div class="fixed inset-0 bg-[#020813]/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-      <div class="bg-[#071426] border border-[#10213b] w-full max-w-sm rounded-xl p-6 shadow-2xl space-y-4">
+      <div class="bg-[#071426] border border-[#10213b] w-full max-w-sm rounded-lg p-6 shadow-2xl space-y-4">
         <div class="flex items-center justify-between pb-2 border-b border-[#10213b]">
           <h3 class="font-black text-sm text-white uppercase tracking-tight flex items-center gap-1.5">
             <span class="material-icons text-blue-500">security</span>
@@ -1561,12 +2024,12 @@
           </div>
           <div class="flex flex-col gap-1">
             <label for="auth_pwd_input" class="font-black text-[9px] uppercase tracking-wider text-slate-400">Senha / Assinatura Digital</label>
-            <input id="auth_pwd_input" type="password" placeholder="••••••••" class="bg-[#030a14] border border-[#10213b] text-white rounded px-3 py-2 outline-none focus:border-blue-500 font-mono">
+            <input id="auth_pwd_input" type="password" placeholder="••••••••" class="bg-[#030a14] border border-[#10213b] text-white rounded px-3 py-2 outline-none focus:border-emerald-500 font-mono">
           </div>
         </div>
 
         <button (click)="submitAuth(authNameInput.value, authEmailInput.value)"
-                class="w-full bg-[#005cfa] hover:bg-blue-600 text-white font-black py-2.5 rounded uppercase tracking-wider transition-all cursor-pointer border-none shadow-lg outline-none">
+                class="w-full bg-[#10b981] hover:bg-emerald-600 text-white font-black py-2.5 rounded uppercase tracking-wider transition-all cursor-pointer border-none shadow-lg outline-none">
           {{ authMode() === 'LOGIN' ? 'Acessar Sistema' : 'Salvar Registro' }}
         </button>
       </div>
@@ -1576,7 +2039,7 @@
   <!-- PERMUTA REQUEST MODAL (Frente C) -->
   @if (isPermutaModalOpen()) {
     <div class="fixed inset-0 bg-[#020813]/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-      <div class="bg-[#071426] border border-[#10213b] w-full max-w-md rounded-xl p-6 shadow-2xl space-y-4">
+      <div class="bg-[#071426] border border-[#10213b] w-full max-w-md rounded-lg p-6 shadow-2xl space-y-4">
         
         <!-- Header -->
         <div class="flex items-center justify-between pb-2 border-b border-[#10213b]">
@@ -1593,8 +2056,8 @@
         <!-- Details -->
         <div class="text-xs space-y-3 select-none">
           <p class="text-[10px] text-slate-400 leading-relaxed">
-            Você está propondo uma permuta de turno para o dia <span class="text-white font-black font-mono bg-blue-950 px-1.5 py-0.5 rounded">{{ permutaSelectedDay() }}/06/2026</span>.
-            Seu turno atual é: <span class="text-white font-black font-mono bg-[#005cfa] px-1 py-0.5 rounded ml-1">{{ logC.scale[permutaSelectedDay()] || 'F' }}</span>.
+            Você está propondo uma permuta de turno para o dia <span class="text-white font-black font-mono bg-emerald-950 text-emerald-400 border border-emerald-800/30 px-1.5 py-0.5 rounded">{{ permutaSelectedDay() }}/06/2026</span>.
+            Seu turno atual é: <span class="text-white font-black font-mono bg-[#10b981] px-1 py-0.5 rounded ml-1">{{ logC.scale[permutaSelectedDay()] || 'F' }}</span>.
           </p>
 
           <!-- Select target coworker -->
@@ -1630,7 +2093,7 @@
   <!-- IMPORT MODAL DIALOG (GEMINI EXTRACTION SIMULATOR) -->
   @if (isImportModalOpen()) {
     <div class="fixed inset-0 bg-[#020813]/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-      <div class="bg-[#071426] border border-[#10213b] w-full max-w-lg rounded-xl p-6 shadow-2xl space-y-4 animate-scale-up">
+      <div class="bg-[#071426] border border-[#10213b] w-full max-w-lg rounded-lg p-6 shadow-2xl space-y-4 animate-scale-up">
         
         <!-- Header -->
         <div class="flex items-center justify-between pb-2 border-b border-[#10213b]">
@@ -1649,12 +2112,12 @@
 
         <!-- STATE 1: IDLE / NOT UPLOADED -->
         @if (importingState() === 'idle') {
-          <div class="border-2 border-dashed border-[#10213b] hover:border-[#005cfa] rounded-xl p-10 flex flex-col items-center justify-center gap-3 transition-colors bg-[#030a14] cursor-pointer relative group">
+          <div class="border-2 border-dashed border-[#10213b] hover:border-[#10b981] rounded-lg p-10 flex flex-col items-center justify-center gap-3 transition-colors bg-[#030a14] cursor-pointer relative group">
             <input type="file"
                    (change)="triggerAIScan($event)"
                    accept="image/*,application/pdf"
                    class="absolute inset-0 opacity-0 cursor-pointer">
-            <span class="material-icons text-slate-500 text-3xl group-hover:text-blue-500 group-hover:scale-110 transition-transform">cloud_upload</span>
+            <span class="material-icons text-slate-500 text-3xl group-hover:text-emerald-500 group-hover:scale-110 transition-transform">cloud_upload</span>
             <div class="text-center">
               <span class="text-xs font-black uppercase text-slate-300 block">Clique para enviar escala</span>
               <span class="text-[9px] text-slate-500">Suporta PNG, JPG, JPEG ou PDF</span>
@@ -1664,8 +2127,8 @@
 
         <!-- STATE 2: SCANNING PROGRESS BAR -->
         @if (importingState() === 'processing') {
-          <div class="p-8 border border-[#10213b] bg-[#030a14] rounded-xl flex flex-col items-center justify-center gap-4 text-center">
-            <div class="w-12 h-12 rounded-full border-4 border-t-blue-500 border-r-transparent border-[#10213b] animate-spin"></div>
+          <div class="p-8 border border-[#10213b] bg-[#030a14] rounded-lg flex flex-col items-center justify-center gap-4 text-center">
+            <div class="w-12 h-12 rounded-full border-4 border-t-emerald-500 border-r-transparent border-[#10213b] animate-spin"></div>
             <div>
               <span class="text-xs font-black uppercase tracking-wider text-white block">Processamento Ativo Gemini AI</span>
               <span class="text-[9px] text-slate-500 mt-1 block">Executando OCR, filtragem de redundância e mapeamento da escala de colaboradores...</span>
@@ -1687,12 +2150,12 @@
                 @for (usr of scannedDataParsed(); track usr.name) {
                   <div class="flex items-center justify-between bg-[#030a14] border border-[#10213b] p-2.5 rounded-lg text-xs font-bold text-white">
                     <div class="flex items-center gap-2">
-                      <span class="material-icons text-xs text-[#005cfa]">person</span>
+                      <span class="material-icons text-xs text-[#10b981]">person</span>
                       <span>{{ usr.name }}</span>
                     </div>
                     <div class="flex items-center gap-2">
                       <span class="text-[8px] bg-[#10213b] text-slate-400 px-1 py-0.5 rounded font-mono">{{ usr.role }}</span>
-                      <span class="text-[8px] bg-blue-950 text-blue-400 px-1 py-0.5 rounded font-mono">{{ usr.shift }}</span>
+                      <span class="text-[8px] bg-emerald-950 text-emerald-400 px-1 py-0.5 rounded font-mono">{{ usr.shift }}</span>
                     </div>
                   </div>
                 }
@@ -1718,7 +2181,7 @@
   <!-- DATABASE CONFIGURATION MODAL -->
   @if (isDbModalOpen()) {
     <div class="fixed inset-0 bg-[#020813]/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" id="db_config_modal">
-      <div class="bg-[#071426] border border-[#10213b] w-full max-w-lg rounded-xl p-6 shadow-2xl space-y-4 animate-scale-up">
+      <div class="bg-[#071426] border border-[#10213b] w-full max-w-lg rounded-lg p-6 shadow-2xl space-y-4 animate-scale-up">
         
         <!-- Header -->
         <div class="flex items-center justify-between pb-2 border-b border-[#10213b]">
@@ -1740,7 +2203,7 @@
           <!-- Firebase Option -->
           <button (click)="scaleService.setDatabaseProvider('firebase'); showToast('Conectado ao Firebase!')"
                   [class]="scaleService.activeDb() === 'firebase' ? 'border-2 border-blue-500 bg-blue-950/10 text-white' : 'border border-[#10213b] bg-[#030a14] text-slate-400'"
-                  class="p-4 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-105 border-none outline-none">
+                  class="p-4 rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-105 border-none outline-none">
             <span class="material-icons text-2xl text-amber-500">local_fire_department</span>
             <div class="text-center">
               <span class="text-xs font-black uppercase tracking-wider block">Firebase Firestore</span>
@@ -1751,7 +2214,7 @@
           <!-- Supabase Option -->
           <button (click)="scaleService.setDatabaseProvider('supabase'); showToast('Conectado ao Supabase!')"
                   [class]="scaleService.activeDb() === 'supabase' ? 'border-2 border-emerald-500 bg-emerald-950/10 text-white' : 'border border-[#10213b] bg-[#030a14] text-slate-400'"
-                  class="p-4 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-105 border-none outline-none">
+                  class="p-4 rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-105 border-none outline-none">
             <span class="material-icons text-2xl text-emerald-500">bolt</span>
             <div class="text-center">
               <span class="text-xs font-black uppercase tracking-wider block">Supabase Postgres</span>
@@ -1764,7 +2227,7 @@
         <div class="space-y-3">
           @if (scaleService.activeDb() === 'supabase') {
             <!-- Supabase inputs -->
-            <div class="p-4 bg-[#030a14] border border-[#10213b] rounded-xl space-y-3">
+            <div class="p-4 bg-[#030a14] border border-[#10213b] rounded-lg space-y-3">
               <span class="block text-[9px] font-black uppercase tracking-wider text-emerald-400">Credenciais de Acesso Supabase</span>
               
               <div class="flex flex-col gap-1">
@@ -1792,7 +2255,7 @@
             </div>
           } @else {
             <!-- Firebase Firestore Details -->
-            <div class="p-4 bg-[#030a14] border border-[#10213b] rounded-xl space-y-2">
+            <div class="p-4 bg-[#030a14] border border-[#10213b] rounded-lg space-y-2">
               <span class="block text-[9px] font-black uppercase tracking-wider text-amber-400">Status do Firebase Firestore</span>
               <div class="text-[10px] space-y-1 text-slate-400">
                 <div>Provedor Ativo: <span class="text-white font-mono">Firebase Realtime (SDK v12)</span></div>

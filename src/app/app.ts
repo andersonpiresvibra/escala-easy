@@ -1,7 +1,7 @@
 import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ScaleService, Collaborator, ShiftType } from './scale.service';
+import { ScaleService, Collaborator, ShiftType, SpecialDate, FolgaRequest } from './scale.service';
 
 interface AppNotification {
   id: string;
@@ -20,8 +20,21 @@ interface AppNotification {
 export class AppComponent {
   public scaleService = inject(ScaleService);
 
-  // Sub tab navigation: 'matrix' | 'ger.turnos' | 'siglas' | 'team' | 'team-mgmt'
-  public activeSubTab = signal<'matrix' | 'ger.turnos' | 'siglas' | 'team' | 'team-mgmt'>('matrix');
+  // Sub tab navigation: 'matrix' | 'ger.turnos' | 'siglas' | 'team' | 'team-mgmt' | 'portal'
+  public activeSubTab = signal<'matrix' | 'ger.turnos' | 'siglas' | 'team' | 'team-mgmt' | 'portal'>('matrix');
+
+  // Simulated Day of Month (1 to 30) for Folga request window check
+  simulatedDayOfMonth = signal<number>(5);
+
+  // New Collaborator Registration Fields
+  newCollabBirthday = signal<string>('');
+  newCollabSpecialDates = signal<SpecialDate[]>([
+    { description: '', date: '', priority: 1 },
+    { description: '', date: '', priority: 2 },
+    { description: '', date: '', priority: 3 },
+    { description: '', date: '', priority: 4 },
+    { description: '', date: '', priority: 5 }
+  ]);
 
   // Selected collaborator for detailed profile view
   selectedProfileCollabId = signal<string | null>(null);
@@ -83,7 +96,7 @@ export class AppComponent {
     if (maxWorkStreak >= 6) {
       fatigueRisk = 'Crítico';
       fatigueColor = 'text-rose-400 bg-rose-500/10 border-rose-500/20 animate-pulse';
-      fatigueDescription = 'Risco elevado de fadiga acumulada. Sequência contínua de ' + maxWorkStreak + ' dias no pátio. Recomenda-se escala de folga imediata para evitar incidentes com combustível.';
+      fatigueDescription = 'Risco elevado de fadiga acumulada. Sequência contínua de ' + maxWorkStreak + ' dias no pátio. Recomenda-se escala de folga imediata para evitar incidentes operacionais.';
     } else if (maxWorkStreak === 5) {
       fatigueRisk = 'Moderado';
       fatigueColor = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
@@ -121,35 +134,28 @@ export class AppComponent {
   });
 
   getCollabPhoto(collab: any): string {
-    if (!collab) return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
-    
-    // Curated high quality portrait placeholders that match pátio aviation staff
-    const photos: { [id: string]: string } = {
-      'PR-01': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      'PR-02': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-      'PR-03': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-      'PR-04': 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-    };
-    
-    if (photos[collab.id]) {
-      return photos[collab.id];
+    // Forçar temporariamente o ícone clássico do MSN Messenger para todos os colaboradores, conforme solicitação do usuário
+    /*
+    if (collab && collab.photo) {
+      return collab.photo;
     }
+    */
     
-    // Seeded portrait from Unsplash
-    const seed = collab.name.length % 10;
-    const fallbackPortraits = [
-      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=150&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=150&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80'
-    ];
-    return fallbackPortraits[seed];
+    const msnAvatarSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="50" fill="#0b1a30" stroke="#10213b" stroke-width="1.5" />
+  <g transform="translate(0, 4)">
+    <circle cx="40" cy="38" r="12" fill="#0080C0" />
+    <path d="M 40 38 A 12 12 0 0 1 52 38 A 9 9 0 0 0 40 38 Z" fill="#3399FF" opacity="0.5"/>
+    <path d="M 40 52 C 22 52, 16 78, 16 84 L 64 84 C 64 78, 58 52, 40 52 Z" fill="#0080C0" />
+    <path d="M 40 52 C 27 52, 20 68, 18 78 C 25 65, 36 56, 40 56 C 44 56, 55 65, 62 78 C 60 68, 53 52, 40 52 Z" fill="#3399FF" opacity="0.5"/>
+    <circle cx="62" cy="44" r="12" fill="#74C322" />
+    <path d="M 62 44 A 12 12 0 0 1 74 44 A 9 9 0 0 0 62 44 Z" fill="#9CE146" opacity="0.6"/>
+    <path d="M 62 58 C 44 58, 38 84, 38 90 L 86 90 C 86 84, 80 58, 62 58 Z" fill="#74C322" stroke="#0b1a30" stroke-width="2" />
+    <path d="M 62 58 C 49 58, 42 74, 40 84 C 47 71, 58 62, 62 62 C 66 62, 77 71, 84 84 C 82 74, 75 58, 62 58 Z" fill="#9CE146" opacity="0.5"/>
+  </g>
+</svg>`;
+
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(msnAvatarSvg);
   }
 
   // Real-time aviation clock
@@ -157,6 +163,7 @@ export class AppComponent {
 
   // Dropdowns & Modals states
   public isDropdownOpen = signal<boolean>(false);
+  public isMatrixOptionsOpen = signal<boolean>(false);
   public isNotificationOpen = signal<boolean>(false);
   public isAuthModalOpen = signal<boolean>(false);
   public authMode = signal<'LOGIN' | 'SIGNUP'>('LOGIN');
@@ -173,6 +180,10 @@ export class AppComponent {
   showPaintbrushPanel = signal<boolean>(false);
   activePaintbrush = signal<string | null>(null);
 
+  // Row-level inline editing signals
+  editingRowCollabId = signal<string | null>(null);
+  editingRowScaleDraft = signal<{ [day: number]: string }>({});
+
   // Filter systems
   collabSearchQuery = signal<string>('');
   selectedFilterRole = signal<string>('TODOS');
@@ -187,7 +198,7 @@ export class AppComponent {
     {
       id: 'n_1',
       type: 'publish',
-      message: 'Escala oficial de combustíveis publicada para Junho de 2026.',
+      message: 'Escala oficial de trabalho publicada para Junho de 2026.',
       timestamp: 'Hoje, 10:15',
       read: false
     },
@@ -225,6 +236,9 @@ export class AppComponent {
   newSiglaColor = signal<string>('#64748b');
   newSiglaDescription = signal<string>('');
   editingSiglaCode = signal<string | null>(null);
+
+  // New collaborator photo upload state
+  newCollabPhotoData = signal<string | null>(null);
 
   // Lists for hour and minute dropdowns
   hoursList = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
@@ -382,6 +396,62 @@ export class AppComponent {
       };
       this.scaleService.updateCollaborator(updatedCollab);
     }
+  }
+
+  // Row-level inline scale editing methods
+  startRowScaleEdit(collab: Collaborator) {
+    if (this.scaleService.currentRole() === 'OPERADOR') {
+      this.showToast('Acesso negado: Apenas Líder ou Supervisor pode alterar escalas.');
+      return;
+    }
+    // Automatically open the paintbrush panel so the user has the acronyms toolbar visible at the top
+    this.showPaintbrushPanel.set(true);
+
+    this.editingRowCollabId.set(collab.id);
+    this.editingRowScaleDraft.set({ ...collab.scale });
+    this.showToast(`Edição da linha de ${collab.name}. Selecione uma sigla no painel do topo e clique nos dias correspondentes.`);
+  }
+
+  cancelRowScale() {
+    this.editingRowCollabId.set(null);
+    this.editingRowScaleDraft.set({});
+    this.showToast('Edição de linha cancelada.');
+  }
+
+  updateDraftCell(day: number, value: string) {
+    this.editingRowScaleDraft.update(draft => ({ ...draft, [day]: value }));
+  }
+
+  paintDraftCell(day: number) {
+    const active = this.activePaintbrush();
+    if (!active) {
+      this.showToast('Selecione um turno ou sigla no painel do topo para pintar.');
+      return;
+    }
+    this.updateDraftCell(day, active);
+  }
+
+  saveRowScale(collab: Collaborator) {
+    if (this.scaleService.currentRole() === 'OPERADOR') {
+      this.showToast('Acesso negado.');
+      return;
+    }
+
+    const draft = this.editingRowScaleDraft();
+    const updatedCollab = {
+      ...collab,
+      scale: draft
+    };
+
+    this.scaleService.updateCollaborator(updatedCollab);
+    this.editingRowCollabId.set(null);
+    this.editingRowScaleDraft.set({});
+    this.showToast(`Escala da linha de ${collab.name} salva com sucesso!`);
+
+    this.scaleService.addAuditHistory(
+      'EDITAR_ESCALA_LINHA',
+      `Escala mensal do colaborador ${collab.name} editada via controle de linha direta.`
+    );
   }
 
   // Manage custom shifts
@@ -583,6 +653,7 @@ export class AppComponent {
 
   // Dynamic colors for matrix rendering
   getShiftOrSiglaColor(code: string): string {
+    if (code === '-') return '#091524'; // Very deep dark background for sem definição
     const shift = this.scaleService.shiftTypes().find(s => s.code === code);
     if (shift) return shift.color;
 
@@ -593,6 +664,7 @@ export class AppComponent {
   }
 
   getShiftOrSiglaTextColor(code: string): string {
+    if (code === '-') return '#475569'; // Slate-600 for the dash
     if (code === 'F') return '#94a3b8'; // Slate-400
     return '#ffffff';
   }
@@ -660,6 +732,156 @@ export class AppComponent {
     this.scaleService.selectedCollabName.set(null);
     this.selectedSimulatedCollabId.set(null);
     this.showToast('Sessão encerrada.');
+  }
+
+  loginAsCollab(id: string) {
+    this.selectedSimulatedCollabId.set(id);
+    const collab = this.scaleService.collaborators().find(c => c.id === id);
+    if (collab) {
+      this.scaleService.selectedCollabName.set(collab.name);
+      this.scaleService.currentRole.set(collab.role);
+      this.showToast(`Sessão simulada como ${collab.name}!`);
+    } else {
+      this.selectedSimulatedCollabId.set(null);
+      this.scaleService.selectedCollabName.set('');
+      this.scaleService.currentRole.set('SUPERVISOR');
+    }
+  }
+
+  registerCollaborator(
+    name: string,
+    role: 'OPERADOR' | 'LIDER' | 'SUPERVISOR',
+    group: string,
+    shift: string,
+    sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO',
+    bh: number,
+    score: number,
+    photo?: string,
+    birthday?: string,
+    sd1Desc?: string, sd1Date?: string,
+    sd2Desc?: string, sd2Date?: string,
+    sd3Desc?: string, sd3Date?: string,
+    sd4Desc?: string, sd4Date?: string,
+    sd5Desc?: string, sd5Date?: string
+  ) {
+    const specialDates: SpecialDate[] = [];
+    if (sd1Desc && sd1Date) specialDates.push({ description: sd1Desc, date: sd1Date, priority: 1 });
+    if (sd2Desc && sd2Date) specialDates.push({ description: sd2Desc, date: sd2Date, priority: 2 });
+    if (sd3Desc && sd3Date) specialDates.push({ description: sd3Desc, date: sd3Date, priority: 3 });
+    if (sd4Desc && sd4Date) specialDates.push({ description: sd4Desc, date: sd4Date, priority: 4 });
+    if (sd5Desc && sd5Date) specialDates.push({ description: sd5Desc, date: sd5Date, priority: 5 });
+
+    this.scaleService.addCollaborator(
+      name,
+      role,
+      '7h20',
+      group,
+      shift,
+      sector,
+      bh,
+      score,
+      photo,
+      birthday,
+      specialDates
+    );
+  }
+
+  savePortalSpecialDates(birthday: string, specialDates: SpecialDate[]) {
+    const collab = this.getLoggedCollab();
+    if (!collab) {
+      this.showToast('Selecione um colaborador na simulação primeiro.');
+      return;
+    }
+
+    const validDates = specialDates.filter(d => d.date && d.description.trim());
+
+    const updatedCollab: Collaborator = {
+      ...collab,
+      birthday: birthday || '',
+      specialDates: validDates
+    };
+
+    this.scaleService.updateCollaborator(updatedCollab);
+    this.showToast('Datas especiais atualizadas com sucesso!');
+  }
+
+  requestPortalFolga(date: string) {
+    const collab = this.getLoggedCollab();
+    if (!collab) {
+      this.showToast('Selecione um colaborador na simulação primeiro.');
+      return;
+    }
+    const result = this.scaleService.requestFolga(collab.id, date, this.simulatedDayOfMonth());
+    this.showToast(result.message);
+  }
+
+  removePortalFolga(date: string) {
+    const collab = this.getLoggedCollab();
+    if (!collab) {
+      this.showToast('Selecione um colaborador na simulação primeiro.');
+      return;
+    }
+    const result = this.scaleService.removeFolga(collab.id, date, this.simulatedDayOfMonth());
+    this.showToast(result.message);
+  }
+
+  getFolgaRequestCount(day: number): number {
+    const dateStr = `2026-06-${String(day).padStart(2, '0')}`;
+    let count = 0;
+    for (const collab of this.scaleService.collaborators()) {
+      if (collab.folgaRequests) {
+        if (collab.folgaRequests.some(r => r.date === dateStr)) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  getCollaboratorsForFolga(day: number): string[] {
+    const dateStr = `2026-06-${String(day).padStart(2, '0')}`;
+    const names: string[] = [];
+    for (const collab of this.scaleService.collaborators()) {
+      if (collab.folgaRequests && collab.folgaRequests.some(r => r.date === dateStr)) {
+        names.push(collab.name);
+      }
+    }
+    return names;
+  }
+
+  isChosenByLogged(day: number): boolean {
+    const collab = this.getLoggedCollab();
+    if (!collab || !collab.folgaRequests) return false;
+    const dateStr = `2026-06-${String(day).padStart(2, '0')}`;
+    return collab.folgaRequests.some(r => r.date === dateStr);
+  }
+
+  isPreSelectedByLogged(day: number): boolean {
+    const collab = this.getLoggedCollab();
+    if (!collab || !collab.folgaRequests) return false;
+    const dateStr = `2026-06-${String(day).padStart(2, '0')}`;
+    return collab.folgaRequests.some(r => r.date === dateStr && r.isPreSelected);
+  }
+
+  getCalendarDayClass(isChosenByMe: boolean, count: number): string {
+    const base = 'p-2 border rounded-lg flex flex-col justify-between gap-1 transition-all cursor-pointer h-16 min-w-0 outline-none text-left';
+    if (isChosenByMe) {
+      return `${base} bg-emerald-950/40 border-emerald-500`;
+    } else if (count >= 2) {
+      return `${base} bg-red-950/20 border-red-950`;
+    } else {
+      return `${base} bg-[#071426] border-[#10213b] hover:border-slate-400`;
+    }
+  }
+
+  requestPortalFolgaDay(day: number) {
+    const dateStr = `2026-06-${String(day).padStart(2, '0')}`;
+    this.requestPortalFolga(dateStr);
+  }
+
+  removePortalFolgaDay(day: number) {
+    const dateStr = `2026-06-${String(day).padStart(2, '0')}`;
+    this.removePortalFolga(dateStr);
   }
 
   // Simulated Portal Collaborator Info
@@ -795,5 +1017,46 @@ export class AppComponent {
 
     this.isImportModalOpen.set(false);
     this.showToast(`${users.length} novos colaboradores da escala importada foram integrados!`);
+  }
+
+  onCollabPhotoSelected(event: any) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 120;
+        const MAX_HEIGHT = 120;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          this.newCollabPhotoData.set(dataUrl);
+        } else {
+          this.newCollabPhotoData.set(e.target.result);
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   }
 }

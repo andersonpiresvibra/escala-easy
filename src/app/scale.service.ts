@@ -50,6 +50,17 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.error('Firestore Error: ', JSON.stringify(errInfo));
 }
 
+export interface SpecialDate {
+  description: string;
+  date: string; // "YYYY-MM-DD" or "MM-DD"
+  priority: number; // 1 (inegociável) to 5
+}
+
+export interface FolgaRequest {
+  date: string; // "YYYY-MM-DD"
+  isPreSelected?: boolean;
+}
+
 export interface Collaborator {
   id: string;
   name: string;
@@ -61,6 +72,10 @@ export interface Collaborator {
   bhBalance: number;
   score: number;
   scale: { [day: number]: string }; // Day 1 to 30 of June 2026
+  photo?: string;
+  birthday?: string; // Format: "YYYY-MM-DD"
+  specialDates?: SpecialDate[];
+  folgaRequests?: FolgaRequest[];
 }
 
 export interface ShiftType {
@@ -237,114 +252,169 @@ export class ScaleService {
     if (!this.supabase) return;
     this.databaseError.set(null);
 
-    // Fetch from colaboradores and escala_diaria for June (6) 2026
-    Promise.all([
-      this.supabase.from('colaboradores').select('*'),
-      this.supabase.from('escala_diaria').select('*').eq('month', 6).eq('year', 2026)
-    ]).then(([collabsResult, escalaResult]: any[]) => {
-      if (this.activeDb() !== 'supabase') return;
+    // Fetch from table systems on Supabase (colaboradores, escala_diaria, sigla_types, shift_types, audit_history)
+    // Individual catches prevent a single missing table from failing the entire synchronization flow.
+    const queryCollabs = Promise.resolve(this.supabase.from('colaboradores').select('*'));
+    const queryEscala = Promise.resolve(this.supabase.from('escala_diaria').select('*').eq('month', 6).eq('year', 2026));
+    const querySiglas = Promise.resolve(this.supabase.from('sigla_types').select('*')).catch((err: any) => ({ error: err, data: null }));
+    const queryShifts = Promise.resolve(this.supabase.from('shift_types').select('*')).catch((err: any) => ({ error: err, data: null }));
+    const queryAudit = Promise.resolve(this.supabase.from('audit_history').select('*')).catch((err: any) => ({ error: err, data: null }));
 
-      const collabsError = collabsResult.error;
-      const collabsData = collabsResult.data;
-      const escalaError = escalaResult.error;
-      const escalaData = escalaResult.data;
+    Promise.all([queryCollabs, queryEscala, querySiglas, queryShifts, queryAudit])
+      .then(([collabsResult, escalaResult, siglasResult, shiftsResult, auditResult]: any[]) => {
+        if (this.activeDb() !== 'supabase') return;
 
-      if (collabsError) {
-        console.error('Supabase colaboradores error:', collabsError);
-        this.databaseError.set(`Erro ao carregar colaboradores do Supabase: ${collabsError.message}`);
-        this.collaborators.set(this.getDefaultCollaborators());
-        return;
-      }
+        const collabsError = collabsResult.error;
+        const collabsData = collabsResult.data;
+        const escalaError = escalaResult.error;
+        const escalaData = escalaResult.data;
 
-      if (!collabsData || collabsData.length === 0) {
-        // Seed default collaborators
-        const defaultCollabs = this.getDefaultCollaborators();
-        this.collaborators.set(defaultCollabs);
-        // Map back and save to colaboradores if empty
-        const recordsToInsert = defaultCollabs.map(c => ({
-          id: c.id,
-          name: c.name,
-          role: c.role,
-          schedule: c.hours,
-          grupo: c.group,
-          shift: c.shift,
-          sector: c.sector,
-          bh_balance: c.bhBalance,
-          score: c.score
-        }));
-        this.supabase.from('colaboradores').insert(recordsToInsert).catch((err: any) => console.error('Erro ao semear colaboradores:', err));
-
-        // Seeding scale too
-        const scaleRecords: any[] = [];
-        defaultCollabs.forEach(c => {
-          for (let d = 1; d <= 30; d++) {
-            scaleRecords.push({
-              collaborator_id: c.id,
-              day: d,
-              month: 6,
-              year: 2026,
-              value: c.scale[d] || 'F'
-            });
-          }
-        });
-        this.supabase.from('escala_diaria').insert(scaleRecords).catch((err: any) => console.error('Erro ao semear escala_diaria:', err));
-      } else {
-        // Group scales by collaborator_id
-        const scaleMap: { [collabId: string]: { [day: number]: string } } = {};
-        if (escalaData) {
-          escalaData.forEach((row: any) => {
-            if (!scaleMap[row.collaborator_id]) {
-              scaleMap[row.collaborator_id] = {};
-            }
-            scaleMap[row.collaborator_id][row.day] = row.value || 'F';
-          });
+        if (collabsError) {
+          console.error('Supabase colaboradores error:', collabsError);
+          this.databaseError.set(`Erro ao carregar colaboradores do Supabase: ${collabsError.message}`);
+          this.collaborators.set(this.getDefaultCollaborators());
+          return;
         }
 
-        // Map database records to Collaborator interface
-        const mappedCollabs: Collaborator[] = collabsData.map((row: any) => {
-          // If this collaborator has no scale in database yet, initialize one
-          let scale = scaleMap[row.id];
-          if (!scale) {
-            scale = {};
-            const defaultShiftCode = row.shift === 'MADRUGADA' ? 'N' : row.shift === 'TARDE' ? 'T' : row.shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
+        // 1. Sync & Seed Siglas
+        const siglasError = siglasResult?.error;
+        const siglasData = siglasResult?.data;
+        if (siglasError || !siglasData || siglasData.length === 0) {
+          const defaultSiglas = this.getDefaultSiglaTypes();
+          this.siglaTypes.set(defaultSiglas);
+          // Only attempt to seed if table exists and was just empty
+          if (this.supabase && !siglasError && siglasData && siglasData.length === 0) {
+            Promise.resolve(this.supabase.from('sigla_types').insert(defaultSiglas))
+              .catch((err: any) => console.error('Erro ao semear sigla_types:', err));
+          }
+        } else {
+          this.siglaTypes.set(siglasData);
+        }
+
+        // 2. Sync & Seed Shift Types
+        const shiftsError = shiftsResult?.error;
+        const shiftsData = shiftsResult?.data;
+        if (shiftsError || !shiftsData || shiftsData.length === 0) {
+          const defaultShifts = this.getDefaultShiftTypes();
+          this.shiftTypes.set(defaultShifts);
+          if (this.supabase && !shiftsError && shiftsData && shiftsData.length === 0) {
+            Promise.resolve(this.supabase.from('shift_types').insert(defaultShifts))
+              .catch((err: any) => console.error('Erro ao semear shift_types:', err));
+          }
+        } else {
+          this.shiftTypes.set(shiftsData);
+        }
+
+        // 3. Sync & Seed Audit History
+        const auditError = auditResult?.error;
+        const auditData = auditResult?.data;
+        if (auditError || !auditData || auditData.length === 0) {
+          const defaultAudit = this.getDefaultAuditHistory();
+          this.auditHistory.set(defaultAudit);
+          if (this.supabase && !auditError && auditData && auditData.length === 0) {
+            Promise.resolve(this.supabase.from('audit_history').insert(defaultAudit))
+              .catch((err: any) => console.error('Erro ao semear audit_history:', err));
+          }
+        } else {
+          const sortedAudit = [...auditData];
+          sortedAudit.sort((a: any, b: any) => b.timestamp.localeCompare(a.timestamp));
+          this.auditHistory.set(sortedAudit);
+        }
+
+        // 4. Sync Collaborators & Daily Scales
+        if (!collabsData || collabsData.length === 0) {
+          // Seed default collaborators
+          const defaultCollabs = this.getDefaultCollaborators();
+          this.collaborators.set(defaultCollabs);
+          // Map back and save to colaboradores if empty
+          const recordsToInsert = defaultCollabs.map(c => ({
+            id: c.id,
+            name: c.name,
+            role: c.role,
+            schedule: c.hours,
+            grupo: c.group,
+            shift: c.shift,
+            sector: c.sector,
+            bh_balance: c.bhBalance,
+            score: c.score
+          }));
+          Promise.resolve(this.supabase.from('colaboradores').insert(recordsToInsert))
+            .catch((err: any) => console.error('Erro ao semear colaboradores:', err));
+
+          // Seeding scale too
+          const scaleRecords: any[] = [];
+          defaultCollabs.forEach(c => {
             for (let d = 1; d <= 30; d++) {
-              if (d % 7 === 6 || d % 7 === 0) {
-                scale[d] = 'F';
-              } else {
-                scale[d] = defaultShiftCode;
-              }
+              scaleRecords.push({
+                collaborator_id: c.id,
+                day: d,
+                month: 6,
+                year: 2026,
+                value: c.scale[d] || 'F'
+              });
             }
+          });
+          Promise.resolve(this.supabase.from('escala_diaria').insert(scaleRecords))
+            .catch((err: any) => console.error('Erro ao semear escala_diaria:', err));
+        } else {
+          // Group scales by collaborator_id
+          const scaleMap: { [collabId: string]: { [day: number]: string } } = {};
+          if (escalaData) {
+            escalaData.forEach((row: any) => {
+              if (!scaleMap[row.collaborator_id]) {
+                scaleMap[row.collaborator_id] = {};
+              }
+              scaleMap[row.collaborator_id][row.day] = row.value || 'F';
+            });
           }
 
-          return {
-            id: row.id,
-            name: row.name || 'Sem Nome',
-            role: row.role || 'OPERADOR',
-            hours: row.schedule || '7h20',
-            group: row.grupo || 'Madrugada',
-            shift: row.shift || 'MADRUGADA',
-            sector: row.sector || 'AERÓDROMO',
-            bhBalance: row.bh_balance || 0,
-            score: row.score || 90,
-            scale: scale
-          };
-        });
+          // Map database records to Collaborator interface
+          const mappedCollabs: Collaborator[] = collabsData.map((row: any) => {
+            // If this collaborator has no scale in database yet, initialize one
+            let scale = scaleMap[row.id];
+            if (!scale) {
+              scale = {};
+              const defaultShiftCode = row.shift === 'MADRUGADA' ? 'N' : row.shift === 'TARDE' ? 'T' : row.shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
+              for (let d = 1; d <= 30; d++) {
+                if (d % 7 === 6 || d % 7 === 0) {
+                  scale[d] = 'F';
+                } else {
+                  scale[d] = defaultShiftCode;
+                }
+              }
+            }
 
-        mappedCollabs.sort((a, b) => a.id.localeCompare(b.id));
-        this.collaborators.set(mappedCollabs);
-      }
-    }).catch((err: any) => {
-      console.error('Promise.all error syncing Supabase:', err);
-      if (this.activeDb() === 'supabase') {
-        this.databaseError.set(`Erro de conexão com o Supabase.`);
-        this.collaborators.set(this.getDefaultCollaborators());
-      }
-    });
+            return {
+              id: row.id,
+              name: row.name || 'Sem Nome',
+              role: row.role || 'OPERADOR',
+              hours: row.schedule || '7h20',
+              group: row.grupo || 'Madrugada',
+              shift: row.shift || 'MADRUGADA',
+              sector: row.sector || 'AERÓDROMO',
+              bhBalance: row.bh_balance || 0,
+              score: row.score || 90,
+              scale: scale,
+              birthday: row.birthday || '',
+              specialDates: typeof row.special_dates === 'string' ? JSON.parse(row.special_dates) : (row.special_dates || []),
+              folgaRequests: typeof row.folga_requests === 'string' ? JSON.parse(row.folga_requests) : (row.folga_requests || [])
+            };
+          });
 
-    // Load defaults for local client-managed lists (shifts, siglas, history)
-    this.shiftTypes.set(this.getDefaultShiftTypes());
-    this.siglaTypes.set(this.getDefaultSiglaTypes());
-    this.auditHistory.set(this.getDefaultAuditHistory());
+          mappedCollabs.sort((a, b) => a.id.localeCompare(b.id));
+          this.collaborators.set(mappedCollabs);
+        }
+      })
+      .catch((err: any) => {
+        console.error('Promise.all error syncing Supabase:', err);
+        if (this.activeDb() === 'supabase') {
+          this.databaseError.set(`Erro de conexão com o Supabase.`);
+          this.collaborators.set(this.getDefaultCollaborators());
+          this.shiftTypes.set(this.getDefaultShiftTypes());
+          this.siglaTypes.set(this.getDefaultSiglaTypes());
+          this.auditHistory.set(this.getDefaultAuditHistory());
+        }
+      });
   }
 
   private initFirebaseSync() {
@@ -441,6 +511,159 @@ export class ScaleService {
   }
 
   // Database operations
+  getAutoPreSelectedFolgas(collab: Collaborator): FolgaRequest[] {
+    const preSelected: FolgaRequest[] = [];
+    
+    // 1. Check birthday (Month 6 - June)
+    if (collab.birthday) {
+      const parts = collab.birthday.split('-'); // YYYY-MM-DD
+      if (parts.length === 3) {
+        const m = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
+        if (m === 6) { // June
+          preSelected.push({
+            date: `2026-06-${String(d).padStart(2, '0')}`,
+            isPreSelected: true
+          });
+        }
+      }
+    }
+    
+    // 2. Check special dates (Month 6 - June)
+    if (collab.specialDates && Array.isArray(collab.specialDates)) {
+      const sorted = [...collab.specialDates].sort((a, b) => a.priority - b.priority);
+      for (const sd of sorted) {
+        if (!sd.date) continue;
+        const parts = sd.date.split('-');
+        if (parts.length === 3) {
+          const m = parseInt(parts[1], 10);
+          const d = parseInt(parts[2], 10);
+          if (m === 6) {
+            const dateStr = `2026-06-${String(d).padStart(2, '0')}`;
+            if (!preSelected.some(p => p.date === dateStr)) {
+              preSelected.push({
+                date: dateStr,
+                isPreSelected: true
+              });
+            }
+          }
+        }
+      }
+    }
+    
+    return preSelected.slice(0, 3);
+  }
+
+  refreshPreSelectedFolgas(collab: Collaborator): Collaborator {
+    const preSelected = this.getAutoPreSelectedFolgas(collab);
+    const manualRequests = (collab.folgaRequests || []).filter(r => !r.isPreSelected);
+    const newList: FolgaRequest[] = [...preSelected];
+    
+    for (const req of manualRequests) {
+      if (newList.length < 3) {
+        if (!newList.some(p => p.date === req.date)) {
+          newList.push(req);
+        }
+      }
+    }
+    
+    const updatedScale = { ...collab.scale };
+    newList.forEach(req => {
+      const parts = req.date.split('-');
+      if (parts.length === 3) {
+        const d = parseInt(parts[2], 10);
+        updatedScale[d] = 'F';
+      }
+    });
+
+    return {
+      ...collab,
+      folgaRequests: newList,
+      scale: updatedScale
+    };
+  }
+
+  requestFolga(collabId: string, date: string, simulatedDay: number): { success: boolean, message: string } {
+    if (simulatedDay > 10) {
+      return { success: false, message: 'Escolha indisponível. Solicitações de folga são permitidas apenas do dia 1 ao dia 10 do mês anterior.' };
+    }
+
+    const collabs = this.collaborators();
+    const targetCollab = collabs.find(c => c.id === collabId);
+    if (!targetCollab) {
+      return { success: false, message: 'Colaborador não encontrado.' };
+    }
+
+    const currentRequests = targetCollab.folgaRequests || [];
+    
+    if (currentRequests.some(r => r.date === date)) {
+      return { success: false, message: 'Você já solicitou folga para este dia.' };
+    }
+
+    if (currentRequests.length >= 3) {
+      return { success: false, message: 'Limite de 3 folgas mensais atingido.' };
+    }
+
+    // Check count of other collabs requesting the same day
+    const count = collabs.filter(c => (c.folgaRequests || []).some(r => r.date === date)).length;
+    if (count >= 2) {
+      return { success: false, message: 'Data indisponível. O limite de 2 colaboradores para esta data já foi atingido.' };
+    }
+
+    const updatedRequests = [...currentRequests, { date, isPreSelected: false }];
+    let updatedCollab: Collaborator = { ...targetCollab, folgaRequests: updatedRequests };
+
+    const parts = date.split('-');
+    if (parts.length === 3) {
+      const dayNum = parseInt(parts[2], 10);
+      updatedCollab.scale = { ...targetCollab.scale, [dayNum]: 'F' };
+    }
+
+    updatedCollab = this.refreshPreSelectedFolgas(updatedCollab);
+    this.updateCollaborator(updatedCollab);
+    this.addAuditHistory('SOLICITACAO_FOLGA', `Colaborador ${targetCollab.name} solicitou folga para o dia ${date}.`);
+    
+    return { success: true, message: 'Folga solicitada com sucesso!' };
+  }
+
+  removeFolga(collabId: string, date: string, simulatedDay: number): { success: boolean, message: string } {
+    if (simulatedDay > 10) {
+      return { success: false, message: 'Escolha indisponível. Solicitações de folga são permitidas apenas do dia 1 ao dia 10 do mês anterior.' };
+    }
+
+    const collabs = this.collaborators();
+    const targetCollab = collabs.find(c => c.id === collabId);
+    if (!targetCollab) {
+      return { success: false, message: 'Colaborador não encontrado.' };
+    }
+
+    const currentRequests = targetCollab.folgaRequests || [];
+    const targetRequest = currentRequests.find(r => r.date === date);
+    if (!targetRequest) {
+      return { success: false, message: 'Solicitação não encontrada.' };
+    }
+
+    if (targetRequest.isPreSelected) {
+      return { success: false, message: 'Não é possível remover folga pré-selecionada de aniversário ou data magna.' };
+    }
+
+    const updatedRequests = currentRequests.filter(r => r.date !== date);
+    let updatedCollab: Collaborator = { ...targetCollab, folgaRequests: updatedRequests };
+
+    const parts = date.split('-');
+    if (parts.length === 3) {
+      const dayNum = parseInt(parts[2], 10);
+      const defaultShiftCode = targetCollab.shift === 'MADRUGADA' ? 'N' : targetCollab.shift === 'TARDE' ? 'T' : targetCollab.shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
+      updatedCollab.scale = { ...targetCollab.scale, [dayNum]: defaultShiftCode };
+    }
+
+    updatedCollab = this.refreshPreSelectedFolgas(updatedCollab);
+    this.updateCollaborator(updatedCollab);
+    this.addAuditHistory('SOLICITACAO_FOLGA_REMOVIDA', `Colaborador ${targetCollab.name} removeu folga de ${date}.`);
+    
+    return { success: true, message: 'Folga removida com sucesso!' };
+  }
+
   addCollaborator(
     name: string,
     role: 'OPERADOR' | 'LIDER' | 'SUPERVISOR',
@@ -449,7 +672,11 @@ export class ScaleService {
     shift: string,
     sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO',
     bh: number,
-    score: number
+    score: number,
+    photo?: string,
+    birthday?: string,
+    specialDates?: SpecialDate[],
+    folgaRequests?: FolgaRequest[]
   ) {
     if (!name.trim()) return;
     const id = 'collab_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
@@ -465,7 +692,7 @@ export class ScaleService {
       }
     }
 
-    const newCollab: Collaborator = {
+    let newCollab: Collaborator = {
       id,
       name,
       role,
@@ -475,8 +702,14 @@ export class ScaleService {
       sector,
       bhBalance: bh,
       score,
-      scale: initialScale
+      scale: initialScale,
+      photo: photo || undefined,
+      birthday: birthday || '',
+      specialDates: specialDates || [],
+      folgaRequests: folgaRequests || []
     };
+
+    newCollab = this.refreshPreSelectedFolgas(newCollab);
 
     if (this.activeDb() === 'supabase' && this.supabase) {
       const dbRow = {
@@ -488,9 +721,12 @@ export class ScaleService {
         shift: newCollab.shift,
         sector: newCollab.sector,
         bh_balance: newCollab.bhBalance,
-        score: newCollab.score
+        score: newCollab.score,
+        birthday: newCollab.birthday || null,
+        special_dates: newCollab.specialDates ? JSON.stringify(newCollab.specialDates) : null,
+        folga_requests: newCollab.folgaRequests ? JSON.stringify(newCollab.folgaRequests) : null
       };
-      this.supabase.from('colaboradores').upsert(dbRow)
+      Promise.resolve(this.supabase.from('colaboradores').upsert(dbRow))
         .then(() => {
           const scaleRows = [];
           for (let d = 1; d <= 30; d++) {
@@ -502,7 +738,7 @@ export class ScaleService {
               value: newCollab.scale[d] || 'F'
             });
           }
-          return this.supabase.from('escala_diaria').upsert(scaleRows);
+          return Promise.resolve(this.supabase.from('escala_diaria').upsert(scaleRows));
         })
         .then(() => {
           this.syncSupabase();
@@ -526,8 +762,8 @@ export class ScaleService {
 
     if (this.activeDb() === 'supabase' && this.supabase) {
       Promise.all([
-        this.supabase.from('escala_diaria').delete().eq('collaborator_id', id),
-        this.supabase.from('colaboradores').delete().eq('id', id)
+        Promise.resolve(this.supabase.from('escala_diaria').delete().eq('collaborator_id', id)),
+        Promise.resolve(this.supabase.from('colaboradores').delete().eq('id', id))
       ])
         .then(() => {
           this.syncSupabase();
@@ -543,39 +779,44 @@ export class ScaleService {
   }
 
   updateCollaborator(col: Collaborator) {
+    const refreshedCol = this.refreshPreSelectedFolgas(col);
+
     if (this.activeDb() === 'supabase' && this.supabase) {
       const dbRow = {
-        id: col.id,
-        name: col.name,
-        role: col.role,
-        schedule: col.hours,
-        grupo: col.group,
-        shift: col.shift,
-        sector: col.sector,
-        bh_balance: col.bhBalance,
-        score: col.score
+        id: refreshedCol.id,
+        name: refreshedCol.name,
+        role: refreshedCol.role,
+        schedule: refreshedCol.hours,
+        grupo: refreshedCol.group,
+        shift: refreshedCol.shift,
+        sector: refreshedCol.sector,
+        bh_balance: refreshedCol.bhBalance,
+        score: refreshedCol.score,
+        birthday: refreshedCol.birthday || null,
+        special_dates: refreshedCol.specialDates ? JSON.stringify(refreshedCol.specialDates) : null,
+        folga_requests: refreshedCol.folgaRequests ? JSON.stringify(refreshedCol.folgaRequests) : null
       };
-      this.supabase.from('colaboradores').upsert(dbRow)
+      Promise.resolve(this.supabase.from('colaboradores').upsert(dbRow))
         .then(() => {
           const scaleRows = [];
           for (let d = 1; d <= 30; d++) {
             scaleRows.push({
-              collaborator_id: col.id,
+              collaborator_id: refreshedCol.id,
               day: d,
               month: 6,
               year: 2026,
-              value: col.scale[d] || 'F'
+              value: refreshedCol.scale[d] || 'F'
             });
           }
-          return this.supabase.from('escala_diaria').upsert(scaleRows);
+          return Promise.resolve(this.supabase.from('escala_diaria').upsert(scaleRows));
         })
         .then(() => {
           this.syncSupabase();
         })
         .catch((err: any) => console.error(err));
     } else {
-      setDoc(doc(this.db, 'collaborators', col.id), col).catch((err) => {
-        handleFirestoreError(err, OperationType.WRITE, `collaborators/${col.id}`);
+      setDoc(doc(this.db, 'collaborators', refreshedCol.id), refreshedCol).catch((err) => {
+        handleFirestoreError(err, OperationType.WRITE, `collaborators/${refreshedCol.id}`);
       });
     }
   }
@@ -584,12 +825,12 @@ export class ScaleService {
     this.collaborators().forEach(collab => {
       const emptyScale: { [day: number]: string } = {};
       for (let d = 1; d <= 30; d++) {
-        emptyScale[d] = 'F';
+        emptyScale[d] = '-';
       }
       const updated = { ...collab, scale: emptyScale };
       this.updateCollaborator(updated);
     });
-    this.addAuditHistory('LIMPAR_ESCALA', 'Toda a escala mensal de trabalho foi redefinida para Folga (F).');
+    this.addAuditHistory('LIMPAR_ESCALA', 'Toda a escala mensal de trabalho foi redefinida para Sem Definição (-).');
   }
 
   generateAutoScale() {
@@ -622,7 +863,7 @@ export class ScaleService {
     };
 
     if (this.activeDb() === 'supabase' && this.supabase) {
-      this.supabase.from('sigla_types').upsert(newSigla)
+      Promise.resolve(this.supabase.from('sigla_types').upsert(newSigla))
         .then(() => {
           this.syncSupabase();
           this.addAuditHistory('CADASTRO_SIGLA', `Nova sigla ${upperCode} cadastrada no Supabase.`);
@@ -638,7 +879,7 @@ export class ScaleService {
 
   removeSiglaType(code: string) {
     if (this.activeDb() === 'supabase' && this.supabase) {
-      this.supabase.from('sigla_types').delete().eq('code', code)
+      Promise.resolve(this.supabase.from('sigla_types').delete().eq('code', code))
         .then(() => {
           this.syncSupabase();
           this.addAuditHistory('REMOCAO_SIGLA', `Sigla ${code} removida do Supabase.`);
@@ -654,7 +895,7 @@ export class ScaleService {
 
   saveSiglaType(sigla: SiglaType) {
     if (this.activeDb() === 'supabase' && this.supabase) {
-      this.supabase.from('sigla_types').upsert(sigla)
+      Promise.resolve(this.supabase.from('sigla_types').upsert(sigla))
         .then(() => this.syncSupabase())
         .catch((err: any) => console.error(err));
     } else {
@@ -666,7 +907,7 @@ export class ScaleService {
 
   saveShiftType(shift: ShiftType) {
     if (this.activeDb() === 'supabase' && this.supabase) {
-      this.supabase.from('shift_types').upsert(shift)
+      Promise.resolve(this.supabase.from('shift_types').upsert(shift))
         .then(() => this.syncSupabase())
         .catch((err: any) => console.error(err));
     } else {
@@ -678,7 +919,7 @@ export class ScaleService {
 
   removeShiftType(code: string) {
     if (this.activeDb() === 'supabase' && this.supabase) {
-      this.supabase.from('shift_types').delete().eq('code', code)
+      Promise.resolve(this.supabase.from('shift_types').delete().eq('code', code))
         .then(() => this.syncSupabase())
         .catch((err: any) => console.error(err));
     } else {
@@ -701,7 +942,7 @@ export class ScaleService {
     };
 
     if (this.activeDb() === 'supabase' && this.supabase) {
-      this.supabase.from('audit_history').upsert(newHistory)
+      Promise.resolve(this.supabase.from('audit_history').upsert(newHistory))
         .then(() => this.syncSupabase())
         .catch((err: any) => console.error(err));
     } else {
@@ -726,11 +967,20 @@ export class ScaleService {
         score: 98,
         scale: {
           1: 'M', 2: 'M', 3: 'M', 4: 'M', 5: 'M', 6: 'F', 7: 'F',
-          8: 'M', 9: 'M', 10: 'M', 11: 'M', 12: 'M', 13: 'F', 14: 'F',
+          8: 'M', 9: 'M', 10: 'M', 11: 'M', 12: 'F', 13: 'F', 14: 'F',
           15: 'M', 16: 'M', 17: 'M', 18: 'M', 19: 'M', 20: 'F', 21: 'F',
-          22: 'M', 23: 'M', 24: 'M', 25: 'M', 26: 'M', 27: 'F', 28: 'F',
+          22: 'F', 23: 'M', 24: 'M', 25: 'M', 26: 'M', 27: 'F', 28: 'F',
           29: 'M', 30: 'M'
-        }
+        },
+        birthday: '1988-11-16',
+        specialDates: [
+          { description: 'Aniversário de Casamento', date: '2026-06-12', priority: 1 },
+          { description: 'Aniversário Filho', date: '2026-06-22', priority: 2 }
+        ],
+        folgaRequests: [
+          { date: '2026-06-12', isPreSelected: true },
+          { date: '2026-06-22', isPreSelected: true }
+        ]
       },
       {
         id: 'collab_2',
@@ -743,12 +993,21 @@ export class ScaleService {
         bhBalance: -4,
         score: 94,
         scale: {
-          1: 'M', 2: 'M', 3: 'M', 4: 'M', 5: 'M', 6: 'F', 7: 'F',
-          8: 'M', 9: 'M', 10: 'M', 11: 'M', 12: 'M', 13: 'F', 14: 'F',
-          15: 'M', 16: 'M', 17: 'M', 18: 'M', 19: 'M', 20: 'F', 21: 'F',
+          1: 'M', 2: 'M', 3: 'M', 4: 'M', 5: 'F', 6: 'F', 7: 'F',
+          8: 'F', 9: 'M', 10: 'M', 11: 'M', 12: 'M', 13: 'F', 14: 'F',
+          15: 'F', 16: 'M', 17: 'M', 18: 'M', 19: 'M', 20: 'F', 21: 'F',
           22: 'M', 23: 'M', 24: 'M', 25: 'M', 26: 'M', 27: 'F', 28: 'F',
           29: 'M', 30: 'M'
-        }
+        },
+        birthday: '1992-06-05',
+        specialDates: [
+          { description: 'Aniversário Cônjuge', date: '2026-06-15', priority: 3 }
+        ],
+        folgaRequests: [
+          { date: '2026-06-05', isPreSelected: true },
+          { date: '2026-06-15', isPreSelected: true },
+          { date: '2026-06-08', isPreSelected: false }
+        ]
       },
       {
         id: 'collab_3',
@@ -845,7 +1104,7 @@ export class ScaleService {
 
   private getDefaultShiftTypes(): ShiftType[] {
     return [
-      { code: 'M', label: 'Manhã (06h - 14h)', hours: '7h20', color: '#005cfa', startTime: '06:00', endTime: '14:00' },
+      { code: 'M', label: 'Manhã (06h - 14h)', hours: '7h20', color: '#0ea5e9', startTime: '06:00', endTime: '14:00' },
       { code: 'T', label: 'Tarde (14h - 22h)', hours: '7h20', color: '#10b981', startTime: '14:00', endTime: '22:00' },
       { code: 'N', label: 'Noite (22h - 06h)', hours: '7h20', color: '#8b5cf6', startTime: '22:00', endTime: '06:00' },
       { code: 'F', label: 'Folga', hours: '0h00', color: '#1e293b', startTime: '00:00', endTime: '00:00' }
