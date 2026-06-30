@@ -453,22 +453,22 @@ export class ScaleService {
   getAutoPreSelectedFolgas(collab: Collaborator): FolgaRequest[] {
     const preSelected: FolgaRequest[] = [];
     
-    // 1. Check birthday (Month 6 - June)
+    // 1. Check birthday (Month 7 - July)
     if (collab.birthday) {
       const parts = collab.birthday.split('-'); // YYYY-MM-DD
       if (parts.length === 3) {
         const m = parseInt(parts[1], 10);
         const d = parseInt(parts[2], 10);
-        if (m === 6) { // June
+        if (m === 7) { // July
           preSelected.push({
-            date: `2026-06-${String(d).padStart(2, '0')}`,
+            date: `2026-07-${String(d).padStart(2, '0')}`,
             isPreSelected: true
           });
         }
       }
     }
     
-    // 2. Check special dates (Month 6 - June)
+    // 2. Check special dates (Month 7 - July)
     if (collab.specialDates && Array.isArray(collab.specialDates)) {
       const sorted = [...collab.specialDates].sort((a, b) => a.priority - b.priority);
       for (const sd of sorted) {
@@ -477,8 +477,8 @@ export class ScaleService {
         if (parts.length === 3) {
           const m = parseInt(parts[1], 10);
           const d = parseInt(parts[2], 10);
-          if (m === 6) {
-            const dateStr = `2026-06-${String(d).padStart(2, '0')}`;
+          if (m === 7) {
+            const dateStr = `2026-07-${String(d).padStart(2, '0')}`;
             if (!preSelected.some(p => p.date === dateStr)) {
               preSelected.push({
                 date: dateStr,
@@ -762,35 +762,161 @@ export class ScaleService {
   }
 
   clearAllScales() {
-    this.collaborators().forEach(collab => {
-      const emptyScale: { [day: number]: string } = {};
-      for (let d = 1; d <= 31; d++) {
-        emptyScale[d] = '-';
-      }
-      const updated = { ...collab, scale: emptyScale };
-      this.updateCollaborator(updated);
-    });
-    this.addAuditHistory('LIMPAR_ESCALA', 'Toda a escala mensal de trabalho foi redefinida para Sem Definição (-).');
+    const list = this.collaborators();
+    if (this.activeDb() === 'supabase' && this.supabase) {
+      const scaleRows: any[] = [];
+      const collabRows: any[] = [];
+      
+      list.forEach(collab => {
+        const emptyScale: { [day: number]: string } = {};
+        for (let d = 1; d <= 31; d++) {
+          emptyScale[d] = '-';
+        }
+        const refreshed = this.refreshPreSelectedFolgas({ ...collab, scale: emptyScale });
+        
+        for (let d = 1; d <= 31; d++) {
+          scaleRows.push({
+            collaborator_id: refreshed.id,
+            day: d,
+            month: 7,
+            year: 2026,
+            value: refreshed.scale[d] || '-'
+          });
+        }
+        
+        collabRows.push({
+          id: refreshed.id,
+          name: refreshed.name,
+          role: refreshed.role,
+          schedule: refreshed.hours,
+          grupo: refreshed.group,
+          shift: refreshed.shift,
+          sector: refreshed.sector,
+          bh_balance: refreshed.bhBalance,
+          score: refreshed.score,
+          birthday: refreshed.birthday || null,
+          special_dates: refreshed.specialDates ? JSON.stringify(refreshed.specialDates) : null,
+          folga_requests: refreshed.folgaRequests ? JSON.stringify(refreshed.folgaRequests) : null
+        });
+      });
+
+      Promise.all([
+        Promise.resolve(this.supabase.from('colaboradores').upsert(collabRows)),
+        Promise.resolve(this.supabase.from('escala_diaria').upsert(scaleRows))
+      ])
+      .then(() => {
+        this.syncSupabase();
+        this.addAuditHistory('LIMPAR_ESCALA', 'Toda a escala mensal de trabalho foi redefinida para Sem Definição (-).');
+      })
+      .catch((err: any) => {
+        console.error('Error in clearAllScales:', err);
+      });
+    } else {
+      const promises = list.map(collab => {
+        const emptyScale: { [day: number]: string } = {};
+        for (let d = 1; d <= 31; d++) {
+          emptyScale[d] = '-';
+        }
+        const refreshed = this.refreshPreSelectedFolgas({ ...collab, scale: emptyScale });
+        return setDoc(doc(this.db, 'collaborators', refreshed.id), refreshed);
+      });
+
+      Promise.all(promises)
+        .then(() => {
+          this.addAuditHistory('LIMPAR_ESCALA', 'Toda a escala mensal de trabalho foi redefinida para Sem Definição (-).');
+        })
+        .catch((err) => {
+          console.error('Error clearing scales in Firebase:', err);
+        });
+    }
   }
 
   generateAutoScale() {
-    this.collaborators().forEach(collab => {
-      const generatedScale: { [day: number]: string } = {};
-      const baseShift = collab.shift === 'MADRUGADA' ? 'N' : collab.shift === 'TARDE' ? 'T' : collab.shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
+    const list = this.collaborators();
+    if (this.activeDb() === 'supabase' && this.supabase) {
+      const scaleRows: any[] = [];
+      const collabRows: any[] = [];
       
-      for (let d = 1; d <= 31; d++) {
-        const dayOfWeek = (d + 2) % 7; // July 1st, 2026 is a Wednesday (Index 3)
-        const isWeekend = (dayOfWeek === 6 || dayOfWeek === 0);
-        if (isWeekend) {
-          generatedScale[d] = 'F';
-        } else {
-          generatedScale[d] = baseShift;
+      list.forEach(collab => {
+        const generatedScale: { [day: number]: string } = {};
+        const baseShift = collab.shift === 'MADRUGADA' ? 'N' : collab.shift === 'TARDE' ? 'T' : collab.shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
+        
+        for (let d = 1; d <= 31; d++) {
+          const dayOfWeek = (d + 2) % 7; // July 1st, 2026 is a Wednesday (Index 3)
+          const isWeekend = (dayOfWeek === 6 || dayOfWeek === 0);
+          if (isWeekend) {
+            generatedScale[d] = 'F';
+          } else {
+            generatedScale[d] = baseShift;
+          }
         }
-      }
-      const updated = { ...collab, scale: generatedScale };
-      this.updateCollaborator(updated);
-    });
-    this.addAuditHistory('GERAR_AUTO', 'Escala mensal gerada com sucesso via algoritmo IA.');
+        
+        const refreshed = this.refreshPreSelectedFolgas({ ...collab, scale: generatedScale });
+        
+        for (let d = 1; d <= 31; d++) {
+          scaleRows.push({
+            collaborator_id: refreshed.id,
+            day: d,
+            month: 7,
+            year: 2026,
+            value: refreshed.scale[d] || 'F'
+          });
+        }
+        
+        collabRows.push({
+          id: refreshed.id,
+          name: refreshed.name,
+          role: refreshed.role,
+          schedule: refreshed.hours,
+          grupo: refreshed.group,
+          shift: refreshed.shift,
+          sector: refreshed.sector,
+          bh_balance: refreshed.bhBalance,
+          score: refreshed.score,
+          birthday: refreshed.birthday || null,
+          special_dates: refreshed.specialDates ? JSON.stringify(refreshed.specialDates) : null,
+          folga_requests: refreshed.folgaRequests ? JSON.stringify(refreshed.folgaRequests) : null
+        });
+      });
+
+      Promise.all([
+        Promise.resolve(this.supabase.from('colaboradores').upsert(collabRows)),
+        Promise.resolve(this.supabase.from('escala_diaria').upsert(scaleRows))
+      ])
+      .then(() => {
+        this.syncSupabase();
+        this.addAuditHistory('GERAR_AUTO', 'Escala mensal gerada com sucesso via algoritmo IA.');
+      })
+      .catch((err: any) => {
+        console.error('Error in generateAutoScale:', err);
+      });
+    } else {
+      const promises = list.map(collab => {
+        const generatedScale: { [day: number]: string } = {};
+        const baseShift = collab.shift === 'MADRUGADA' ? 'N' : collab.shift === 'TARDE' ? 'T' : collab.shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
+        
+        for (let d = 1; d <= 31; d++) {
+          const dayOfWeek = (d + 2) % 7; // July 1st, 2026 is a Wednesday (Index 3)
+          const isWeekend = (dayOfWeek === 6 || dayOfWeek === 0);
+          if (isWeekend) {
+            generatedScale[d] = 'F';
+          } else {
+            generatedScale[d] = baseShift;
+          }
+        }
+        
+        const refreshed = this.refreshPreSelectedFolgas({ ...collab, scale: generatedScale });
+        return setDoc(doc(this.db, 'collaborators', refreshed.id), refreshed);
+      });
+
+      Promise.all(promises)
+        .then(() => {
+          this.addAuditHistory('GERAR_AUTO', 'Escala mensal gerada com sucesso via algoritmo IA.');
+        })
+        .catch((err) => {
+          console.error('Error generating auto scale in Firebase:', err);
+        });
+    }
   }
 
   addSiglaType(code: string, label: string, color: string, description: string) {

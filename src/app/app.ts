@@ -22,6 +22,10 @@ export class AppComponent {
 
   // Sub tab navigation: 'matrix' | 'ger.turnos' | 'siglas' | 'team' | 'team-mgmt' | 'portal'
   public activeSubTab = signal<'matrix' | 'ger.turnos' | 'siglas' | 'team' | 'team-mgmt' | 'portal'>('matrix');
+  
+  public teamViewMode = signal<'gallery' | 'mgmt'>('gallery');
+  public editingCollab = signal<Collaborator | null>(null);
+  public isPortalCollabListOpen = signal<boolean>(false);
 
   // Simulated Day of Month (1 to 30) for Folga request window check
   simulatedDayOfMonth = signal<number>(5);
@@ -1018,6 +1022,71 @@ export class AppComponent {
 
     this.isImportModalOpen.set(false);
     this.showToast(`${users.length} novos colaboradores da escala importada foram integrados!`);
+  }
+
+  startEditingCollab(collab: Collaborator) {
+    this.editingCollab.set(collab);
+    this.newCollabPhotoData.set(collab.photo || null);
+    this.showToast(`Modo Edição: Editando ${collab.name}`);
+  }
+
+  cancelEditingCollab() {
+    this.editingCollab.set(null);
+    this.newCollabPhotoData.set(null);
+  }
+
+  saveEditedCollaborator(
+    id: string,
+    name: string,
+    role: 'OPERADOR' | 'LIDER' | 'SUPERVISOR',
+    group: string,
+    shift: string,
+    sector: 'AERÓDROMO' | 'VIP' | 'TREINAMENTO',
+    bh: number,
+    score: number,
+    photo?: string | null,
+    birthday?: string,
+    sd1Desc?: string, sd1Date?: string,
+    sd2Desc?: string, sd2Date?: string,
+    sd3Desc?: string, sd3Date?: string,
+    sd4Desc?: string, sd4Date?: string,
+    sd5Desc?: string, sd5Date?: string
+  ) {
+    if (!name.trim()) {
+      this.showToast('O nome completo do colaborador é obrigatório.');
+      return;
+    }
+
+    const specialDates: SpecialDate[] = [];
+    if (sd1Desc && sd1Date) specialDates.push({ description: sd1Desc, date: sd1Date, priority: 1 });
+    if (sd2Desc && sd2Date) specialDates.push({ description: sd2Desc, date: sd2Date, priority: 2 });
+    if (sd3Desc && sd3Date) specialDates.push({ description: sd3Desc, date: sd3Date, priority: 3 });
+    if (sd4Desc && sd4Date) specialDates.push({ description: sd4Desc, date: sd4Date, priority: 4 });
+    if (sd5Desc && sd5Date) specialDates.push({ description: sd5Desc, date: sd5Date, priority: 5 });
+
+    const target = this.scaleService.collaborators().find(c => c.id === id);
+    if (!target) {
+      this.showToast('Erro: Colaborador não encontrado.');
+      return;
+    }
+
+    const updatedCollab: Collaborator = {
+      ...target,
+      name,
+      role,
+      group,
+      shift,
+      sector,
+      bhBalance: bh,
+      score,
+      photo: photo || target.photo,
+      birthday: birthday || '',
+      specialDates
+    };
+
+    this.scaleService.updateCollaborator(updatedCollab);
+    this.cancelEditingCollab();
+    this.showToast('Colaborador atualizado com sucesso!');
   }
 
   onCollabPhotoSelected(event: any) {
