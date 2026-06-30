@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { initializeApp } from 'firebase/app';
-import { initializeFirestore, collection, doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
 import { firebaseConfig } from './firebase-config';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseEnv } from './supabase-env';
@@ -118,13 +118,12 @@ export class ScaleService {
 
   // Helper to resolve initial Supabase URL
   private getInitialSupabaseUrl(): string {
-    if (supabaseEnv && supabaseEnv.url) {
-      localStorage.setItem('supabase_url', supabaseEnv.url);
-      return supabaseEnv.url;
-    }
-
     const stored = localStorage.getItem('supabase_url');
     if (stored) return stored;
+
+    if (supabaseEnv && supabaseEnv.url) {
+      return supabaseEnv.url;
+    }
 
     const windowUrl = (window as any)['SUPABASE_URL'] || (window as any)['env']?.['SUPABASE_URL'];
     if (windowUrl) {
@@ -149,13 +148,12 @@ export class ScaleService {
 
   // Helper to resolve initial Supabase Key
   private getInitialSupabaseKey(): string {
-    if (supabaseEnv && supabaseEnv.key) {
-      localStorage.setItem('supabase_key', supabaseEnv.key);
-      return supabaseEnv.key;
-    }
-
     const stored = localStorage.getItem('supabase_key');
     if (stored) return stored;
+
+    if (supabaseEnv && supabaseEnv.key) {
+      return supabaseEnv.key;
+    }
 
     const windowKey = (window as any)['SUPABASE_KEY'] || (window as any)['env']?.['SUPABASE_KEY'];
     if (windowKey) {
@@ -186,19 +184,38 @@ export class ScaleService {
   supabaseKey = signal<string>(this.getInitialSupabaseKey());
   databaseError = signal<string | null>(null);
 
-  // Firebase Initialization
+  // Firebase Initialization - Defensive getFirestore to avoid any initialization or undefined databaseId crash
   private app = initializeApp(firebaseConfig);
-  private db = initializeFirestore(this.app, {
-    experimentalForceLongPolling: true
-  }, firebaseConfig.databaseId || undefined);
+  private db = (() => {
+    try {
+      if (firebaseConfig.databaseId) {
+        return initializeFirestore(this.app, {
+          experimentalForceLongPolling: true
+        }, firebaseConfig.databaseId);
+      } else {
+        return initializeFirestore(this.app, {
+          experimentalForceLongPolling: true
+        });
+      }
+    } catch (e) {
+      console.warn('Fallback to standard getFirestore:', e);
+      return getFirestore(this.app);
+    }
+  })();
 
   // Supabase Client Reference
   private supabase: any = null;
 
   constructor() {
-    if (supabaseEnv && supabaseEnv.url && supabaseEnv.key) {
+    const storedDb = localStorage.getItem('active_db');
+    if (storedDb === 'firebase' || storedDb === 'supabase') {
+      this.activeDb.set(storedDb);
+    } else if (supabaseEnv && supabaseEnv.url && supabaseEnv.key) {
       this.activeDb.set('supabase');
       localStorage.setItem('active_db', 'supabase');
+    } else {
+      this.activeDb.set('firebase');
+      localStorage.setItem('active_db', 'firebase');
     }
     this.initFirebaseSync();
     this.initSupabase();
@@ -239,11 +256,10 @@ export class ScaleService {
       this.supabase = null;
       if (this.activeDb() === 'supabase') {
         this.databaseError.set('URL ou Chave Anon do Supabase não configurados.');
-        // Fill with default data locally so the UI has visual preview
-        this.collaborators.set(this.getDefaultCollaborators());
-        this.shiftTypes.set(this.getDefaultShiftTypes());
-        this.siglaTypes.set(this.getDefaultSiglaTypes());
-        this.auditHistory.set(this.getDefaultAuditHistory());
+        this.collaborators.set([]);
+        this.shiftTypes.set([]);
+        this.siglaTypes.set([]);
+        this.auditHistory.set([]);
       }
     }
   }
@@ -253,9 +269,8 @@ export class ScaleService {
     this.databaseError.set(null);
 
     // Fetch from table systems on Supabase (colaboradores, escala_diaria, sigla_types, shift_types, audit_history)
-    // Individual catches prevent a single missing table from failing the entire synchronization flow.
-    const queryCollabs = Promise.resolve(this.supabase.from('colaboradores').select('*'));
-    const queryEscala = Promise.resolve(this.supabase.from('escala_diaria').select('*').eq('month', 6).eq('year', 2026));
+    const queryCollabs = Promise.resolve(this.supabase.from('colaboradores').select('*')).catch((err: any) => ({ error: err, data: null }));
+    const queryEscala = Promise.resolve(this.supabase.from('escala_diaria').select('*').eq('month', 7).eq('year', 2026)).catch((err: any) => ({ error: err, data: null }));
     const querySiglas = Promise.resolve(this.supabase.from('sigla_types').select('*')).catch((err: any) => ({ error: err, data: null }));
     const queryShifts = Promise.resolve(this.supabase.from('shift_types').select('*')).catch((err: any) => ({ error: err, data: null }));
     const queryAudit = Promise.resolve(this.supabase.from('audit_history').select('*')).catch((err: any) => ({ error: err, data: null }));
@@ -272,90 +287,45 @@ export class ScaleService {
         if (collabsError) {
           console.error('Supabase colaboradores error:', collabsError);
           this.databaseError.set(`Erro ao carregar colaboradores do Supabase: ${collabsError.message}`);
-          this.collaborators.set(this.getDefaultCollaborators());
+          this.collaborators.set([]);
           return;
         }
 
-        // 1. Sync & Seed Siglas
+        // 1. Sync Siglas (No Seed)
         const siglasError = siglasResult?.error;
         const siglasData = siglasResult?.data;
-        if (siglasError || !siglasData || siglasData.length === 0) {
-          const defaultSiglas = this.getDefaultSiglaTypes();
-          this.siglaTypes.set(defaultSiglas);
-          // Only attempt to seed if table exists and was just empty
-          if (this.supabase && !siglasError && siglasData && siglasData.length === 0) {
-            Promise.resolve(this.supabase.from('sigla_types').insert(defaultSiglas))
-              .catch((err: any) => console.error('Erro ao semear sigla_types:', err));
-          }
+        if (siglasError) {
+          console.error('Supabase sigla_types error:', siglasError);
+          this.siglaTypes.set([]);
         } else {
-          this.siglaTypes.set(siglasData);
+          this.siglaTypes.set(siglasData || []);
         }
 
-        // 2. Sync & Seed Shift Types
+        // 2. Sync Shift Types (No Seed)
         const shiftsError = shiftsResult?.error;
         const shiftsData = shiftsResult?.data;
-        if (shiftsError || !shiftsData || shiftsData.length === 0) {
-          const defaultShifts = this.getDefaultShiftTypes();
-          this.shiftTypes.set(defaultShifts);
-          if (this.supabase && !shiftsError && shiftsData && shiftsData.length === 0) {
-            Promise.resolve(this.supabase.from('shift_types').insert(defaultShifts))
-              .catch((err: any) => console.error('Erro ao semear shift_types:', err));
-          }
+        if (shiftsError) {
+          console.error('Supabase shift_types error:', shiftsError);
+          this.shiftTypes.set([]);
         } else {
-          this.shiftTypes.set(shiftsData);
+          this.shiftTypes.set(shiftsData || []);
         }
 
-        // 3. Sync & Seed Audit History
+        // 3. Sync Audit History (No Seed)
         const auditError = auditResult?.error;
         const auditData = auditResult?.data;
-        if (auditError || !auditData || auditData.length === 0) {
-          const defaultAudit = this.getDefaultAuditHistory();
-          this.auditHistory.set(defaultAudit);
-          if (this.supabase && !auditError && auditData && auditData.length === 0) {
-            Promise.resolve(this.supabase.from('audit_history').insert(defaultAudit))
-              .catch((err: any) => console.error('Erro ao semear audit_history:', err));
-          }
+        if (auditError) {
+          console.error('Supabase audit_history error:', auditError);
+          this.auditHistory.set([]);
         } else {
-          const sortedAudit = [...auditData];
+          const sortedAudit = [...(auditData || [])];
           sortedAudit.sort((a: any, b: any) => b.timestamp.localeCompare(a.timestamp));
           this.auditHistory.set(sortedAudit);
         }
 
-        // 4. Sync Collaborators & Daily Scales
+        // 4. Sync Collaborators & Daily Scales (No Seed)
         if (!collabsData || collabsData.length === 0) {
-          // Seed default collaborators
-          const defaultCollabs = this.getDefaultCollaborators();
-          this.collaborators.set(defaultCollabs);
-          // Map back and save to colaboradores if empty
-          const recordsToInsert = defaultCollabs.map(c => ({
-            id: c.id,
-            name: c.name,
-            role: c.role,
-            schedule: c.hours,
-            grupo: c.group,
-            shift: c.shift,
-            sector: c.sector,
-            bh_balance: c.bhBalance,
-            score: c.score
-          }));
-          Promise.resolve(this.supabase.from('colaboradores').insert(recordsToInsert))
-            .catch((err: any) => console.error('Erro ao semear colaboradores:', err));
-
-          // Seeding scale too
-          const scaleRecords: any[] = [];
-          defaultCollabs.forEach(c => {
-            for (let d = 1; d <= 30; d++) {
-              scaleRecords.push({
-                collaborator_id: c.id,
-                day: d,
-                month: 6,
-                year: 2026,
-                value: c.scale[d] || 'F'
-              });
-            }
-          });
-          Promise.resolve(this.supabase.from('escala_diaria').insert(scaleRecords))
-            .catch((err: any) => console.error('Erro ao semear escala_diaria:', err));
+          this.collaborators.set([]);
         } else {
           // Group scales by collaborator_id
           const scaleMap: { [collabId: string]: { [day: number]: string } } = {};
@@ -369,18 +339,23 @@ export class ScaleService {
           }
 
           // Map database records to Collaborator interface
-          const mappedCollabs: Collaborator[] = collabsData.map((row: any) => {
+          const mappedCollabs: Collaborator[] = collabsData.map((row: any, index: number) => {
             // If this collaborator has no scale in database yet, initialize one
             let scale = scaleMap[row.id];
             if (!scale) {
               scale = {};
               const defaultShiftCode = row.shift === 'MADRUGADA' ? 'N' : row.shift === 'TARDE' ? 'T' : row.shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
-              for (let d = 1; d <= 30; d++) {
-                if (d % 7 === 6 || d % 7 === 0) {
-                  scale[d] = 'F';
+              for (let d = 1; d <= 31; d++) {
+                const dayOfWeek = (d + 2) % 7; // July 1st, 2026 is a Wednesday (Index 3)
+                let isOff = false;
+                if (index % 3 === 0) {
+                  isOff = (dayOfWeek === 6 || dayOfWeek === 0);
+                } else if (index % 3 === 1) {
+                  isOff = (dayOfWeek === 5 || dayOfWeek === 6);
                 } else {
-                  scale[d] = defaultShiftCode;
+                  isOff = (dayOfWeek === 0 || dayOfWeek === 1);
                 }
+                scale[d] = isOff ? 'F' : defaultShiftCode;
               }
             }
 
@@ -402,6 +377,7 @@ export class ScaleService {
           });
 
           mappedCollabs.sort((a, b) => a.id.localeCompare(b.id));
+          console.log('Supabase sync loaded colaboradores count:', mappedCollabs.length);
           this.collaborators.set(mappedCollabs);
         }
       })
@@ -409,10 +385,10 @@ export class ScaleService {
         console.error('Promise.all error syncing Supabase:', err);
         if (this.activeDb() === 'supabase') {
           this.databaseError.set(`Erro de conexão com o Supabase.`);
-          this.collaborators.set(this.getDefaultCollaborators());
-          this.shiftTypes.set(this.getDefaultShiftTypes());
-          this.siglaTypes.set(this.getDefaultSiglaTypes());
-          this.auditHistory.set(this.getDefaultAuditHistory());
+          this.collaborators.set([]);
+          this.shiftTypes.set([]);
+          this.siglaTypes.set([]);
+          this.auditHistory.set([]);
         }
       });
   }
@@ -422,22 +398,12 @@ export class ScaleService {
     const collCollab = collection(this.db, 'collaborators');
     onSnapshot(collCollab, (snapshot) => {
       if (this.activeDb() !== 'firebase') return;
-      if (snapshot.empty) {
-        // Seed default collaborators
-        const defaultCollabs = this.getDefaultCollaborators();
-        defaultCollabs.forEach(col => {
-          setDoc(doc(this.db, 'collaborators', col.id), col).catch((err) => {
-            handleFirestoreError(err, OperationType.WRITE, `collaborators/${col.id}`);
-          });
-        });
-      } else {
-        const list: Collaborator[] = [];
-        snapshot.forEach((doc) => {
-          list.push(doc.data() as Collaborator);
-        });
-        list.sort((a, b) => a.id.localeCompare(b.id));
-        this.collaborators.set(list);
-      }
+      const list: Collaborator[] = [];
+      snapshot.forEach((doc) => {
+        list.push(doc.data() as Collaborator);
+      });
+      list.sort((a, b) => a.id.localeCompare(b.id));
+      this.collaborators.set(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'collaborators');
     });
@@ -446,20 +412,11 @@ export class ScaleService {
     const collShifts = collection(this.db, 'shiftTypes');
     onSnapshot(collShifts, (snapshot) => {
       if (this.activeDb() !== 'firebase') return;
-      if (snapshot.empty) {
-        const defaultShifts = this.getDefaultShiftTypes();
-        defaultShifts.forEach(s => {
-          setDoc(doc(this.db, 'shiftTypes', s.code), s).catch((err) => {
-            handleFirestoreError(err, OperationType.WRITE, `shiftTypes/${s.code}`);
-          });
-        });
-      } else {
-        const list: ShiftType[] = [];
-        snapshot.forEach((doc) => {
-          list.push(doc.data() as ShiftType);
-        });
-        this.shiftTypes.set(list);
-      }
+      const list: ShiftType[] = [];
+      snapshot.forEach((doc) => {
+        list.push(doc.data() as ShiftType);
+      });
+      this.shiftTypes.set(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'shiftTypes');
     });
@@ -468,20 +425,11 @@ export class ScaleService {
     const collSiglas = collection(this.db, 'siglaTypes');
     onSnapshot(collSiglas, (snapshot) => {
       if (this.activeDb() !== 'firebase') return;
-      if (snapshot.empty) {
-        const defaultSiglas = this.getDefaultSiglaTypes();
-        defaultSiglas.forEach(s => {
-          setDoc(doc(this.db, 'siglaTypes', s.code), s).catch((err) => {
-            handleFirestoreError(err, OperationType.WRITE, `siglaTypes/${s.code}`);
-          });
-        });
-      } else {
-        const list: SiglaType[] = [];
-        snapshot.forEach((doc) => {
-          list.push(doc.data() as SiglaType);
-        });
-        this.siglaTypes.set(list);
-      }
+      const list: SiglaType[] = [];
+      snapshot.forEach((doc) => {
+        list.push(doc.data() as SiglaType);
+      });
+      this.siglaTypes.set(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'siglaTypes');
     });
@@ -490,21 +438,12 @@ export class ScaleService {
     const collAudit = collection(this.db, 'auditHistory');
     onSnapshot(collAudit, (snapshot) => {
       if (this.activeDb() !== 'firebase') return;
-      if (snapshot.empty) {
-        const defaultAudit = this.getDefaultAuditHistory();
-        defaultAudit.forEach(a => {
-          setDoc(doc(this.db, 'auditHistory', a.id), a).catch((err) => {
-            handleFirestoreError(err, OperationType.WRITE, `auditHistory/${a.id}`);
-          });
-        });
-      } else {
-        const list: BackupHistory[] = [];
-        snapshot.forEach((doc) => {
-          list.push(doc.data() as BackupHistory);
-        });
-        list.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-        this.auditHistory.set(list);
-      }
+      const list: BackupHistory[] = [];
+      snapshot.forEach((doc) => {
+        list.push(doc.data() as BackupHistory);
+      });
+      list.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+      this.auditHistory.set(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'auditHistory');
     });
@@ -681,11 +620,12 @@ export class ScaleService {
     if (!name.trim()) return;
     const id = 'collab_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
     
-    // Initialize standard scale (5 days work, 2 days off) for June 2026
+    // Initialize standard scale (5 days work, 2 days off) for July 2026
     const initialScale: { [day: number]: string } = {};
     const defaultShiftCode = shift === 'MADRUGADA' ? 'N' : shift === 'TARDE' ? 'T' : shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
-    for (let d = 1; d <= 30; d++) {
-      if (d % 7 === 6 || d % 7 === 0) {
+    for (let d = 1; d <= 31; d++) {
+      const dayOfWeek = (d + 2) % 7; // July 1st, 2026 is a Wednesday (Index 3)
+      if (dayOfWeek === 6 || dayOfWeek === 0) {
         initialScale[d] = 'F';
       } else {
         initialScale[d] = defaultShiftCode;
@@ -729,11 +669,11 @@ export class ScaleService {
       Promise.resolve(this.supabase.from('colaboradores').upsert(dbRow))
         .then(() => {
           const scaleRows = [];
-          for (let d = 1; d <= 30; d++) {
+          for (let d = 1; d <= 31; d++) {
             scaleRows.push({
               collaborator_id: newCollab.id,
               day: d,
-              month: 6,
+              month: 7,
               year: 2026,
               value: newCollab.scale[d] || 'F'
             });
@@ -799,11 +739,11 @@ export class ScaleService {
       Promise.resolve(this.supabase.from('colaboradores').upsert(dbRow))
         .then(() => {
           const scaleRows = [];
-          for (let d = 1; d <= 30; d++) {
+          for (let d = 1; d <= 31; d++) {
             scaleRows.push({
               collaborator_id: refreshedCol.id,
               day: d,
-              month: 6,
+              month: 7,
               year: 2026,
               value: refreshedCol.scale[d] || 'F'
             });
@@ -824,7 +764,7 @@ export class ScaleService {
   clearAllScales() {
     this.collaborators().forEach(collab => {
       const emptyScale: { [day: number]: string } = {};
-      for (let d = 1; d <= 30; d++) {
+      for (let d = 1; d <= 31; d++) {
         emptyScale[d] = '-';
       }
       const updated = { ...collab, scale: emptyScale };
@@ -838,8 +778,9 @@ export class ScaleService {
       const generatedScale: { [day: number]: string } = {};
       const baseShift = collab.shift === 'MADRUGADA' ? 'N' : collab.shift === 'TARDE' ? 'T' : collab.shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
       
-      for (let d = 1; d <= 30; d++) {
-        const isWeekend = (d % 7 === 6 || d % 7 === 0);
+      for (let d = 1; d <= 31; d++) {
+        const dayOfWeek = (d + 2) % 7; // July 1st, 2026 is a Wednesday (Index 3)
+        const isWeekend = (dayOfWeek === 6 || dayOfWeek === 0);
         if (isWeekend) {
           generatedScale[d] = 'F';
         } else {
@@ -952,190 +893,4 @@ export class ScaleService {
     }
   }
 
-  // Default initial values for seeding
-  private getDefaultCollaborators(): Collaborator[] {
-    return [
-      {
-        id: 'collab_1',
-        name: 'Adilson Santos',
-        role: 'LIDER',
-        hours: '7h20',
-        group: 'Líderes',
-        shift: 'MANHÃ',
-        sector: 'AERÓDROMO',
-        bhBalance: 12,
-        score: 98,
-        scale: {
-          1: 'M', 2: 'M', 3: 'M', 4: 'M', 5: 'M', 6: 'F', 7: 'F',
-          8: 'M', 9: 'M', 10: 'M', 11: 'M', 12: 'F', 13: 'F', 14: 'F',
-          15: 'M', 16: 'M', 17: 'M', 18: 'M', 19: 'M', 20: 'F', 21: 'F',
-          22: 'F', 23: 'M', 24: 'M', 25: 'M', 26: 'M', 27: 'F', 28: 'F',
-          29: 'M', 30: 'M'
-        },
-        birthday: '1988-11-16',
-        specialDates: [
-          { description: 'Aniversário de Casamento', date: '2026-06-12', priority: 1 },
-          { description: 'Aniversário Filho', date: '2026-06-22', priority: 2 }
-        ],
-        folgaRequests: [
-          { date: '2026-06-12', isPreSelected: true },
-          { date: '2026-06-22', isPreSelected: true }
-        ]
-      },
-      {
-        id: 'collab_2',
-        name: 'Bernardo Oliveira',
-        role: 'OPERADOR',
-        hours: '7h20',
-        group: 'Manhã',
-        shift: 'MANHÃ',
-        sector: 'AERÓDROMO',
-        bhBalance: -4,
-        score: 94,
-        scale: {
-          1: 'M', 2: 'M', 3: 'M', 4: 'M', 5: 'F', 6: 'F', 7: 'F',
-          8: 'F', 9: 'M', 10: 'M', 11: 'M', 12: 'M', 13: 'F', 14: 'F',
-          15: 'F', 16: 'M', 17: 'M', 18: 'M', 19: 'M', 20: 'F', 21: 'F',
-          22: 'M', 23: 'M', 24: 'M', 25: 'M', 26: 'M', 27: 'F', 28: 'F',
-          29: 'M', 30: 'M'
-        },
-        birthday: '1992-06-05',
-        specialDates: [
-          { description: 'Aniversário Cônjuge', date: '2026-06-15', priority: 3 }
-        ],
-        folgaRequests: [
-          { date: '2026-06-05', isPreSelected: true },
-          { date: '2026-06-15', isPreSelected: true },
-          { date: '2026-06-08', isPreSelected: false }
-        ]
-      },
-      {
-        id: 'collab_3',
-        name: 'Carlos Alberto',
-        role: 'OPERADOR',
-        hours: '7h20',
-        group: 'Tarde',
-        shift: 'TARDE',
-        sector: 'AERÓDROMO',
-        bhBalance: 8,
-        score: 96,
-        scale: {
-          1: 'T', 2: 'T', 3: 'T', 4: 'T', 5: 'T', 6: 'F', 7: 'F',
-          8: 'T', 9: 'T', 10: 'T', 11: 'T', 12: 'T', 13: 'F', 14: 'F',
-          15: 'T', 16: 'T', 17: 'T', 18: 'T', 19: 'T', 20: 'F', 21: 'F',
-          22: 'T', 23: 'T', 24: 'T', 25: 'T', 26: 'T', 27: 'F', 28: 'F',
-          29: 'T', 30: 'T'
-        }
-      },
-      {
-        id: 'collab_4',
-        name: 'Daniel Lima',
-        role: 'OPERADOR',
-        hours: '7h20',
-        group: 'Madrugada',
-        shift: 'MADRUGADA',
-        sector: 'AERÓDROMO',
-        bhBalance: 16,
-        score: 100,
-        scale: {
-          1: 'N', 2: 'N', 3: 'N', 4: 'N', 5: 'N', 6: 'F', 7: 'F',
-          8: 'N', 9: 'N', 10: 'N', 11: 'N', 12: 'N', 13: 'F', 14: 'F',
-          15: 'N', 16: 'N', 17: 'N', 18: 'N', 19: 'N', 20: 'F', 21: 'F',
-          22: 'N', 23: 'N', 24: 'N', 25: 'N', 26: 'N', 27: 'F', 28: 'F',
-          29: 'N', 30: 'N'
-        }
-      },
-      {
-        id: 'collab_5',
-        name: 'Everton Souza',
-        role: 'OPERADOR',
-        hours: '7h20',
-        group: 'VIP',
-        shift: 'TARDE',
-        sector: 'VIP',
-        bhBalance: 2,
-        score: 92,
-        scale: {
-          1: 'T', 2: 'T', 3: 'T', 4: 'T', 5: 'T', 6: 'F', 7: 'F',
-          8: 'T', 9: 'T', 10: 'T', 11: 'T', 12: 'T', 13: 'F', 14: 'F',
-          15: 'T', 16: 'T', 17: 'T', 18: 'T', 19: 'T', 20: 'F', 21: 'F',
-          22: 'T', 23: 'T', 24: 'T', 25: 'T', 26: 'T', 27: 'F', 28: 'F',
-          29: 'T', 30: 'T'
-        }
-      },
-      {
-        id: 'collab_7',
-        name: 'Horácio Lima',
-        role: 'OPERADOR',
-        hours: '7h20',
-        group: 'Madrugada',
-        shift: 'MADRUGADA',
-        sector: 'AERÓDROMO',
-        bhBalance: 4,
-        score: 95,
-        scale: {
-          1: 'N', 2: 'N', 3: 'N', 4: 'N', 5: 'N', 6: 'F', 7: 'F',
-          8: 'N', 9: 'N', 10: 'N', 11: 'N', 12: 'N', 13: 'F', 14: 'F',
-          15: 'N', 16: 'N', 17: 'N', 18: 'N', 19: 'N', 20: 'F', 21: 'F',
-          22: 'N', 23: 'N', 24: 'N', 25: 'N', 26: 'N', 27: 'F', 28: 'F',
-          29: 'N', 30: 'N'
-        }
-      },
-      {
-        id: 'collab_6',
-        name: 'Fabiano Costa',
-        role: 'SUPERVISOR',
-        hours: '8h00',
-        group: 'Líderes',
-        shift: 'ADMINISTRATIVO',
-        sector: 'AERÓDROMO',
-        bhBalance: 24,
-        score: 99,
-        scale: {
-          1: 'ADM', 2: 'ADM', 3: 'ADM', 4: 'ADM', 5: 'ADM', 6: 'F', 7: 'F',
-          8: 'ADM', 9: 'ADM', 10: 'ADM', 11: 'ADM', 12: 'ADM', 13: 'F', 14: 'F',
-          15: 'ADM', 16: 'ADM', 17: 'ADM', 18: 'ADM', 19: 'ADM', 20: 'F', 21: 'F',
-          22: 'ADM', 23: 'ADM', 24: 'ADM', 25: 'ADM', 26: 'ADM', 27: 'F', 28: 'F',
-          29: 'ADM', 30: 'ADM'
-        }
-      }
-    ];
-  }
-
-  private getDefaultShiftTypes(): ShiftType[] {
-    return [
-      { code: 'M', label: 'Manhã (06h - 14h)', hours: '7h20', color: '#0ea5e9', startTime: '06:00', endTime: '14:00' },
-      { code: 'T', label: 'Tarde (14h - 22h)', hours: '7h20', color: '#10b981', startTime: '14:00', endTime: '22:00' },
-      { code: 'N', label: 'Noite (22h - 06h)', hours: '7h20', color: '#8b5cf6', startTime: '22:00', endTime: '06:00' },
-      { code: 'F', label: 'Folga', hours: '0h00', color: '#1e293b', startTime: '00:00', endTime: '00:00' }
-    ];
-  }
-
-  private getDefaultSiglaTypes(): SiglaType[] {
-    return [
-      { code: 'ADM', label: 'Administrativo', color: '#64748b', description: 'Serviço administrative fixo' },
-      { code: 'LM', label: 'Licença Médica', color: '#ef4444', description: 'Afastamento por motivo de saúde' },
-      { code: 'FE', label: 'Férias', color: '#3b82f6', description: 'Férias anuais programadas' },
-      { code: 'TR', label: 'Treinamento', color: '#eab308', description: 'Curso de aperfeiçoamento de equipe' }
-    ];
-  }
-
-  private getDefaultAuditHistory(): BackupHistory[] {
-    return [
-      {
-        id: 'bk_1',
-        timestamp: '26/06/2026 10:30',
-        author: 'Anderson Pires',
-        action: 'PUBLICAR_ESCALA',
-        description: 'Escala oficial de Junho 2026 publicada no sistema.'
-      },
-      {
-        id: 'bk_2',
-        timestamp: '25/06/2026 15:45',
-        author: 'Anderson Pires',
-        action: 'GERAR_AUTO',
-        description: 'Geração automatizada de escala gerada via algoritmo de IA.'
-      }
-    ];
-  }
 }

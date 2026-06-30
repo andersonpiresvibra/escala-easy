@@ -190,8 +190,8 @@ export class AppComponent {
   selectedFilterSector = signal<string>('TODOS');
   selectedFilterShift = signal<string>('TODOS');
 
-  // Days list for June 2026 (June has 30 days. June 1st, 2026 is a Monday)
-  daysInMonth = Array.from({ length: 30 }, (_, i) => i + 1);
+  // Days list for July 2026 (July has 31 days. July 1st, 2026 is a Wednesday)
+  daysInMonth = Array.from({ length: 31 }, (_, i) => i + 1);
 
   // Notifications State
   notifications = signal<AppNotification[]>([
@@ -343,14 +343,15 @@ export class AppComponent {
   // Get Day of Week Name
   getDayOfWeekLabel(day: number): string {
     const weekDays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-    // June 1st 2026 is a Monday (Index 1)
-    // Formula: (day - 1 + 1) % 7 = day % 7
-    const index = (day) % 7; 
+    // July 1st 2026 is a Wednesday (Index 3)
+    // Formula: (day - 1 + 3) % 7 = (day + 2) % 7
+    const index = (day + 2) % 7; 
     return weekDays[index];
   }
 
   isDayWeekend(day: number): boolean {
-    const index = (day) % 7;
+    // July 1st 2026 is a Wednesday
+    const index = (day + 2) % 7;
     return index === 6 || index === 0; // Saturday & Sunday
   }
 
@@ -990,7 +991,7 @@ export class AppComponent {
       ];
 
       this.scannedTextResult.set(
-        `[OCR RAW LOGS]:\nESCALA DIÁRIA DE TRABALHO - VIBRA JETFUEL\nData Extraída: Junho 2026\nHugo Mascarenhas - LT - MANHÃ - PÁTIO\nGabriel Alencar - OP - TARDE - VIP\nIgor Silveira - OP - MADRUGADA - PÁTIO`
+        `[OCR RAW LOGS]:\nESCALA DIÁRIA DE TRABALHO - ESCALA EASY VIBRA\nData Extraída: Junho 2026\nHugo Mascarenhas - LT - MANHÃ - OPERACIONAL\nGabriel Alencar - OP - TARDE - VIP\nIgor Silveira - OP - MADRUGADA - OPERACIONAL`
       );
       this.scannedDataParsed.set(parsed);
       this.importingState.set('done');
