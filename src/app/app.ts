@@ -359,6 +359,77 @@ export class AppComponent {
     return index === 6 || index === 0; // Saturday & Sunday
   }
 
+  getSpecialEventsForDay(collab: any, day: number): { icon: string; color: string; tooltip: string; shortLabel: string }[] {
+    const events: { icon: string; color: string; tooltip: string; shortLabel: string }[] = [];
+    if (!collab) return events;
+
+    // 1. Birthday (Month 7 - July)
+    if (collab.birthday) {
+      const parts = collab.birthday.split('-');
+      if (parts.length === 3) {
+        const m = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
+        if (m === 7 && d === day) {
+          events.push({
+            icon: 'cake',
+            color: '#f43f5e', // pink/rose
+            tooltip: `Aniversário de ${collab.name}`,
+            shortLabel: 'Aniversário'
+          });
+        }
+      }
+    }
+
+    // 2. Special Dates (Month 7 - July)
+    if (collab.specialDates && Array.isArray(collab.specialDates)) {
+      for (const sd of collab.specialDates) {
+        if (!sd.date || !sd.description) continue;
+        const parts = sd.date.split('-');
+        if (parts.length === 3) {
+          const m = parseInt(parts[1], 10);
+          const d = parseInt(parts[2], 10);
+          if (m === 7 && d === day) {
+            const descLower = sd.description.toLowerCase();
+            let icon = 'celebration';
+            let color = '#f59e0b'; // amber
+            let shortLabel = 'Especial';
+            
+            if (descLower.includes('casamento') || descLower.includes('aliança') || descLower.includes('alianca') || descLower.includes('wedding') || descLower.includes('bodas') || descLower.includes('marido') || descLower.includes('esposa') || descLower.includes('conjuge') || descLower.includes('cônjuge') || descLower.includes('noivado')) {
+              icon = 'favorite'; // Heart icon representing marriage/anniversary/wedding
+              color = '#e11d48'; // red-rose
+              shortLabel = 'Casamento';
+            } else if (descLower.includes('filho') || descLower.includes('filha') || descLower.includes('criança') || descLower.includes('crianca') || descLower.includes('bebe') || descLower.includes('bebê') || descLower.includes('nascimento') || descLower.includes('child') || descLower.includes('baby') || descLower.includes('maternidade') || descLower.includes('paternidade')) {
+              icon = 'child_care';
+              color = '#38bdf8'; // sky blue
+              shortLabel = 'Família';
+            } else if (descLower.includes('aniversário') || descLower.includes('aniversario') || descLower.includes('niver') || descLower.includes('bday') || descLower.includes('nasc')) {
+              icon = 'cake';
+              color = '#ec4899'; // pink
+              shortLabel = 'Níver';
+            } else if (descLower.includes('casa') || descLower.includes('mudança') || descLower.includes('mudanca') || descLower.includes('home') || descLower.includes('família') || descLower.includes('familia')) {
+              icon = 'home';
+              color = '#10b981'; // emerald
+              shortLabel = 'Lar';
+            } else if (descLower.includes('formatura') || descLower.includes('estudo') || descLower.includes('prova') || descLower.includes('aula') || descLower.includes('escola') || descLower.includes('faculdade')) {
+              icon = 'school';
+              color = '#6366f1'; // indigo
+              shortLabel = 'Estudo';
+            }
+
+            events.push({
+              icon,
+              color,
+              tooltip: `${sd.description} (Prioridade ${sd.priority})`,
+              shortLabel
+            });
+          }
+        }
+      }
+    }
+
+    return events;
+  }
+
   // Notification methods
   markAllNotificationsAsRead() {
     this.notifications.set(this.notifications().map(n => ({ ...n, read: true })));

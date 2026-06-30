@@ -433,10 +433,22 @@
                       <!-- Month Calendar cells -->
                       @for (day of daysInMonth; track day) {
                         @let cellVal = editingRowCollabId() === collab.id ? (editingRowScaleDraft()[day] || '-') : (collab.scale[day] || '-');
+                        @let events = getSpecialEventsForDay(collab, day);
                         <td class="py-2 px-0.5 text-center border-r border-[#10213b] relative cursor-pointer group-cell"
                             (click)="editingRowCollabId() === collab.id ? paintDraftCell(day) : (editingRowCollabId() !== null ? null : applyPaintbrush(collab.id, day))"
                             [ngClass]="{ 'bg-[#10b981]/5': isDayWeekend(day) && (cellVal === 'F' || cellVal === '-') }">
                           
+                          <!-- Event tiny absolute top-right markers -->
+                          @if (events.length > 0) {
+                            <div class="absolute top-0.5 right-0.5 flex gap-0.5 z-20 pointer-events-auto">
+                              @for (ev of events; track ev.tooltip) {
+                                <span class="material-icons text-[8px] leading-none select-none cursor-help" 
+                                      [style.color]="ev.color" 
+                                      [title]="ev.tooltip">{{ ev.icon }}</span>
+                              }
+                            </div>
+                          }
+
                           <!-- Render dynamic cell colors based on values (either draft or saved) -->
                           <div class="w-6 h-6 mx-auto rounded flex items-center justify-center font-bold text-[9px] transition-transform hover:scale-105 active:scale-95 shadow-sm"
                                [style.background-color]="getShiftOrSiglaColor(cellVal)"
@@ -1276,16 +1288,26 @@
                       </div>
                     </div>
 
-                    <!-- Compact Calendar Render -->
+                     <!-- Compact Calendar Render -->
                     <div class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-10 gap-2">
                       @for (day of daysInMonth; track day) {
                         @let sVal = selectedCol.scale[day] || 'F';
                         @let isOff = sVal === 'F' || sVal === 'FE' || sVal === 'LM';
+                        @let events = getSpecialEventsForDay(selectedCol, day);
                         
-                        <div class="aspect-video sm:aspect-square rounded-lg border flex flex-col items-center justify-between p-2 select-none transition-transform hover:scale-[1.03] duration-150"
+                        <div class="aspect-video sm:aspect-square rounded-lg border flex flex-col items-center justify-between p-2 select-none transition-transform hover:scale-[1.03] duration-150 relative overflow-hidden"
                              [style.background-color]="getShiftOrSiglaColor(sVal)"
                              [style.border-color]="isOff ? '#10213b' : getShiftOrSiglaColor(sVal) + '50'">
                           
+                          <!-- Event tiny top-right markers -->
+                          @if (events.length > 0) {
+                            <div class="absolute top-1 right-1 flex gap-0.5 z-20 pointer-events-none">
+                              @for (ev of events; track ev.tooltip) {
+                                <span class="material-icons text-[10px] leading-none" [style.color]="ev.color" [title]="ev.tooltip">{{ ev.icon }}</span>
+                              }
+                            </div>
+                          }
+
                           <!-- Header: Day Number + Day of the week initial -->
                           <div class="w-full flex justify-between text-[8px] font-bold font-mono opacity-80"
                                [style.color]="getShiftOrSiglaTextColor(sVal)">
@@ -1299,10 +1321,17 @@
                           </div>
 
                           <!-- Status subtitle -->
-                          <div class="text-[7px] font-bold uppercase font-sans tracking-wide truncate max-w-full mt-0.5 text-center"
-                               [style.color]="getShiftOrSiglaTextColor(sVal)"
-                               [class.opacity-50]="isOff">
-                            {{ isOff ? 'Folga' : 'Trabalho' }}
+                          <div class="text-[7px] font-bold uppercase font-sans tracking-wide truncate max-w-full mt-0.5 text-center flex items-center justify-center gap-0.5"
+                               [style.color]="events.length > 0 ? events[0].color : getShiftOrSiglaTextColor(sVal)"
+                               [class.opacity-50]="isOff && events.length === 0">
+                            @if (events.length > 0) {
+                              <span class="flex items-center gap-0.5 font-black text-[7px]" [title]="events[0].tooltip">
+                                <span class="material-icons text-[9px]">{{ events[0].icon }}</span>
+                                {{ events[0].shortLabel }}
+                              </span>
+                            } @else {
+                              {{ isOff ? 'Folga' : 'Trabalho' }}
+                            }
                           </div>
                         </div>
                       }
@@ -2037,18 +2066,25 @@
                     <!-- Offset days (June 2026 starts on a Monday, so we have 1 offset day for Sunday) -->
                     <div class="bg-transparent border border-transparent p-2"></div>
 
-                    <!-- Days 1 to 30 -->
-                    @for (day of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30]; track day) {
+                     <!-- Days 1 to 31 -->
+                    @for (day of daysInMonth; track day) {
                       @let isChosenByMe = isChosenByLogged(day);
                       @let isPreByMe = isPreSelectedByLogged(day);
                       @let count = getFolgaRequestCount(day);
+                      @let events = getSpecialEventsForDay(logged, day);
 
                       <button (click)="isChosenByMe ? (isPreByMe ? showToast('Folga automática de alta prioridade não pode ser removida.') : removePortalFolgaDay(day)) : requestPortalFolgaDay(day)"
                               [class]="getCalendarDayClass(isChosenByMe, count)">
                         
                         <div class="flex items-center justify-between w-full">
                           <span class="font-black text-white font-mono text-[11px]">{{ day }}</span>
-                          @if (isChosenByMe) {
+                          @if (events.length > 0) {
+                            <div class="flex items-center gap-0.5" [title]="events[0].tooltip">
+                              @for (ev of events; track ev.tooltip) {
+                                <span class="material-icons text-[11px] select-none" [style.color]="ev.color">{{ ev.icon }}</span>
+                              }
+                            </div>
+                          } @else if (isChosenByMe) {
                             <span class="text-[9px] text-emerald-400 font-bold">★</span>
                           }
                         </div>
