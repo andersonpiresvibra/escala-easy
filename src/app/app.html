@@ -1,5 +1,5 @@
 <!-- MAIN WRAPPER: PREMIUM WORK SCALE MANAGEMENT DARK MODE -->
-<div class="h-screen bg-[#020813] font-sans text-slate-100 flex flex-col antialiased selection:bg-emerald-600 selection:text-white overflow-hidden" id="main_app_layout">
+<div class="h-screen bg-[#020813] font-sans text-slate-100 flex flex-col antialiased selection:bg-emerald-600 selection:text-white overflow-hidden" id="main_app_layout" [class.light-theme]="isLightTheme()">
 
   <!-- TOAST ALERTS BANNER -->
   @if (toastMessage()) {
@@ -14,7 +14,7 @@
     <div class="flex items-center gap-3 select-none">
       <!-- Logo Square Emblem -->
       <div class="w-10 h-10 bg-[#10b981] rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/15 border border-emerald-400/20">
-        <span class="material-icons text-white text-xl">calendar_month</span>
+        <span class="material-icons text-white text-xl" style="color: #ffffff;">calendar_month</span>
       </div>
       <div class="flex flex-col select-none">
         <div class="flex items-center gap-1">
@@ -48,7 +48,7 @@
       <button (click)="activeSubTab.set('matrix')"
               class="px-4 py-2.5 text-[10px] font-black tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-pointer rounded-md select-none border-none outline-none"
               [class]="activeSubTab() === 'matrix' ? 'bg-[#10b981] text-white shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800/40'">
-         <span class="material-icons text-xs font-bold">grid_on</span>
+         <span class="material-icons text-xs font-bold">calendar_month</span>
         Escala
       </button>
       <button (click)="activeSubTab.set('team'); teamViewMode.set('gallery')"
@@ -67,12 +67,26 @@
 
     <!-- RIGHT UTILITIES ROW -->
     <div class="flex flex-wrap items-center gap-2.5 justify-end">
+      <!-- FULLSCREEN (TELA CHEIA) TOGGLE -->
+      <button (click)="toggleFullscreen()"
+              class="relative p-2.5 h-[40px] w-[40px] bg-[#071426] border border-[#10213b] text-slate-400 hover:text-white hover:bg-[#0b1e36] rounded-lg transition-all flex items-center justify-center cursor-pointer shadow-sm select-none border-none outline-none"
+              title="Tela Cheia">
+        <span class="material-icons text-lg">{{ isFullscreen() ? 'fullscreen_exit' : 'fullscreen' }}</span>
+      </button>
+
+      <!-- THEME (CLARO / ESCURO) TOGGLE -->
+      <button (click)="toggleTheme()"
+              class="relative p-2.5 h-[40px] w-[40px] bg-[#071426] border border-[#10213b] text-slate-400 hover:text-white hover:bg-[#0b1e36] rounded-lg transition-all flex items-center justify-center cursor-pointer shadow-sm select-none border-none outline-none"
+              title="Alternar Tema">
+        <span class="material-icons text-lg" [class.text-amber-500]="isLightTheme()">{{ isLightTheme() ? 'light_mode' : 'dark_mode' }}</span>
+      </button>
+
       <!-- Notification Bell with unread badge -->
       <div class="relative inline-block text-left">
          <button (click)="isNotificationOpen.set(!isNotificationOpen())"
                  class="relative p-2.5 h-[40px] w-[40px] bg-[#071426] border border-[#10213b] text-slate-400 hover:text-white hover:bg-[#0b1e36] rounded-lg transition-all flex items-center justify-center cursor-pointer shadow-sm select-none border-none outline-none"
                  id="notification_bell_btn">
-            <span class="material-icons text-lg">notifications</span>
+            <span class="material-icons text-lg" style="color: #10B981;">notifications</span>
             @if (unreadNotificationsCount() > 0) {
               <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white ring-2 ring-[#020813] animate-pulse">
                 {{ unreadNotificationsCount() }}
@@ -216,87 +230,103 @@
         <div class="flex-1 flex flex-col w-full gap-0 overflow-hidden animate-fade-in" id="matrix_general_card">
           
           <!-- SEARCH & FILTER TOOLBAR -->
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 md:px-6 py-4 border-b border-[#10213b] bg-[#020813]">
-            <div class="flex items-center gap-2">
-              <span class="material-icons select-none text-[#10b981] font-bold">grid_on</span>
-              <h3 class="font-black text-sm uppercase tracking-tight text-white">Escala</h3>
-            </div>
-            
-            <div class="flex flex-wrap items-center gap-2.5">
-              <!-- Search query input -->
-              <div class="relative">
-                <span class="material-icons absolute left-3 top-2 text-slate-500 text-sm select-none">search</span>
-                <input type="text"
-                       [value]="collabSearchQuery()"
-                       (input)="collabSearchQuery.set($any($event.target).value)"
-                       placeholder="Buscar colaborador..."
-                       class="bg-[#030a14] border border-[#10213b] text-white text-xs px-3 py-1.5 pl-8 rounded-lg outline-none focus:border-emerald-500 placeholder:text-slate-600 font-semibold font-sans w-48">
-              </div>
-
-              <!-- Role filter -->
-              <select [value]="selectedFilterRole()"
-                      (change)="selectedFilterRole.set($any($event.target).value)"
-                      class="bg-[#030a14] border border-[#10213b] text-white text-xs pl-2 pr-5 py-1.5 rounded-lg outline-none focus:border-emerald-500 hover:border-emerald-500 font-bold cursor-pointer transition-colors w-[140px]">
-                <option value="TODOS">Função</option>
-                <option value="LIDER">LÍDERES DE TURNO (LT)</option>
-                <option value="OPERADOR">OPERADORES</option>
-              </select>
-
-              <!-- Sector filter -->
-              <select [value]="selectedFilterSector()"
-                      (change)="selectedFilterSector.set($any($event.target).value)"
-                      class="bg-[#030a14] border border-[#10213b] text-white text-xs pl-2 pr-5 py-1.5 rounded-lg outline-none focus:border-emerald-500 hover:border-emerald-500 font-bold cursor-pointer transition-colors w-[140px]">
-                <option value="TODOS">Pátios</option>
-                <option value="AERÓDROMO">AERÓDROMO</option>
-                <option value="VIP">VIP</option>
-              </select>
-
-              <!-- Shift filter -->
-              <select [value]="selectedFilterShift()"
-                      (change)="selectedFilterShift.set($any($event.target).value)"
-                      class="bg-[#030a14] border border-[#10213b] text-white text-xs pl-2 pr-5 py-1.5 rounded-lg outline-none focus:border-emerald-500 hover:border-emerald-500 font-bold cursor-pointer transition-colors w-[140px]">
-                <option value="TODOS">Turnos</option>
-                <option value="MANHÃ">MANHÃ</option>
-                <option value="TARDE">TARDE</option>
-                <option value="MADRUGADA">NOITE</option>
-              </select>
-
-              <!-- Specific Section Options Dropdown Button -->
-              <div class="relative inline-block text-left" id="matrix_options_container">
-                <button (click)="isMatrixOptionsOpen.set(!isMatrixOptionsOpen())"
-                        class="bg-[#030a14] border border-[#10213b] text-slate-300 hover:text-white px-3 py-1.5 rounded-lg outline-none focus:border-emerald-500 hover:border-emerald-500 font-bold text-xs flex items-center gap-1.5 cursor-pointer select-none"
-                        id="btn_matrix_options_dropdown">
-                  <span class="material-icons text-sm text-slate-400">tune</span>
-                  Opções de Escala
-                  <span class="material-icons text-[10px] transition-transform duration-200" [class.rotate-180]="isMatrixOptionsOpen()">expand_more</span>
+          <div class="flex flex-col gap-3 border-b border-[#10213b] bg-[#020813] px-4 md:px-6 py-4">
+            <!-- Main header row -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <!-- Month Controller & Title -->
+              <div class="flex items-center gap-2 select-none">
+                <!-- Previous month button -->
+                <button (click)="prevMonth()"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg border border-[#10213b] bg-[#030a14] hover:bg-[#0b1e36] text-slate-400 hover:text-white cursor-pointer transition-all border-none outline-none"
+                        title="Mês Anterior">
+                  <span class="material-icons text-sm">chevron_left</span>
                 </button>
 
-                @if (isMatrixOptionsOpen()) {
-                  <div class="absolute right-0 mt-2 w-52 rounded-lg bg-[#071426] border border-[#10213b] shadow-2xl z-50 divide-y divide-[#10213b] animate-fade-in" id="matrix_options_dropdown_menu">
-                    @if (scaleService.currentRole() !== 'OPERADOR') {
-                      <div class="py-1">
-                        <!-- Editar em massa -->
-                        <button (click)="togglePaintbrushPanel(); isMatrixOptionsOpen.set(false)"
-                                class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none bg-transparent"
-                                [class]="showPaintbrushPanel() ? 'text-amber-500 hover:bg-[#0b1e36]/30' : 'text-slate-300 hover:bg-[#0b1e36]'">
-                          <span class="material-icons text-sm" [class]="showPaintbrushPanel() ? 'text-amber-400' : 'text-slate-400'">edit_calendar</span>
-                          {{ showPaintbrushPanel() ? 'Fechar Edição em Massa' : 'Editar em Massa' }}
-                        </button>
-                        
-                        <!-- Gerar Escala -->
-                        <button (click)="scaleService.generateAutoScale(); isMatrixOptionsOpen.set(false)"
-                                class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-purple-400 hover:bg-purple-950/20 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none bg-transparent">
-                          <span class="material-icons text-purple-400 text-sm">auto_awesome</span>
-                          Gerar Escala
-                        </button>
+                <!-- Center Month Button with Calendar Icon -->
+                <div class="relative">
+                  <button (click)="isMonthPickerOpen.set(!isMonthPickerOpen())"
+                          class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-500/20 bg-[#071426] hover:bg-[#0b1e36] hover:border-emerald-500/40 text-white cursor-pointer transition-all border-none outline-none">
+                    <span class="material-icons text-[#10b981] text-base select-none">calendar_month</span>
+                    <span class="font-black text-xs uppercase tracking-wider">{{ currentMonthName() }} 2026</span>
+                    <span class="material-icons text-slate-400 text-[10px] transition-transform duration-200" [class.rotate-180]="isMonthPickerOpen()">expand_more</span>
+                  </button>
 
-                        <!-- Importar -->
-                        <button (click)="openImportModal(); isMatrixOptionsOpen.set(false)"
-                                class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-emerald-400 hover:bg-emerald-950/20 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none bg-transparent">
-                          <span class="material-icons text-emerald-400 text-sm">document_scanner</span>
-                          Importar
-                        </button>
+                  <!-- Month Selection Grid Dropdown -->
+                  @if (isMonthPickerOpen()) {
+                    <div class="absolute left-0 mt-2 w-64 rounded-xl bg-[#071426] border border-[#10213b] p-3 shadow-2xl z-50 animate-fade-in" id="month_picker_dropdown">
+                      <div class="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-2.5 px-1">Selecione o Mês da Escala (2026)</div>
+                      <div class="grid grid-cols-3 gap-1.5">
+                        @for (m of monthsList; track m.name; let idx = $index) {
+                          <button (click)="selectMonth(idx)"
+                                  [class]="selectedMonthIndex() === idx ? 'bg-[#10b981] text-white border-emerald-400 font-black' : 'bg-[#030a14] text-slate-300 border-[#10213b] hover:bg-[#0b1e36] hover:text-white'"
+                                  class="py-1.5 rounded-lg border text-[10px] font-bold text-center cursor-pointer transition-all uppercase select-none outline-none">
+                            {{ m.shortName }}
+                          </button>
+                        }
                       </div>
+                    </div>
+                  }
+                </div>
+
+                <!-- Next month button -->
+                <button (click)="nextMonth()"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg border border-[#10213b] bg-[#030a14] hover:bg-[#0b1e36] text-slate-400 hover:text-white cursor-pointer transition-all border-none outline-none"
+                        title="Próximo Mês">
+                  <span class="material-icons text-sm">chevron_right</span>
+                </button>
+              </div>
+              
+              <!-- Sub-header Actions: Collapsible filters trigger and Options -->
+              <div class="flex items-center gap-2.5">
+                <!-- Collapsible Filters Toggle Button -->
+                <button (click)="showFilters.set(!showFilters())"
+                        [class]="showFilters() ? 'bg-[#10b981] text-white border-emerald-500/30' : (activeFiltersCount() > 0 ? 'bg-[#071426] text-amber-400 border-amber-500/20' : 'bg-[#030a14] text-slate-300 border-[#10213b] hover:bg-[#0b1e36] hover:text-white')"
+                        class="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 cursor-pointer select-none transition-all outline-none">
+                  <span class="material-icons text-sm">filter_alt</span>
+                  <span>Filtros</span>
+                  @if (activeFiltersCount() > 0) {
+                    <span class="bg-amber-500 text-slate-950 font-black rounded-full px-1.5 py-0.2 text-[8px] ml-0.5">{{ activeFiltersCount() }}</span>
+                  } @else {
+                    <span class="material-icons text-[10px] transition-transform duration-200" [class.rotate-180]="showFilters()">expand_more</span>
+                  }
+                </button>
+
+                <!-- Specific Section Options Dropdown Button -->
+                <div class="relative inline-block text-left" id="matrix_options_container">
+                  <button (click)="isMatrixOptionsOpen.set(!isMatrixOptionsOpen())"
+                          class="bg-[#030a14] border border-[#10213b] text-slate-300 hover:text-white px-3 py-1.5 rounded-lg outline-none focus:border-emerald-500 hover:border-emerald-500 font-bold text-xs flex items-center gap-1.5 cursor-pointer select-none"
+                          id="btn_matrix_options_dropdown">
+                    <span class="material-icons text-sm text-slate-400">tune</span>
+                    Opções de Escala
+                    <span class="material-icons text-[10px] transition-transform duration-200" [class.rotate-180]="isMatrixOptionsOpen()">expand_more</span>
+                  </button>
+
+                  @if (isMatrixOptionsOpen()) {
+                    <div class="absolute right-0 mt-2 w-52 rounded-lg bg-[#071426] border border-[#10213b] shadow-2xl z-50 divide-y divide-[#10213b] animate-fade-in" id="matrix_options_dropdown_menu">
+                      @if (scaleService.currentRole() !== 'OPERADOR') {
+                        <div class="py-1">
+                          <!-- Editar em massa -->
+                          <button (click)="togglePaintbrushPanel(); isMatrixOptionsOpen.set(false)"
+                                  class="w-full text-left px-4 py-2 text-[10px] font-black uppercase transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none bg-transparent"
+                                  [class]="showPaintbrushPanel() ? 'text-amber-500 hover:bg-[#0b1e36]/30' : 'text-slate-300 hover:bg-[#0b1e36]'">
+                            <span class="material-icons text-sm" [class]="showPaintbrushPanel() ? 'text-amber-400' : 'text-slate-400'">edit_calendar</span>
+                            {{ showPaintbrushPanel() ? 'Fechar Edição em Massa' : 'Editar em Massa' }}
+                          </button>
+                          
+                          <!-- Gerar Escala -->
+                          <button (click)="scaleService.generateAutoScale(); isMatrixOptionsOpen.set(false)"
+                                  class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-purple-400 hover:bg-purple-950/20 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none bg-transparent">
+                            <span class="material-icons text-purple-400 text-sm">auto_awesome</span>
+                            Gerar Escala
+                          </button>
+
+                          <!-- Importar -->
+                          <button (click)="openImportModal(); isMatrixOptionsOpen.set(false)"
+                                  class="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-emerald-400 hover:bg-emerald-950/20 transition-colors tracking-wider flex items-center gap-2 cursor-pointer border-none outline-none bg-transparent">
+                            <span class="material-icons text-emerald-400 text-sm">document_scanner</span>
+                            Importar
+                          </button>
+                        </div>
 
                       <!-- Resetar Escala -->
                       <div class="py-1">
@@ -315,6 +345,59 @@
                 }
               </div>
             </div>
+          </div>
+
+          <!-- Collapsible Filters Tray -->
+            @if (showFilters()) {
+              <div class="flex flex-wrap items-center gap-2.5 pt-3 border-t border-[#10213b] animate-fade-in" id="collapsible_filters_tray">
+                <!-- Search query input -->
+                <div class="relative">
+                  <span class="material-icons absolute left-3 top-2.5 text-slate-500 text-sm select-none">search</span>
+                  <input type="text"
+                         [value]="collabSearchQuery()"
+                         (input)="collabSearchQuery.set($any($event.target).value)"
+                         placeholder="Buscar colaborador..."
+                         class="bg-[#030a14] border border-[#10213b] text-white text-xs px-3 py-2 pl-8 rounded-lg outline-none focus:border-emerald-500 placeholder:text-slate-600 font-semibold font-sans w-48">
+                </div>
+
+                <!-- Role filter -->
+                <select [value]="selectedFilterRole()"
+                        (change)="selectedFilterRole.set($any($event.target).value)"
+                        class="bg-[#030a14] border border-[#10213b] text-white text-xs pl-2 pr-5 py-2 rounded-lg outline-none focus:border-emerald-500 hover:border-emerald-500 font-bold cursor-pointer transition-colors w-[140px]">
+                  <option value="TODOS">Função</option>
+                  <option value="LIDER">LÍDERES DE TURNO (LT)</option>
+                  <option value="OPERADOR">OPERADORES</option>
+                </select>
+
+                <!-- Sector filter -->
+                <select [value]="selectedFilterSector()"
+                        (change)="selectedFilterSector.set($any($event.target).value)"
+                        class="bg-[#030a14] border border-[#10213b] text-white text-xs pl-2 pr-5 py-2 rounded-lg outline-none focus:border-emerald-500 hover:border-emerald-500 font-bold cursor-pointer transition-colors w-[140px]">
+                  <option value="TODOS">Pátios</option>
+                  <option value="AERÓDROMO">AERÓDROMO</option>
+                  <option value="VIP">VIP</option>
+                </select>
+
+                <!-- Shift filter -->
+                <select [value]="selectedFilterShift()"
+                        (change)="selectedFilterShift.set($any($event.target).value)"
+                        class="bg-[#030a14] border border-[#10213b] text-white text-xs pl-2 pr-5 py-2 rounded-lg outline-none focus:border-emerald-500 hover:border-emerald-500 font-bold cursor-pointer transition-colors w-[140px]">
+                  <option value="TODOS">Turnos</option>
+                  <option value="MANHÃ">MANHÃ</option>
+                  <option value="TARDE">TARDE</option>
+                  <option value="MADRUGADA">NOITE</option>
+                </select>
+
+                <!-- Clear filters button if any is active -->
+                @if (activeFiltersCount() > 0) {
+                  <button (click)="collabSearchQuery.set(''); selectedFilterRole.set('TODOS'); selectedFilterSector.set('TODOS'); selectedFilterShift.set('TODOS')"
+                          class="px-2.5 py-2 text-[10px] font-black uppercase text-amber-500 hover:text-white transition-colors tracking-wider flex items-center gap-1 bg-[#1c1810]/40 hover:bg-[#2c2211]/60 border border-amber-500/20 rounded-lg cursor-pointer outline-none">
+                    <span class="material-icons text-xs">filter_alt_off</span>
+                    Limpar Filtros
+                  </button>
+                }
+              </div>
+            }
           </div>
 
           <!-- PAINTBRUSH MASS-EDIT PANEL (UX OPTIMIZED FOR LAPTOPS - ULTRA-THIN SINGLE ROW) -->
@@ -388,7 +471,7 @@
                 <!-- Months & Header Days Row -->
                 <tr class="border-b border-[#10213b] bg-[#071426] text-slate-400 text-[8px] font-black tracking-widest uppercase select-none sticky top-0 z-30">
                   <th class="py-3 px-4 md:px-6 min-w-[180px] sticky top-0 left-0 bg-[#071426] border-r border-[#10213b] z-40 shadow-md">Colaboradores</th>
-                  @for (day of daysInMonth; track day) {
+                  @for (day of daysInMonth(); track day) {
                     <th class="py-2 px-1 text-center min-w-[32px] border-r border-[#10213b] sticky top-0 bg-[#071426] z-30"
                         [ngClass]="{ 'bg-[#10b981]/10': isDayWeekend(day) }"
                         [class.text-slate-200]="isDayWeekend(day)">
@@ -431,7 +514,7 @@
                       </td>
 
                       <!-- Month Calendar cells -->
-                      @for (day of daysInMonth; track day) {
+                      @for (day of daysInMonth(); track day) {
                         @let cellVal = editingRowCollabId() === collab.id ? (editingRowScaleDraft()[day] || '-') : (collab.scale[day] || '-');
                         @let events = getSpecialEventsForDay(collab, day);
                         <td class="py-2 px-0.5 text-center border-r border-[#10213b] relative cursor-pointer group-cell"
@@ -603,7 +686,7 @@
                                 <span class="material-icons text-[10px]">people</span>
                                 {{ getCollaboratorCountForShift(shift.code) }} ativo(s)
                               </span>
-                              <span class="text-[8px] text-slate-500 font-mono font-bold" title="Total de ocorrências programadas neste código na escala de Julho">
+                              <span class="text-[8px] text-slate-500 font-mono font-bold" title="Total de ocorrências programadas neste código na escala de {{ currentMonthName() }}">
                                 Escalas: {{ getScheduledDaysCountForShift(shift.code) }} dias
                               </span>
                             </div>
@@ -637,7 +720,7 @@
                 <span class="material-icons text-blue-400">psychology</span>
                 <div class="text-[10px] text-slate-400 leading-relaxed">
                   <span class="text-white font-bold block mb-0.5">Automação de Alocação de Pista:</span>
-                  Quando você cria ou edita um turno, ele se torna imediatamente elegível para alocação de equipe. Se você mover um colaborador de turno, o sistema recalculará sua escala de Julho 2026, convertendo suas antigas jornadas para o novo turno em lote.
+                  Quando você cria ou edita um turno, ele se torna imediatamente elegível para alocação de equipe. Se você mover um colaborador de turno, o sistema recalculará sua escala de {{ currentMonthName() }} 2026, convertendo suas antigas jornadas para o novo turno em lote.
                 </div>
               </div>
             </div>
@@ -856,7 +939,7 @@
                           <td class="py-3 px-4">
                             <div class="flex flex-col gap-1 items-center justify-center">
                               <span class="px-2 py-0.5 rounded text-[9px] font-black font-sans uppercase inline-flex items-center gap-1 bg-[#052e16]/40 text-emerald-400 border border-emerald-500/20"
-                                    title="Dias programados com esta sigla na escala operacional de Julho">
+                                    title="Dias programados com esta sigla na escala operacional de {{ currentMonthName() }}">
                                 <span class="material-icons text-[10px]">event_note</span>
                                 {{ getScheduledDaysCountForShift(sigla.code) }} dia(s)
                               </span>
@@ -1053,8 +1136,10 @@
                     @let isSelected = selectedProfileCollabId() === collab.id || (!selectedProfileCollabId() && filteredList[0].id === collab.id);
                     
                     <div (click)="selectedProfileCollabId.set(collab.id)"
-                         class="p-4 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-3 text-left relative overflow-hidden group select-none"
-                         [class]="isSelected ? 'bg-gradient-to-r from-emerald-950/40 to-[#071426] border-[#10b981] shadow-lg' : 'bg-[#030a14]/80 border-[#10213b] hover:border-slate-700 hover:bg-[#071426]'">
+                         class="p-4 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-3 text-left relative overflow-hidden group select-none shadow-sm"
+                         [ngClass]="isLightTheme() ? 
+                           (isSelected ? 'bg-emerald-50 border-emerald-500' : 'bg-white border-slate-200 hover:border-slate-400 hover:bg-slate-50') : 
+                           (isSelected ? 'bg-gradient-to-r from-emerald-950/40 to-[#071426] border-[#10b981] shadow-lg' : 'bg-[#030a14]/80 border-[#10213b] hover:border-slate-700 hover:bg-[#071426]')">
                       
                       <!-- Ambient overlay indicator -->
                       @if (isSelected) {
@@ -1119,7 +1204,13 @@
                 <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-6 shadow-2xl space-y-6 animate-fade-in">
                   
                   <!-- Profile Main Header -->
-                  <div class="p-5 bg-gradient-to-r from-[#071426] to-[#030a14] rounded-lg border border-[#10213b] flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+                  <div class="p-5 rounded-lg border flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden shadow-sm"
+                       [class.bg-gradient-to-r]="!isLightTheme()"
+                       [class.from-[#071426]]="!isLightTheme()"
+                       [class.to-[#030a14]]="!isLightTheme()"
+                       [class.border-[#10213b]]="!isLightTheme()"
+                       [class.bg-white]="isLightTheme()"
+                       [class.border-slate-200]="isLightTheme()">
                     <div class="absolute right-0 top-0 bottom-0 opacity-10 select-none pointer-events-none flex items-center pr-6">
                       <span class="material-icons text-9xl text-slate-500 font-bold">person</span>
                     </div>
@@ -1137,7 +1228,10 @@
                       <div class="flex flex-col">
                         <div class="flex flex-wrap items-center gap-2">
                           <h4 class="font-black text-base text-white uppercase tracking-tight">{{ selectedCol.name }}</h4>
-                          <span class="px-2 py-0.5 rounded text-[8px] font-black tracking-widest uppercase bg-emerald-950 text-emerald-400 border border-emerald-500/20">
+                          <span class="px-2 py-0.5 rounded text-[8px] font-black tracking-widest uppercase"
+                                [class]="isLightTheme() ? 
+                                  (selectedCol.role === 'SUPERVISOR' ? 'bg-purple-600 text-white' : selectedCol.role === 'LIDER' ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white') : 
+                                  (selectedCol.role === 'SUPERVISOR' ? 'bg-purple-950 text-purple-400 border border-purple-800/30' : selectedCol.role === 'LIDER' ? 'bg-amber-950 text-amber-400 border border-amber-800/30' : 'bg-emerald-950 text-emerald-400 border border-emerald-500/20')">
                             {{ selectedCol.role }}
                           </span>
                         </div>
@@ -1152,7 +1246,7 @@
                         <!-- Simulated active status label -->
                         <span class="text-[9px] font-bold text-slate-500 mt-2 flex items-center gap-1">
                           <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                          Operador Ativo no Sistema · Escala de Julho 2026
+                          Operador Ativo no Sistema · Escala de {{ currentMonthName() }} 2026
                         </span>
                       </div>
                     </div>
@@ -1178,7 +1272,7 @@
                           <span class="material-icons text-xs text-emerald-400">equalizer</span>
                           Aproveitamento Escala
                         </span>
-                        <p class="text-[8px] text-slate-500 mt-0.5 leading-relaxed">Dias ativos escalados em Julho de 2026.</p>
+                        <p class="text-[8px] text-slate-500 mt-0.5 leading-relaxed">Dias ativos escalados em {{ currentMonthName() }} de 2026.</p>
                       </div>
 
                       <div class="flex items-end justify-between">
@@ -1263,86 +1357,90 @@
                   </div>
 
                   <!-- July 2026 Days Off / Work Calendar section -->
-                  <div class="pt-4 border-t border-[#10213b] space-y-3">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                  <div class="pt-5 border-t border-[#10213b] space-y-4">
+                    <div class="bg-[#030a14] border border-[#10213b] rounded-xl p-5 shadow-xl space-y-4">
                       <div>
-                        <span class="text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-1.5">
-                          <span class="material-icons text-blue-500 text-sm">calendar_month</span>
-                          Calendário Mensal de Escalas & Folgas (Julho 2026)
-                        </span>
-                        <p class="text-[8px] text-slate-500 mt-0.5 leading-relaxed">
-                          Visão consolidada da escala do operador. Dias com cor correspondem aos turnos alocados; dias escuros correspondem às folgas regulamentares (F) ou afastamentos.
+                        <h4 class="font-black text-xs text-white uppercase tracking-wider flex items-center gap-1.5">
+                          <span class="material-icons text-[#10b981] text-sm">calendar_month</span>
+                          Calendário de Escala de Folgas - {{ currentMonthName() }} 2026
+                        </h4>
+                        <p class="text-[9px] text-slate-400 mt-1">
+                          Clique em um dia para solicitar ou remover folga para <strong>{{ selectedCol.name }}</strong>. Os dias em vermelho atingiram a cota máxima de 2 colaboradores.
                         </p>
                       </div>
 
-                      <!-- Subtitle Legend -->
-                      <div class="flex flex-wrap items-center gap-2.5 text-[8px] font-bold uppercase tracking-wider text-slate-400 bg-[#071426] px-2.5 py-1.5 rounded border border-[#10213b]">
-                        <span class="flex items-center gap-1">
-                          <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                          Trabalho (M, T, N, etc)
-                        </span>
-                        <span class="flex items-center gap-1">
-                          <span class="w-1.5 h-1.5 rounded-full bg-slate-700"></span>
-                          Folga (F)
-                        </span>
-                      </div>
-                    </div>
+                      <!-- Calendar Days Grid -->
+                      <div class="grid grid-cols-7 gap-2 text-center text-xs">
+                        <!-- Weekday Headers -->
+                        <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Dom</div>
+                        <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Seg</div>
+                        <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Ter</div>
+                        <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Qua</div>
+                        <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Qui</div>
+                        <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Sex</div>
+                        <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Sáb</div>
 
-                     <!-- Compact Calendar Render -->
-                    <div class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-10 gap-2">
-                      @for (day of daysInMonth; track day) {
-                        @let sVal = selectedCol.scale[day] || 'F';
-                        @let isOff = sVal === 'F' || sVal === 'FE' || sVal === 'LM';
-                        @let events = getSpecialEventsForDay(selectedCol, day);
-                        
-                        <div class="aspect-video sm:aspect-square rounded-lg border flex flex-col items-center justify-between p-2 select-none transition-transform hover:scale-[1.03] duration-150 relative overflow-hidden"
-                             [style.background-color]="getShiftOrSiglaColor(sVal)"
-                             [style.border-color]="isOff ? '#10213b' : getShiftOrSiglaColor(sVal) + '50'">
-                          
-                          <!-- Event tiny top-right markers -->
-                          @if (events.length > 0) {
-                            <div class="absolute top-1 right-1 flex gap-0.5 z-20 pointer-events-none">
-                              @for (ev of events; track ev.tooltip) {
-                                <span class="material-icons text-[10px] leading-none" [style.color]="ev.color" [title]="ev.tooltip">{{ ev.icon }}</span>
+                        <!-- Offset days dynamically calculated -->
+                        @for (offset of getOffsetDaysArray(); track offset) {
+                          <div class="bg-transparent border border-transparent p-2"></div>
+                        }
+
+                         <!-- Days 1 to 31 -->
+                        @for (day of daysInMonth(); track day) {
+                          @let isChosenByMe = isChosenByCollab(selectedCol, day);
+                          @let isPreByMe = isPreSelectedByCollab(selectedCol, day);
+                          @let count = getFolgaRequestCount(day);
+                          @let events = getSpecialEventsForDay(selectedCol, day);
+
+                          <button (click)="isChosenByMe ? (isPreByMe ? showToast('Folga automática de alta prioridade não pode ser removida.') : removeCollabFolgaDay(selectedCol, day)) : requestCollabFolgaDay(selectedCol, day)"
+                                  [class]="getCalendarDayClass(isChosenByMe, count)">
+                            
+                            <div class="flex items-center justify-between w-full">
+                              <span class="font-black font-mono text-[11px]"
+                                    [class.text-white]="!isLightTheme() || isChosenByMe"
+                                    [class.text-slate-900]="isLightTheme() && !isChosenByMe">{{ day }}</span>
+                              @if (events.length > 0) {
+                                <div class="flex items-center gap-0.5" [title]="events[0].tooltip">
+                                  @for (ev of events; track ev.tooltip) {
+                                      <span class="material-icons text-[11px] select-none" [style.color]="ev.color">{{ ev.icon }}</span>
+                                  }
+                                </div>
+                              } @else if (isChosenByMe) {
+                                <span class="text-[9px] font-bold" [class]="isLightTheme() ? 'text-amber-200' : 'text-emerald-400'">★</span>
                               }
                             </div>
-                          }
 
-                          <!-- Header: Day Number + Day of the week initial -->
-                          <div class="w-full flex justify-between text-[8px] font-bold font-mono opacity-80"
-                               [style.color]="getShiftOrSiglaTextColor(sVal)">
-                            <span>Dia {{ day }}</span>
-                          </div>
-
-                          <!-- Value Badge -->
-                          <div class="font-black text-xs font-mono mt-1"
-                               [style.color]="getShiftOrSiglaTextColor(sVal)">
-                            {{ sVal }}
-                          </div>
-
-                          <!-- Status subtitle -->
-                          <div class="text-[7px] font-bold uppercase font-sans tracking-wide truncate max-w-full mt-0.5 text-center flex items-center justify-center gap-0.5"
-                               [style.color]="events.length > 0 ? events[0].color : getShiftOrSiglaTextColor(sVal)"
-                               [class.opacity-50]="isOff && events.length === 0">
-                            @if (events.length > 0) {
-                              <span class="flex items-center gap-0.5 font-black text-[7px]" [title]="events[0].tooltip">
-                                <span class="material-icons text-[9px]">{{ events[0].icon }}</span>
-                                {{ events[0].shortLabel }}
+                            <!-- Slots Indicator -->
+                            <div class="w-full text-left">
+                              <span class="text-[8px] font-black font-mono block"
+                                    [class.text-emerald-400]="!isLightTheme() && count < 2 && !isChosenByMe"
+                                    [class.text-emerald-600]="isLightTheme() && count < 2 && !isChosenByMe"
+                                    [class.text-amber-400]="!isLightTheme() && isChosenByMe"
+                                    [class.text-amber-100]="isLightTheme() && isChosenByMe"
+                                    [class.text-red-400]="!isLightTheme() && count >= 2 && !isChosenByMe"
+                                    [class.text-red-600]="isLightTheme() && count >= 2 && !isChosenByMe">
+                                {{ count }}/2 Vagas
                               </span>
-                            } @else {
-                              {{ isOff ? 'Folga' : 'Trabalho' }}
-                            }
-                          </div>
-                        </div>
-                      }
+                              <!-- Collaps who selected this -->
+                              <div class="text-[7px] truncate font-semibold block h-3 leading-none"
+                                   [class.text-slate-400]="!isLightTheme() && !isChosenByMe"
+                                   [class.text-slate-500]="isLightTheme() && !isChosenByMe"
+                                   [class.text-emerald-100]="isLightTheme() && isChosenByMe"
+                                   [class.text-slate-300]="!isLightTheme() && isChosenByMe">
+                                {{ getCollaboratorsForFolga(day).join(', ') }}
+                              </div>
+                            </div>
+
+                          </button>
+                        }
+                      </div>
                     </div>
 
                     <!-- Informational warning footer -->
                     <div class="p-3 bg-blue-950/20 rounded-lg border border-blue-500/10 text-[8px] text-blue-400 font-bold flex items-center gap-2">
                       <span class="material-icons text-xs text-blue-400 select-none">info</span>
-                      <span>Nota: Os afastamentos (FE - Férias, LM - Licença Médica) e permutas aprovadas alteram dinamicamente a contagem de folgas e o índice de risco do operador.</span>
+                      <span>Nota: Os afastamentos (FE - Férias, LM - Licença Médica) e solicitações aprovadas alteram dinamicamente a contagem de folgas e o índice de risco do operador.</span>
                     </div>
-
                   </div>
 
                 </div>
@@ -1399,7 +1497,9 @@
                           <!-- Função / Cargo -->
                           <td class="py-3.5 px-2">
                             <span class="px-2 py-0.5 rounded text-[9px] font-black tracking-wider uppercase inline-block font-sans"
-                                  [class]="collab.role === 'SUPERVISOR' ? 'bg-purple-950 text-purple-400 border border-purple-800/30' : collab.role === 'LIDER' ? 'bg-amber-950 text-amber-400 border border-amber-800/30' : 'bg-emerald-950 text-emerald-400 border border-emerald-800/30'">
+                                  [class]="isLightTheme() ? 
+                                    (collab.role === 'SUPERVISOR' ? 'bg-purple-600 text-white' : collab.role === 'LIDER' ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white') : 
+                                    (collab.role === 'SUPERVISOR' ? 'bg-purple-950 text-purple-400 border border-purple-800/30' : collab.role === 'LIDER' ? 'bg-amber-950 text-amber-400 border border-amber-800/30' : 'bg-emerald-950 text-emerald-400 border border-emerald-800/30')">
                               {{ collab.role === 'LIDER' ? 'LÍDER DE TURNO' : collab.role }}
                             </span>
                           </td>
@@ -1413,7 +1513,9 @@
                           <!-- Setor -->
                           <td class="py-3.5 px-2">
                             <span class="px-1.5 py-0.5 rounded text-[9px] font-bold"
-                                  [class]="collab.sector === 'AERÓDROMO' ? 'bg-[#0f172a] text-[#10b981]' : collab.sector === 'VIP' ? 'bg-[#1e1b4b] text-indigo-400' : 'bg-emerald-950 text-emerald-400'">
+                                  [class]="isLightTheme() ?
+                                    (collab.sector === 'AERÓDROMO' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : collab.sector === 'VIP' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-blue-50 text-blue-700 border border-blue-200') :
+                                    (collab.sector === 'AERÓDROMO' ? 'bg-[#0f172a] text-[#10b981]' : collab.sector === 'VIP' ? 'bg-[#1e1b4b] text-indigo-400' : 'bg-emerald-950 text-emerald-400')">
                               {{ collab.sector }}
                             </span>
                           </td>
@@ -1774,17 +1876,19 @@
               <div class="flex items-center gap-2 bg-[#071426] border border-[#10213b] p-1.5 rounded-lg">
                 <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider px-1.5">Dia Simulado:</span>
                 <input type="range" min="1" max="30" [value]="simulatedDayOfMonth()" (input)="simulatedDayOfMonth.set(+$any($event.target).value)" class="w-24 accent-emerald-500 cursor-pointer">
-                <span class="text-xs font-black text-white bg-slate-800 px-2.5 py-0.5 rounded font-mono">
+                <span class="text-xs font-black text-white px-2.5 py-0.5 rounded font-mono" style="color: #ffffff; background-color: #10B981;">
                   Dia {{ simulatedDayOfMonth() }} de Maio
                 </span>
                 <!-- Indicator Window (1-10 vs 11+) -->
                 @if (simulatedDayOfMonth() <= 10) {
-                  <span class="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Aberto (D1-10)
+                  <span class="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1"
+                        [class]="isLightTheme() ? 'bg-emerald-500 text-white shadow-sm' : 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400" [class]="isLightTheme() ? 'bg-white' : 'bg-emerald-400'"></span> Aberto (D1-10)
                   </span>
                 } @else {
-                  <span class="text-[9px] bg-red-950 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Fechado (D11+)
+                  <span class="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1"
+                        [class]="isLightTheme() ? 'bg-rose-600 text-white shadow-sm' : 'bg-red-950 text-red-400 border border-red-500/30'">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-400" [class]="isLightTheme() ? 'bg-white' : 'bg-red-400'"></span> Fechado (D11+)
                   </span>
                 }
               </div>
@@ -1841,7 +1945,7 @@
           } @else {
             @let logged = getLoggedCollab()!;
             <!-- PORTAL GRID -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 md:p-8 rounded-2xl border border-slate-300/80 shadow-xl relative" style="background-color: #d6d4d4; background-image: radial-gradient(#ffffff 1.5px, transparent 1.5px); background-size: 16px 16px;">
               
               <!-- LEFT SIDEBAR: PROFILE & SPECIAL DATES -->
               <div class="lg:col-span-5 space-y-6">
@@ -1916,38 +2020,38 @@
                       <label class="font-black text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Minhas 5 Datas de Alta Prioridade (Casamento, Filhos, etc.)</label>
                       
                       <!-- Linha Data Especial 1 (Prioridade 1) -->
-                      <div class="grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60">
-                        <div class="col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded">P1</div>
-                        <input type="text" #portalSD1Desc [value]="(logged.specialDates && logged.specialDates[0]) ? logged.specialDates[0].description : ''" placeholder="Ex: Aniversário de Casamento" class="col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none">
-                        <input type="date" #portalSD1Date [value]="(logged.specialDates && logged.specialDates[0]) ? logged.specialDates[0].date : ''" class="col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none">
+                      <div [class]="isLightTheme() ? 'grid grid-cols-12 gap-2 bg-slate-50 p-1.5 rounded border border-slate-200 shadow-sm' : 'grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60'">
+                        <div [class]="isLightTheme() ? 'col-span-1 text-[10px] font-black text-white flex items-center justify-center bg-amber-500 rounded shadow-sm' : 'col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded'">P1</div>
+                        <input type="text" #portalSD1Desc [value]="(logged.specialDates && logged.specialDates[0]) ? logged.specialDates[0].description : ''" placeholder="Ex: Aniversário de Casamento" [class]="isLightTheme() ? 'col-span-7 bg-white text-slate-900 border border-slate-200 text-[10px] font-medium rounded px-2 py-1 outline-none focus:border-amber-500' : 'col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none'">
+                        <input type="date" #portalSD1Date [value]="(logged.specialDates && logged.specialDates[0]) ? logged.specialDates[0].date : ''" [class]="isLightTheme() ? 'col-span-4 bg-white text-slate-900 border border-slate-200 text-[10px] font-medium rounded px-1.5 py-1 outline-none focus:border-amber-500' : 'col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none'">
                       </div>
 
                       <!-- Linha Data Especial 2 (Prioridade 2) -->
-                      <div class="grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60">
-                        <div class="col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded">P2</div>
-                        <input type="text" #portalSD2Desc [value]="(logged.specialDates && logged.specialDates[1]) ? logged.specialDates[1].description : ''" placeholder="Ex: Aniversário Filho" class="col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none">
-                        <input type="date" #portalSD2Date [value]="(logged.specialDates && logged.specialDates[1]) ? logged.specialDates[1].date : ''" class="col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none">
+                      <div [class]="isLightTheme() ? 'grid grid-cols-12 gap-2 bg-slate-50 p-1.5 rounded border border-slate-200 shadow-sm' : 'grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60'">
+                        <div [class]="isLightTheme() ? 'col-span-1 text-[10px] font-black text-white flex items-center justify-center bg-amber-500 rounded shadow-sm' : 'col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded'">P2</div>
+                        <input type="text" #portalSD2Desc [value]="(logged.specialDates && logged.specialDates[1]) ? logged.specialDates[1].description : ''" placeholder="Ex: Aniversário Filho" [class]="isLightTheme() ? 'col-span-7 bg-white text-slate-900 border border-slate-200 text-[10px] font-medium rounded px-2 py-1 outline-none focus:border-amber-500' : 'col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none'">
+                        <input type="date" #portalSD2Date [value]="(logged.specialDates && logged.specialDates[1]) ? logged.specialDates[1].date : ''" [class]="isLightTheme() ? 'col-span-4 bg-white text-slate-900 border border-slate-200 text-[10px] font-medium rounded px-1.5 py-1 outline-none focus:border-amber-500' : 'col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none'">
                       </div>
 
                       <!-- Linha Data Especial 3 (Prioridade 3) -->
-                      <div class="grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60">
-                        <div class="col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded">P3</div>
-                        <input type="text" #portalSD3Desc [value]="(logged.specialDates && logged.specialDates[2]) ? logged.specialDates[2].description : ''" placeholder="Ex: Aniversário Cônjuge" class="col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none">
-                        <input type="date" #portalSD3Date [value]="(logged.specialDates && logged.specialDates[2]) ? logged.specialDates[2].date : ''" class="col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none">
+                      <div [class]="isLightTheme() ? 'grid grid-cols-12 gap-2 bg-slate-50 p-1.5 rounded border border-slate-200 shadow-sm' : 'grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60'">
+                        <div [class]="isLightTheme() ? 'col-span-1 text-[10px] font-black text-white flex items-center justify-center bg-amber-500 rounded shadow-sm' : 'col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded'">P3</div>
+                        <input type="text" #portalSD3Desc [value]="(logged.specialDates && logged.specialDates[2]) ? logged.specialDates[2].description : ''" placeholder="Ex: Aniversário Cônjuge" [class]="isLightTheme() ? 'col-span-7 bg-white text-slate-900 border border-slate-200 text-[10px] font-medium rounded px-2 py-1 outline-none focus:border-amber-500' : 'col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none'">
+                        <input type="date" #portalSD3Date [value]="(logged.specialDates && logged.specialDates[2]) ? logged.specialDates[2].date : ''" [class]="isLightTheme() ? 'col-span-4 bg-white text-slate-900 border border-slate-200 text-[10px] font-medium rounded px-1.5 py-1 outline-none focus:border-amber-500' : 'col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none'">
                       </div>
 
                       <!-- Linha Data Especial 4 (Prioridade 4) -->
-                      <div class="grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60">
-                        <div class="col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded">P4</div>
-                        <input type="text" #portalSD4Desc [value]="(logged.specialDates && logged.specialDates[3]) ? logged.specialDates[3].description : ''" placeholder="Ex: Aniversário Mãe" class="col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none">
-                        <input type="date" #portalSD4Date [value]="(logged.specialDates && logged.specialDates[3]) ? logged.specialDates[3].date : ''" class="col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none">
+                      <div [class]="isLightTheme() ? 'grid grid-cols-12 gap-2 bg-slate-50 p-1.5 rounded border border-slate-200 shadow-sm' : 'grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60'">
+                        <div [class]="isLightTheme() ? 'col-span-1 text-[10px] font-black text-white flex items-center justify-center bg-amber-500 rounded shadow-sm' : 'col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded'">P4</div>
+                        <input type="text" #portalSD4Desc [value]="(logged.specialDates && logged.specialDates[3]) ? logged.specialDates[3].description : ''" placeholder="Ex: Aniversário Mãe" [class]="isLightTheme() ? 'col-span-7 bg-white text-slate-900 border border-slate-200 text-[10px] font-medium rounded px-2 py-1 outline-none focus:border-amber-500' : 'col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none'">
+                        <input type="date" #portalSD4Date [value]="(logged.specialDates && logged.specialDates[3]) ? logged.specialDates[3].date : ''" [class]="isLightTheme() ? 'col-span-4 bg-white text-slate-900 border border-slate-200 text-[10px] font-medium rounded px-1.5 py-1 outline-none focus:border-amber-500' : 'col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none'">
                       </div>
 
                       <!-- Linha Data Especial 5 (Prioridade 5) -->
-                      <div class="grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60">
-                        <div class="col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded">P5</div>
-                        <input type="text" #portalSD5Desc [value]="(logged.specialDates && logged.specialDates[4]) ? logged.specialDates[4].description : ''" placeholder="Ex: Outra Data Magna" class="col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none">
-                        <input type="date" #portalSD5Date [value]="(logged.specialDates && logged.specialDates[4]) ? logged.specialDates[4].date : ''" class="col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none">
+                      <div [class]="isLightTheme() ? 'grid grid-cols-12 gap-2 bg-slate-50 p-1.5 rounded border border-slate-200 shadow-sm' : 'grid grid-cols-12 gap-2 bg-[#071426]/40 p-1.5 rounded border border-[#10213b]/60'">
+                        <div [class]="isLightTheme() ? 'col-span-1 text-[10px] font-black text-white flex items-center justify-center bg-amber-500 rounded shadow-sm' : 'col-span-1 text-[10px] font-black text-amber-500 flex items-center justify-center bg-slate-900 border border-[#10213b] rounded'">P5</div>
+                        <input type="text" #portalSD5Desc [value]="(logged.specialDates && logged.specialDates[4]) ? logged.specialDates[4].description : ''" placeholder="Ex: Outra Data Magna" [class]="isLightTheme() ? 'col-span-7 bg-white text-slate-900 border border-slate-200 text-[10px] font-medium rounded px-2 py-1 outline-none focus:border-amber-500' : 'col-span-7 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-2 py-1 outline-none'">
+                        <input type="date" #portalSD5Date [value]="(logged.specialDates && logged.specialDates[4]) ? logged.specialDates[4].date : ''" [class]="isLightTheme() ? 'col-span-4 bg-white text-slate-900 border border-slate-200 text-[10px] font-medium rounded px-1.5 py-1 outline-none focus:border-amber-500' : 'col-span-4 bg-[#071426] text-white text-[10px] font-medium border border-[#10213b] rounded px-1.5 py-1 outline-none'">
                       </div>
                     </div>
 
@@ -1978,7 +2082,7 @@
                 <div class="bg-slate-900/40 border border-[#10213b] rounded-lg p-5 space-y-3">
                   <h4 class="font-black text-xs text-white uppercase tracking-wider flex items-center gap-1.5">
                     <span class="material-icons text-amber-500 text-sm">info</span>
-                    Regulamento de Escolha de Folgas - Mês de Julho/2026
+                    Regulamento de Escolha de Folgas - Mês de {{ currentMonthName() }}/2026
                   </h4>
                   <ul class="text-[10px] text-slate-300 space-y-2 list-none p-0 m-0">
                     <li class="flex items-start gap-2">
@@ -2006,11 +2110,11 @@
                     <h4 class="font-black text-xs text-white uppercase tracking-wider">
                       Minhas Folgas Selecionadas ({{ logged.folgaRequests?.length || 0 }}/3)
                     </h4>
-                    <span class="text-[9px] text-slate-400 font-medium">Julho de 2026</span>
+                    <span class="text-[9px] text-slate-400 font-medium">{{ currentMonthName() }} de 2026</span>
                   </div>
 
                   @if (!logged.folgaRequests || logged.folgaRequests.length === 0) {
-                    <p class="text-[10px] text-slate-500 py-2 italic text-center">Nenhuma folga selecionada para Julho. Utilize o calendário abaixo para escolher.</p>
+                    <p class="text-[10px] text-slate-500 py-2 italic text-center">Nenhuma folga selecionada para {{ currentMonthName() }}. Utilize o calendário abaixo para escolher.</p>
                   } @else {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                       @for (req of logged.folgaRequests; track req.date) {
@@ -2020,7 +2124,7 @@
                           }
                           <div>
                             <span class="text-xs font-black text-white font-mono block">
-                              {{ req.date.split('-')[2] }}/07/2026
+                              {{ req.date.split('-')[2] }}/{{ (selectedMonthIndex() + 1).toString().padStart(2, '0') }}/2026
                             </span>
                             <span class="text-[9px] font-bold block mt-0.5" [class.text-emerald-400]="req.isPreSelected" [class.text-slate-400]="!req.isPreSelected">
                               {{ req.isPreSelected ? '★ Auto Pré-Selecionada' : '● Solicitada Manual' }}
@@ -2045,7 +2149,7 @@
                 <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-5 shadow-xl space-y-4">
                   <div>
                     <h4 class="font-black text-xs text-white uppercase tracking-wider">
-                      Calendário de Escala de Folgas - Julho 2026
+                      Calendário de Escala de Folgas - {{ currentMonthName() }} 2026
                     </h4>
                     <p class="text-[9px] text-slate-400 mt-1">
                       Clique em um dia para solicitar ou remover folga. Os dias em vermelho atingiram a cota máxima de 2 colaboradores.
@@ -2063,11 +2167,13 @@
                     <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Sex</div>
                     <div class="font-black text-slate-500 text-[8px] uppercase tracking-wider">Sáb</div>
 
-                    <!-- Offset days (June 2026 starts on a Monday, so we have 1 offset day for Sunday) -->
-                    <div class="bg-transparent border border-transparent p-2"></div>
+                    <!-- Offset days dynamically calculated -->
+                    @for (offset of getOffsetDaysArray(); track offset) {
+                      <div class="bg-transparent border border-transparent p-2"></div>
+                    }
 
                      <!-- Days 1 to 31 -->
-                    @for (day of daysInMonth; track day) {
+                    @for (day of daysInMonth(); track day) {
                       @let isChosenByMe = isChosenByLogged(day);
                       @let isPreByMe = isPreSelectedByLogged(day);
                       @let count = getFolgaRequestCount(day);
@@ -2077,7 +2183,9 @@
                               [class]="getCalendarDayClass(isChosenByMe, count)">
                         
                         <div class="flex items-center justify-between w-full">
-                          <span class="font-black text-white font-mono text-[11px]">{{ day }}</span>
+                          <span class="font-black font-mono text-[11px]"
+                                [class.text-white]="!isLightTheme() || isChosenByMe"
+                                [class.text-slate-900]="isLightTheme() && !isChosenByMe">{{ day }}</span>
                           @if (events.length > 0) {
                             <div class="flex items-center gap-0.5" [title]="events[0].tooltip">
                               @for (ev of events; track ev.tooltip) {
@@ -2085,20 +2193,27 @@
                               }
                             </div>
                           } @else if (isChosenByMe) {
-                            <span class="text-[9px] text-emerald-400 font-bold">★</span>
+                            <span class="text-[9px] font-bold" [class]="isLightTheme() ? 'text-amber-200' : 'text-emerald-400'">★</span>
                           }
                         </div>
 
                         <!-- Slots Indicator -->
                         <div class="w-full text-left">
                           <span class="text-[8px] font-black font-mono block"
-                                [class.text-emerald-400]="count < 2 && !isChosenByMe"
-                                [class.text-amber-400]="isChosenByMe"
-                                [class.text-red-400]="count >= 2 && !isChosenByMe">
+                                [class.text-emerald-400]="!isLightTheme() && count < 2 && !isChosenByMe"
+                                [class.text-emerald-600]="isLightTheme() && count < 2 && !isChosenByMe"
+                                [class.text-amber-400]="!isLightTheme() && isChosenByMe"
+                                [class.text-amber-100]="isLightTheme() && isChosenByMe"
+                                [class.text-red-400]="!isLightTheme() && count >= 2 && !isChosenByMe"
+                                [class.text-red-600]="isLightTheme() && count >= 2 && !isChosenByMe">
                             {{ count }}/2 Vagas
                           </span>
                           <!-- Collaps who selected this -->
-                          <div class="text-[7px] text-slate-500 truncate font-semibold block h-3 leading-none">
+                          <div class="text-[7px] truncate font-semibold block h-3 leading-none"
+                               [class.text-slate-400]="!isLightTheme() && !isChosenByMe"
+                               [class.text-slate-500]="isLightTheme() && !isChosenByMe"
+                               [class.text-emerald-100]="isLightTheme() && isChosenByMe"
+                               [class.text-slate-300]="!isLightTheme() && isChosenByMe">
                             {{ getCollaboratorsForFolga(day).join(', ') }}
                           </div>
                         </div>

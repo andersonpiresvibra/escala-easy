@@ -15,10 +15,45 @@ interface AppNotification {
   selector: 'app-root',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './app.html'
+  templateUrl: './app.html',
+  host: {
+    '(document:fullscreenchange)': 'onFullscreenChange()'
+  }
 })
 export class AppComponent {
   public scaleService = inject(ScaleService);
+
+  // Theme & Fullscreen states
+  public isLightTheme = signal<boolean>(false);
+  public isFullscreen = signal<boolean>(false);
+
+  public toggleTheme(): void {
+    const val = !this.isLightTheme();
+    this.isLightTheme.set(val);
+    if (val) {
+      document.body.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+    }
+  }
+
+  public onFullscreenChange(): void {
+    this.isFullscreen.set(!!document.fullscreenElement);
+  }
+
+  public toggleFullscreen(): void {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.warn('Fullscreen request failed:', err);
+        // Fallback toggle
+        this.isFullscreen.set(!this.isFullscreen());
+      });
+    } else {
+      document.exitFullscreen().catch((err) => {
+        console.warn('Exit fullscreen failed:', err);
+      });
+    }
+  }
 
   // Sub tab navigation: 'matrix' | 'ger.turnos' | 'siglas' | 'team' | 'team-mgmt' | 'portal'
   public activeSubTab = signal<'matrix' | 'ger.turnos' | 'siglas' | 'team' | 'team-mgmt' | 'portal'>('matrix');
@@ -194,8 +229,60 @@ export class AppComponent {
   selectedFilterSector = signal<string>('TODOS');
   selectedFilterShift = signal<string>('TODOS');
 
-  // Days list for July 2026 (July has 31 days. July 1st, 2026 is a Wednesday)
-  daysInMonth = Array.from({ length: 31 }, (_, i) => i + 1);
+  // Month Selection and Navigation System
+  monthsList = [
+    { name: 'Janeiro', days: 31, startDayOfWeek: 4, shortName: 'JAN' },
+    { name: 'Fevereiro', days: 28, startDayOfWeek: 0, shortName: 'FEV' },
+    { name: 'Março', days: 31, startDayOfWeek: 0, shortName: 'MAR' },
+    { name: 'Abril', days: 30, startDayOfWeek: 3, shortName: 'ABR' },
+    { name: 'Maio', days: 31, startDayOfWeek: 5, shortName: 'MAI' },
+    { name: 'Junho', days: 30, startDayOfWeek: 1, shortName: 'JUN' },
+    { name: 'Julho', days: 31, startDayOfWeek: 3, shortName: 'JUL' },
+    { name: 'Agosto', days: 31, startDayOfWeek: 6, shortName: 'AGO' },
+    { name: 'Setembro', days: 30, startDayOfWeek: 2, shortName: 'SET' },
+    { name: 'Outubro', days: 31, startDayOfWeek: 4, shortName: 'OUT' },
+    { name: 'Novembro', days: 30, startDayOfWeek: 0, shortName: 'NOV' },
+    { name: 'Dezembro', days: 31, startDayOfWeek: 2, shortName: 'DEZ' }
+  ];
+
+  selectedMonthIndex = signal<number>(6); // Default is July (index 6)
+  isMonthPickerOpen = signal<boolean>(false);
+  showFilters = signal<boolean>(false);
+
+  // Computed properties for the active month
+  currentMonthName = computed(() => this.monthsList[this.selectedMonthIndex()].name);
+  
+  activeFiltersCount = computed(() => {
+    let count = 0;
+    if (this.collabSearchQuery().trim() !== '') count++;
+    if (this.selectedFilterRole() !== 'TODOS') count++;
+    if (this.selectedFilterSector() !== 'TODOS') count++;
+    if (this.selectedFilterShift() !== 'TODOS') count++;
+    return count;
+  });
+
+  // Days list for the selected month dynamically calculated as a signal
+  daysInMonth = computed(() => {
+    const count = this.monthsList[this.selectedMonthIndex()].days;
+    return Array.from({ length: count }, (_, i) => i + 1);
+  });
+
+  prevMonth(): void {
+    const prev = (this.selectedMonthIndex() - 1 + 12) % 12;
+    this.selectedMonthIndex.set(prev);
+    this.isMonthPickerOpen.set(false);
+  }
+
+  nextMonth(): void {
+    const next = (this.selectedMonthIndex() + 1) % 12;
+    this.selectedMonthIndex.set(next);
+    this.isMonthPickerOpen.set(false);
+  }
+
+  selectMonth(index: number): void {
+    this.selectedMonthIndex.set(index);
+    this.isMonthPickerOpen.set(false);
+  }
 
   // Notifications State
   notifications = signal<AppNotification[]>([
@@ -347,29 +434,33 @@ export class AppComponent {
   // Get Day of Week Name
   getDayOfWeekLabel(day: number): string {
     const weekDays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-    // July 1st 2026 is a Wednesday (Index 3)
-    // Formula: (day - 1 + 3) % 7 = (day + 2) % 7
-    const index = (day + 2) % 7; 
+    const startDay = this.monthsList[this.selectedMonthIndex()].startDayOfWeek;
+    const index = (day - 1 + startDay) % 7; 
     return weekDays[index];
   }
 
   isDayWeekend(day: number): boolean {
-    // July 1st 2026 is a Wednesday
-    const index = (day + 2) % 7;
+    const startDay = this.monthsList[this.selectedMonthIndex()].startDayOfWeek;
+    const index = (day - 1 + startDay) % 7;
     return index === 6 || index === 0; // Saturday & Sunday
+  }
+
+  getOffsetDaysArray(): number[] {
+    const startDay = this.monthsList[this.selectedMonthIndex()].startDayOfWeek;
+    return Array.from({ length: startDay }, (_, i) => i);
   }
 
   getSpecialEventsForDay(collab: any, day: number): { icon: string; color: string; tooltip: string; shortLabel: string }[] {
     const events: { icon: string; color: string; tooltip: string; shortLabel: string }[] = [];
     if (!collab) return events;
 
-    // 1. Birthday (Month 7 - July)
+    // 1. Birthday (Active selected month)
     if (collab.birthday) {
       const parts = collab.birthday.split('-');
       if (parts.length === 3) {
         const m = parseInt(parts[1], 10);
         const d = parseInt(parts[2], 10);
-        if (m === 7 && d === day) {
+        if (m === (this.selectedMonthIndex() + 1) && d === day) {
           events.push({
             icon: 'cake',
             color: '#f43f5e', // pink/rose
@@ -380,7 +471,7 @@ export class AppComponent {
       }
     }
 
-    // 2. Special Dates (Month 7 - July)
+    // 2. Special Dates (Active selected month)
     if (collab.specialDates && Array.isArray(collab.specialDates)) {
       for (const sd of collab.specialDates) {
         if (!sd.date || !sd.description) continue;
@@ -388,7 +479,7 @@ export class AppComponent {
         if (parts.length === 3) {
           const m = parseInt(parts[1], 10);
           const d = parseInt(parts[2], 10);
-          if (m === 7 && d === day) {
+          if (m === (this.selectedMonthIndex() + 1) && d === day) {
             const descLower = sd.description.toLowerCase();
             let icon = 'celebration';
             let color = '#f59e0b'; // amber
@@ -729,20 +820,77 @@ export class AppComponent {
 
   // Dynamic colors for matrix rendering
   getShiftOrSiglaColor(code: string): string {
-    if (code === '-') return '#091524'; // Very deep dark background for sem definição
-    const shift = this.scaleService.shiftTypes().find(s => s.code === code);
-    if (shift) return shift.color;
+    if (this.isLightTheme()) {
+      if (!code || code === '-') return '#e2e8f0'; // Soft slate-200 background for unassigned
+      
+      const upperCode = code.toUpperCase().trim();
+      if (upperCode === 'F') return '#f1f5f9'; // Soft slate-100 for Folga
+      if (upperCode === 'FE') return '#f59e0b'; // Vibrant Amber-500 for Férias
+      if (upperCode === 'LM') return '#ef4444'; // Vibrant Red-500 for Licença Médica
+      
+      // Map common shift codes directly to vibrant, beautiful colors with white text
+      if (upperCode.startsWith('M')) return '#10b981'; // Vibrant Emerald-500 for Manhã shifts
+      if (upperCode.startsWith('T')) return '#3b82f6'; // Vibrant Blue-500 for Tarde shifts
+      if (upperCode.startsWith('N')) return '#8b5cf6'; // Vibrant Indigo-500 for Noite/Madrugada shifts
+      if (upperCode === 'ADM') return '#06b6d4'; // Vibrant Teal-500 for Administrativo shift
+      
+      const shift = this.scaleService.shiftTypes().find(s => s.code === code);
+      if (shift) {
+        return this.getLightVibrantColor(shift.color, code);
+      }
 
-    const sigla = this.scaleService.siglaTypes().find(s => s.code === code);
-    if (sigla) return sigla.color;
+      const sigla = this.scaleService.siglaTypes().find(s => s.code === code);
+      if (sigla) {
+        if (sigla.code === 'F') return '#f1f5f9';
+        return this.getLightVibrantColor(sigla.color, code);
+      }
 
-    return '#1e293b'; // Default color
+      return '#10b981';
+    } else {
+      if (code === '-') return '#091524'; // Very deep dark background for sem definição
+      const shift = this.scaleService.shiftTypes().find(s => s.code === code);
+      if (shift) return shift.color;
+
+      const sigla = this.scaleService.siglaTypes().find(s => s.code === code);
+      if (sigla) return sigla.color;
+
+      return '#1e293b'; // Default color
+    }
+  }
+
+  getLightVibrantColor(dbColor: string, code: string): string {
+    const hex = dbColor.replace('#', '').trim();
+    // If database color is too dark, generate a beautiful vibrant one based on code name
+    if (hex === '020813' || hex === '030a14' || hex === '071426' || hex === '000000' || hex.startsWith('0') || hex.startsWith('1')) {
+      const upper = code.toUpperCase().trim();
+      if (upper.startsWith('M')) return '#10b981';
+      if (upper.startsWith('T')) return '#3b82f6';
+      if (upper.startsWith('N')) return '#8b5cf6';
+      if (upper === 'ADM') return '#06b6d4';
+      if (upper === 'FE') return '#f59e0b';
+      if (upper === 'LM') return '#ef4444';
+      
+      let hash = 0;
+      for (let i = 0; i < code.length; i++) {
+        hash = code.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#06b6d4', '#14b8a6', '#f43f5e'];
+      return colors[Math.abs(hash) % colors.length];
+    }
+    return dbColor;
   }
 
   getShiftOrSiglaTextColor(code: string): string {
-    if (code === '-') return '#475569'; // Slate-600 for the dash
-    if (code === 'F') return '#94a3b8'; // Slate-400
-    return '#ffffff';
+    if (this.isLightTheme()) {
+      if (!code || code === '-') return '#475569'; // Slate-600
+      const upper = code.toUpperCase().trim();
+      if (upper === 'F') return '#334155'; // Slate-800 for Folga
+      return '#ffffff'; // White/inverse text for all other shifts and siglas!
+    } else {
+      if (!code || code === '-') return '#475569'; // Slate-600 for the dash
+      if (code.toUpperCase().trim() === 'F') return '#94a3b8'; // Slate-400
+      return '#ffffff';
+    }
   }
 
   // Multi-employee Assignment & Movement logic
@@ -940,13 +1088,23 @@ export class AppComponent {
   }
 
   getCalendarDayClass(isChosenByMe: boolean, count: number): string {
-    const base = 'p-2 border rounded-lg flex flex-col justify-between gap-1 transition-all cursor-pointer h-16 min-w-0 outline-none text-left';
-    if (isChosenByMe) {
-      return `${base} bg-emerald-950/40 border-emerald-500`;
-    } else if (count >= 2) {
-      return `${base} bg-red-950/20 border-red-950`;
+    const base = 'p-2.5 border rounded-lg flex flex-col justify-between gap-1 transition-all cursor-pointer h-16 min-w-0 outline-none text-left shadow-sm';
+    if (this.isLightTheme()) {
+      if (isChosenByMe) {
+        return `${base} bg-emerald-600 border-emerald-700 text-white shadow-md shadow-emerald-500/10`;
+      } else if (count >= 2) {
+        return `${base} bg-rose-50 border-rose-200 text-rose-800 hover:bg-rose-100/70`;
+      } else {
+        return `${base} bg-white border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-slate-700`;
+      }
     } else {
-      return `${base} bg-[#071426] border-[#10213b] hover:border-slate-400`;
+      if (isChosenByMe) {
+        return `${base} bg-emerald-950/40 border-emerald-500 text-white`;
+      } else if (count >= 2) {
+        return `${base} bg-red-950/20 border-red-950/50 text-slate-300`;
+      } else {
+        return `${base} bg-[#071426] border-[#10213b] hover:border-slate-400 text-slate-300`;
+      }
     }
   }
 
@@ -958,6 +1116,38 @@ export class AppComponent {
   removePortalFolgaDay(day: number) {
     const dateStr = `2026-06-${String(day).padStart(2, '0')}`;
     this.removePortalFolga(dateStr);
+  }
+
+  isChosenByCollab(collab: Collaborator, day: number): boolean {
+    if (!collab || !collab.folgaRequests) return false;
+    const dateStr = `2026-06-${String(day).padStart(2, '0')}`;
+    return collab.folgaRequests.some(r => r.date === dateStr);
+  }
+
+  isPreSelectedByCollab(collab: Collaborator, day: number): boolean {
+    if (!collab || !collab.folgaRequests) return false;
+    const dateStr = `2026-06-${String(day).padStart(2, '0')}`;
+    return collab.folgaRequests.some(r => r.date === dateStr && r.isPreSelected);
+  }
+
+  requestCollabFolgaDay(collab: Collaborator, day: number) {
+    const dateStr = `2026-06-${String(day).padStart(2, '0')}`;
+    const result = this.scaleService.requestFolga(collab.id, dateStr, this.simulatedDayOfMonth());
+    if (!result.success) {
+      this.showToast(result.message);
+    } else {
+      this.showToast(`Folga adicionada para ${collab.name}!`);
+    }
+  }
+
+  removeCollabFolgaDay(collab: Collaborator, day: number) {
+    const dateStr = `2026-06-${String(day).padStart(2, '0')}`;
+    const result = this.scaleService.removeFolga(collab.id, dateStr, this.simulatedDayOfMonth());
+    if (!result.success) {
+      this.showToast(result.message);
+    } else {
+      this.showToast(`Folga removida para ${collab.name}!`);
+    }
   }
 
   // Simulated Portal Collaborator Info
