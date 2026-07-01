@@ -205,6 +205,7 @@ export class ScaleService {
 
   // Supabase Client Reference
   private supabase: any = null;
+  private firebaseUnsubscribes: (() => void)[] = [];
 
   constructor() {
     const storedDb = localStorage.getItem('active_db');
@@ -217,8 +218,12 @@ export class ScaleService {
       this.activeDb.set('firebase');
       localStorage.setItem('active_db', 'firebase');
     }
-    this.initFirebaseSync();
-    this.initSupabase();
+    
+    if (this.activeDb() === 'firebase') {
+      this.initFirebaseSync();
+    } else {
+      this.initSupabase();
+    }
   }
 
   setDatabaseProvider(provider: 'firebase' | 'supabase') {
@@ -226,6 +231,7 @@ export class ScaleService {
     localStorage.setItem('active_db', provider);
     this.databaseError.set(null);
     if (provider === 'supabase') {
+      this.clearFirebaseSync();
       this.initSupabase();
     } else {
       this.initFirebaseSync();
@@ -394,9 +400,12 @@ export class ScaleService {
   }
 
   private initFirebaseSync() {
+    this.clearFirebaseSync();
+    if (this.activeDb() !== 'firebase') return;
+
     // 1. Listen to Collaborators
     const collCollab = collection(this.db, 'collaborators');
-    onSnapshot(collCollab, (snapshot) => {
+    const unsubCollab = onSnapshot(collCollab, (snapshot) => {
       if (this.activeDb() !== 'firebase') return;
       const list: Collaborator[] = [];
       snapshot.forEach((doc) => {
@@ -405,12 +414,15 @@ export class ScaleService {
       list.sort((a, b) => a.id.localeCompare(b.id));
       this.collaborators.set(list);
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'collaborators');
+      if (this.activeDb() === 'firebase') {
+        handleFirestoreError(error, OperationType.GET, 'collaborators');
+      }
     });
+    this.firebaseUnsubscribes.push(unsubCollab);
 
     // 2. Listen to Shift Types
     const collShifts = collection(this.db, 'shiftTypes');
-    onSnapshot(collShifts, (snapshot) => {
+    const unsubShifts = onSnapshot(collShifts, (snapshot) => {
       if (this.activeDb() !== 'firebase') return;
       const list: ShiftType[] = [];
       snapshot.forEach((doc) => {
@@ -418,12 +430,15 @@ export class ScaleService {
       });
       this.shiftTypes.set(list);
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'shiftTypes');
+      if (this.activeDb() === 'firebase') {
+        handleFirestoreError(error, OperationType.GET, 'shiftTypes');
+      }
     });
+    this.firebaseUnsubscribes.push(unsubShifts);
 
     // 3. Listen to Sigla Types
     const collSiglas = collection(this.db, 'siglaTypes');
-    onSnapshot(collSiglas, (snapshot) => {
+    const unsubSiglas = onSnapshot(collSiglas, (snapshot) => {
       if (this.activeDb() !== 'firebase') return;
       const list: SiglaType[] = [];
       snapshot.forEach((doc) => {
@@ -431,12 +446,15 @@ export class ScaleService {
       });
       this.siglaTypes.set(list);
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'siglaTypes');
+      if (this.activeDb() === 'firebase') {
+        handleFirestoreError(error, OperationType.GET, 'siglaTypes');
+      }
     });
+    this.firebaseUnsubscribes.push(unsubSiglas);
 
     // 4. Listen to Audit History
     const collAudit = collection(this.db, 'auditHistory');
-    onSnapshot(collAudit, (snapshot) => {
+    const unsubAudit = onSnapshot(collAudit, (snapshot) => {
       if (this.activeDb() !== 'firebase') return;
       const list: BackupHistory[] = [];
       snapshot.forEach((doc) => {
@@ -445,8 +463,20 @@ export class ScaleService {
       list.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
       this.auditHistory.set(list);
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'auditHistory');
+      if (this.activeDb() === 'firebase') {
+        handleFirestoreError(error, OperationType.GET, 'auditHistory');
+      }
     });
+    this.firebaseUnsubscribes.push(unsubAudit);
+  }
+
+  private clearFirebaseSync() {
+    this.firebaseUnsubscribes.forEach(unsub => {
+      try {
+        unsub();
+      } catch (e) {}
+    });
+    this.firebaseUnsubscribes = [];
   }
 
   // Database operations

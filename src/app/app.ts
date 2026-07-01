@@ -61,6 +61,14 @@ export class AppComponent {
   public teamViewMode = signal<'gallery' | 'mgmt'>('gallery');
   public editingCollab = signal<Collaborator | null>(null);
   public isPortalCollabListOpen = signal<boolean>(false);
+  public isPortalRulesOpen = signal<boolean>(false);
+  public isCollabModalOpen = signal<boolean>(false);
+
+  public openCreateCollabModal(): void {
+    this.editingCollab.set(null);
+    this.newCollabPhotoData.set(null);
+    this.isCollabModalOpen.set(true);
+  }
 
   // Simulated Day of Month (1 to 30) for Folga request window check
   simulatedDayOfMonth = signal<number>(5);
@@ -92,7 +100,11 @@ export class AppComponent {
 
   // Dynamically computes stats, fatigue indexes, and shift hours for the selected collaborator
   collabStats = computed(() => {
-    const collab = this.selectedProfileCollab();
+    return this.calculateStatsForCollab(this.selectedProfileCollab());
+  });
+
+  // Reusable method to calculate stats for any collaborator
+  calculateStatsForCollab(collab: Collaborator | null) {
     if (!collab) return null;
 
     const scale = collab.scale || {};
@@ -170,18 +182,15 @@ export class AppComponent {
       entryTime,
       exitTime
     };
-  });
+  }
 
   getCollabPhoto(collab: any): string {
-    // Forçar temporariamente o ícone clássico do MSN Messenger para todos os colaboradores, conforme solicitação do usuário
-    /*
-    if (collab && collab.photo) {
-      return collab.photo;
-    }
-    */
+    const isLight = this.isLightTheme();
+    const bgFill = isLight ? '#f1f5f9' : '#0b1a30';
+    const borderStroke = isLight ? '#cbd5e1' : '#10213b';
     
     const msnAvatarSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="50" fill="#0b1a30" stroke="#10213b" stroke-width="1.5" />
+  <rect width="100" height="100" rx="50" fill="${bgFill}" stroke="${borderStroke}" stroke-width="1.5" />
   <g transform="translate(0, 4)">
     <circle cx="40" cy="38" r="12" fill="#0080C0" />
     <path d="M 40 38 A 12 12 0 0 1 52 38 A 9 9 0 0 0 40 38 Z" fill="#3399FF" opacity="0.5"/>
@@ -189,8 +198,8 @@ export class AppComponent {
     <path d="M 40 52 C 27 52, 20 68, 18 78 C 25 65, 36 56, 40 56 C 44 56, 55 65, 62 78 C 60 68, 53 52, 40 52 Z" fill="#3399FF" opacity="0.5"/>
     <circle cx="62" cy="44" r="12" fill="#74C322" />
     <path d="M 62 44 A 12 12 0 0 1 74 44 A 9 9 0 0 0 62 44 Z" fill="#9CE146" opacity="0.6"/>
-    <path d="M 62 58 C 44 58, 38 84, 38 90 L 86 90 C 86 84, 80 58, 62 58 Z" fill="#74C322" stroke="#0b1a30" stroke-width="2" />
-    <path d="M 62 58 C 49 58, 42 74, 40 84 C 47 71, 58 62, 62 62 C 66 62, 77 71, 84 84 C 82 74, 75 58, 62 58 Z" fill="#9CE146" opacity="0.5"/>
+    <path d="M 62 58 C 44 58, 38 84, 38 90 L 86 90 C 86 84, 80 58, 62 58 Z" fill="#74C322" stroke="${bgFill}" stroke-width="2" />
+    <path d="M 62 58 C 44 58, 42 74, 40 84 C 47 71, 58 62, 62 62 C 66 62, 77 71, 84 84 C 82 74, 75 58, 62 58 Z" fill="#9CE146" opacity="0.5"/>
   </g>
 </svg>`;
 
@@ -995,10 +1004,23 @@ export class AppComponent {
     if (sd4Desc && sd4Date) specialDates.push({ description: sd4Desc, date: sd4Date, priority: 4 });
     if (sd5Desc && sd5Date) specialDates.push({ description: sd5Desc, date: sd5Date, priority: 5 });
 
+    const getShiftCode = (s: string): string => {
+      const norm = (s || '').toUpperCase().trim();
+      if (norm === 'M' || norm === 'T' || norm === 'N' || norm === 'ADM') return norm;
+      if (norm === 'MADRUGADA' || norm === 'NOITE') return 'N';
+      if (norm === 'TARDE') return 'T';
+      if (norm === 'ADMINISTRATIVO') return 'ADM';
+      return 'M';
+    };
+
+    const newShiftCode = getShiftCode(shift);
+    const shiftType = this.scaleService.shiftTypes().find(s => s.code === newShiftCode);
+    const newHours = shiftType ? shiftType.hours : (newShiftCode === 'ADM' ? '8h00' : '7h20');
+
     this.scaleService.addCollaborator(
       name,
       role,
-      '7h20',
+      newHours,
       group,
       shift,
       sector,
@@ -1008,6 +1030,7 @@ export class AppComponent {
       birthday,
       specialDates
     );
+    this.isCollabModalOpen.set(false);
   }
 
   savePortalSpecialDates(birthday: string, specialDates: SpecialDate[]) {
@@ -1150,6 +1173,48 @@ export class AppComponent {
     }
   }
 
+  assignPortalCollabShift(collabId: string, shiftCode: string) {
+    if (!collabId || !shiftCode) {
+      this.showToast('Erro: Selecione um novo turno.');
+      return;
+    }
+
+    const collab = this.scaleService.collaborators().find(c => c.id === collabId);
+    const shiftType = this.scaleService.shiftTypes().find(s => s.code === shiftCode);
+
+    if (!collab || !shiftType) {
+      this.showToast('Erro: Seleção de turno inválida.');
+      return;
+    }
+
+    const oldShiftCode = collab.shift;
+    if (oldShiftCode === shiftCode) {
+      this.showToast(`O colaborador já está alocado no turno "${shiftCode}".`);
+      return;
+    }
+
+    const updatedScale = { ...collab.scale };
+    for (let day = 1; day <= 30; day++) {
+      if (updatedScale[day] === oldShiftCode) {
+        updatedScale[day] = shiftCode;
+      }
+    }
+    const updatedCollab = {
+      ...collab,
+      shift: shiftCode,
+      hours: shiftType.hours,
+      scale: updatedScale
+    };
+
+    this.scaleService.updateCollaborator(updatedCollab);
+    this.showToast(`Turno de ${collab.name} atualizado com sucesso para "${shiftType.label}"!`);
+
+    this.scaleService.addAuditHistory(
+      'ALOCACAO_TURNO',
+      `Turno de ${collab.name} alterado de "${oldShiftCode}" para "${shiftCode}" (${shiftType.hours}) via Portal.`
+    );
+  }
+
   // Simulated Portal Collaborator Info
   getLoggedCollab(): Collaborator | null {
     const id = this.selectedSimulatedCollabId();
@@ -1288,12 +1353,14 @@ export class AppComponent {
   startEditingCollab(collab: Collaborator) {
     this.editingCollab.set(collab);
     this.newCollabPhotoData.set(collab.photo || null);
+    this.isCollabModalOpen.set(true);
     this.showToast(`Modo Edição: Editando ${collab.name}`);
   }
 
   cancelEditingCollab() {
     this.editingCollab.set(null);
     this.newCollabPhotoData.set(null);
+    this.isCollabModalOpen.set(false);
   }
 
   saveEditedCollaborator(
@@ -1331,23 +1398,61 @@ export class AppComponent {
       return;
     }
 
+    const getShiftCode = (s: string): string => {
+      const norm = (s || '').toUpperCase().trim();
+      if (norm === 'M' || norm === 'T' || norm === 'N' || norm === 'ADM') return norm;
+      if (norm === 'MADRUGADA' || norm === 'NOITE') return 'N';
+      if (norm === 'TARDE') return 'T';
+      if (norm === 'ADMINISTRATIVO') return 'ADM';
+      return 'M';
+    };
+
+    const oldShiftCode = getShiftCode(target.shift);
+    const newShiftCode = getShiftCode(shift);
+    const shiftType = this.scaleService.shiftTypes().find(s => s.code === newShiftCode);
+    const newHours = shiftType ? shiftType.hours : (newShiftCode === 'ADM' ? '8h00' : '7h20');
+
+    const updatedScale = { ...target.scale };
+    let shiftReallocated = false;
+
+    if (oldShiftCode !== newShiftCode) {
+      shiftReallocated = true;
+      for (let day = 1; day <= 31; day++) {
+        if (updatedScale[day] === oldShiftCode) {
+          updatedScale[day] = newShiftCode;
+        }
+      }
+    }
+
     const updatedCollab: Collaborator = {
       ...target,
       name,
       role,
       group,
       shift,
+      hours: newHours,
       sector,
       bhBalance: bh,
       score,
       photo: photo || target.photo,
       birthday: birthday || '',
-      specialDates
+      specialDates,
+      scale: updatedScale
     };
 
     this.scaleService.updateCollaborator(updatedCollab);
+
+    if (shiftReallocated) {
+      this.scaleService.addAuditHistory(
+        'ALOCACAO_TURNO',
+        `Colaborador ${target.name} reallocado do turno "${target.shift}" para "${shift}" (${newHours}) via atualização cadastral.`
+      );
+      this.showToast(`Colaborador atualizado e reallocado para o turno "${shift}"!`);
+    } else {
+      this.showToast('Colaborador atualizado com sucesso!');
+    }
+
     this.cancelEditingCollab();
-    this.showToast('Colaborador atualizado com sucesso!');
   }
 
   onCollabPhotoSelected(event: any) {

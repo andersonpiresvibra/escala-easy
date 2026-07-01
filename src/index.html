@@ -242,7 +242,7 @@
     .light-theme .text-slate-500 {
       color: #64748b !important;
     }
-    .light-theme .text-white:not(button):not(input):not(select):not(.bg-\[\#10b981\]):not(.bg-emerald-500):not(.bg-emerald-600):not(.bg-blue-500):not(.bg-rose-500):not(.bg-amber-500) {
+    .light-theme .text-white:not(button):not(input):not(select):not(.bg-\[\#10b981\]):not(.bg-emerald-500):not(.bg-emerald-600):not(.bg-blue-500):not(.bg-rose-500):not(.bg-amber-500):not(.bg-red-500):not(.text-white-force) {
       color: #0f172a !important;
     }
     .light-theme h1,
@@ -255,15 +255,14 @@
     }
 
     /* Brand/Vibrant text contrasts */
-    .light-theme .text-emerald-400 {
+    .light-theme .text-emerald-300,
+    .light-theme .text-emerald-400,
+    .light-theme .text-\[\#10b981\] {
       color: #047857 !important;
     }
     .light-theme .text-amber-400,
     .light-theme .text-amber-500 {
       color: #b45309 !important;
-    }
-    .light-theme .text-[#10b981] {
-      color: #10b981 !important;
     }
     .light-theme .text-purple-400 {
       color: #6d28d9 !important;
@@ -360,6 +359,118 @@
     /* Specific elements inside matrix cells */
     .light-theme .group-cell:hover {
       background-color: rgba(16, 185, 129, 0.08) !important;
+    }
+
+    /* ==========================================================================
+       SPECIFIC UX FIXES FOR NOTIFICATION BADGE & COLLABORATOR CARDS
+       ========================================================================== */
+
+    /* 1. Notification bell absolute badge perfect high-contrast style */
+    .light-theme #notification_bell_btn span.absolute {
+      background-color: #ef4444 !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 0 2px #ffffff !important; /* Premium white ring border separator */
+      font-weight: 800 !important;
+    }
+    .light-theme .bg-red-500,
+    .light-theme .bg-red-500 *,
+    .light-theme .bg-emerald-500,
+    .light-theme .bg-emerald-500 *,
+    .light-theme .bg-[#10b981],
+    .light-theme .bg-[#10b981] *,
+    .light-theme .bg-blue-500,
+    .light-theme .bg-blue-500 *,
+    .light-theme .bg-rose-500,
+    .light-theme .bg-rose-500 * {
+      color: #ffffff !important;
+    }
+
+    /* 2. Unselected Collaborator Card background & font harmony (No dark/dirty grey - Solid #f1f5f9) */
+    .light-theme .bg-\[\#071426\]\/40 {
+      background-color: #f1f5f9 !important;
+      border: 1px solid #cbd5e1 !important;
+      box-shadow: none !important;
+    }
+    .light-theme .bg-\[\#071426\]\/40:hover {
+      background-color: #e2e8f0 !important;
+      border-color: #94a3b8 !important;
+    }
+    .light-theme .bg-\[\#071426\]\/40 p {
+      color: #0f172a !important;
+    }
+    .light-theme .bg-\[\#071426\]\/40 p.text-slate-400 {
+      color: #475569 !important;
+    }
+    .light-theme .bg-\[\#071426\]\/40 .bg-\[\#030a14\] {
+      background-color: #ffffff !important;
+      border-color: #cbd5e1 !important;
+      color: #475569 !important;
+    }
+
+    /* 3. Selected Collaborator Card vibrant pastel green background (No dark/black block) */
+    .light-theme .bg-emerald-950\/20 {
+      background-color: #ecfdf5 !important;
+      border: 2.5px solid #10b981 !important;
+      box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.15), 0 2px 4px -1px rgba(16, 185, 129, 0.1) !important;
+    }
+    .light-theme .bg-emerald-950\/20 p,
+    .light-theme .bg-emerald-950\/20 span {
+      color: #047857 !important;
+    }
+    .light-theme .bg-emerald-950\/20 .text-slate-400 {
+      color: #065f46 !important;
+      opacity: 0.9;
+    }
+    .light-theme .bg-emerald-950\/20 .bg-\[\#030a14\] {
+      background-color: #d1fae5 !important;
+      border-color: #a7f3d0 !important;
+      color: #065f46 !important;
+    }
+
+    /* 4. Active Date Indicator (Green pill) text correction */
+    .light-theme [style*="background-color: #10B981"],
+    .light-theme [style*="background-color:#10B981"],
+    .light-theme .bg-emerald-500,
+    .light-theme .bg-emerald-500 span,
+    .light-theme .bg-emerald-600,
+    .light-theme .text-white-force {
+      color: #ffffff !important;
+      font-weight: 700 !important;
+    }
+
+    /* 5. Portal Grid Container & Fatigue Bento Widgets styling in Light Theme (Solid #f1f5f9) */
+    .light-theme .bg-\[\#071426\]\/30 {
+      background-color: #f1f5f9 !important;
+      border: 1.5px solid #cbd5e1 !important;
+      box-shadow: none !important;
+    }
+    .light-theme .bg-\[\#071426\]\/60 {
+      background-color: #f1f5f9 !important;
+      border: 1px solid #cbd5e1 !important;
+      box-shadow: none !important;
+    }
+    .light-theme .bg-\[\#071426\]\/60 .text-white {
+      color: #0f172a !important;
+    }
+    .light-theme .bg-\[\#071426\]\/60 .text-slate-300 {
+      color: #334155 !important;
+    }
+    .light-theme .bg-\[\#071426\]\/60 .text-slate-400 {
+      color: #475569 !important;
+    }
+    .light-theme .bg-\[\#071426\]\/60 .text-slate-500 {
+      color: #64748b !important;
+    }
+    .light-theme .bg-\[\#071426\]\/60 .bg-\[\#030a14\] {
+      background-color: #e2e8f0 !important;
+    }
+
+    /* 6. Form input & select text color stability under Light Theme */
+    .light-theme input,
+    .light-theme select {
+      color: #0f172a !important;
+      background-color: #ffffff !important;
+      border-color: #cbd5e1 !important;
     }
   </style>
 </head>
