@@ -346,22 +346,12 @@ export class ScaleService {
 
           // Map database records to Collaborator interface
           const mappedCollabs: Collaborator[] = collabsData.map((row: any, index: number) => {
-            // If this collaborator has no scale in database yet, initialize one
+            // If this collaborator has no scale in database yet, initialize one as blank (-)
             let scale = scaleMap[row.id];
             if (!scale) {
               scale = {};
-              const defaultShiftCode = row.shift === 'MADRUGADA' ? 'N' : row.shift === 'TARDE' ? 'T' : row.shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
               for (let d = 1; d <= 31; d++) {
-                const dayOfWeek = (d + 2) % 7; // July 1st, 2026 is a Wednesday (Index 3)
-                let isOff = false;
-                if (index % 3 === 0) {
-                  isOff = (dayOfWeek === 6 || dayOfWeek === 0);
-                } else if (index % 3 === 1) {
-                  isOff = (dayOfWeek === 5 || dayOfWeek === 6);
-                } else {
-                  isOff = (dayOfWeek === 0 || dayOfWeek === 1);
-                }
-                scale[d] = isOff ? 'F' : defaultShiftCode;
+                scale[d] = '-';
               }
             }
 
@@ -523,7 +513,7 @@ export class ScaleService {
     return preSelected.slice(0, 3);
   }
 
-  refreshPreSelectedFolgas(collab: Collaborator): Collaborator {
+  refreshPreSelectedFolgas(collab: Collaborator, forceApplyToScale = false): Collaborator {
     const preSelected = this.getAutoPreSelectedFolgas(collab);
     const manualRequests = (collab.folgaRequests || []).filter(r => !r.isPreSelected);
     const newList: FolgaRequest[] = [...preSelected];
@@ -537,13 +527,15 @@ export class ScaleService {
     }
     
     const updatedScale = { ...collab.scale };
-    newList.forEach(req => {
-      const parts = req.date.split('-');
-      if (parts.length === 3) {
-        const d = parseInt(parts[2], 10);
-        updatedScale[d] = 'F';
-      }
-    });
+    if (forceApplyToScale) {
+      newList.forEach(req => {
+        const parts = req.date.split('-');
+        if (parts.length === 3) {
+          const d = parseInt(parts[2], 10);
+          updatedScale[d] = 'F';
+        }
+      });
+    }
 
     return {
       ...collab,
@@ -633,7 +625,7 @@ export class ScaleService {
     return { success: true, message: 'Folga removida com sucesso!' };
   }
 
-  addCollaborator(
+  async addCollaborator(
     name: string,
     role: 'OPERADOR' | 'LIDER' | 'SUPERVISOR',
     hours: string,
@@ -679,45 +671,46 @@ export class ScaleService {
       folgaRequests: folgaRequests || []
     };
 
-    newCollab = this.refreshPreSelectedFolgas(newCollab);
+    newCollab = this.refreshPreSelectedFolgas(newCollab, true);
 
     if (this.activeDb() === 'supabase' && this.supabase) {
-      const dbRow = {
-        id: newCollab.id,
-        name: newCollab.name,
-        role: newCollab.role,
-        schedule: newCollab.hours,
-        grupo: newCollab.group,
-        shift: newCollab.shift,
-        sector: newCollab.sector,
-        bh_balance: newCollab.bhBalance,
-        score: newCollab.score,
-        birthday: newCollab.birthday || null,
-        special_dates: newCollab.specialDates ? JSON.stringify(newCollab.specialDates) : null,
-        folga_requests: newCollab.folgaRequests ? JSON.stringify(newCollab.folgaRequests) : null
-      };
-      Promise.resolve(this.supabase.from('colaboradores').upsert(dbRow))
-        .then(() => {
-          const scaleRows = [];
-          for (let d = 1; d <= 31; d++) {
-            scaleRows.push({
-              collaborator_id: newCollab.id,
-              day: d,
-              month: 7,
-              year: 2026,
-              value: newCollab.scale[d] || 'F'
-            });
-          }
-          return Promise.resolve(this.supabase.from('escala_diaria').upsert(scaleRows));
-        })
-        .then(() => {
-          this.syncSupabase();
-          this.addAuditHistory('CADASTRO_COLABORADOR', `Colaborador ${name} cadastrado no Supabase.`);
-        })
-        .catch((err: any) => {
-          console.error(err);
-          this.databaseError.set(`Falha ao salvar no Supabase: ${err.message || err}`);
-        });
+      try {
+        const dbRow = {
+          id: newCollab.id,
+          name: newCollab.name,
+          role: newCollab.role,
+          schedule: newCollab.hours,
+          grupo: newCollab.group,
+          shift: newCollab.shift,
+          sector: newCollab.sector,
+          bh_balance: newCollab.bhBalance,
+          score: newCollab.score,
+          birthday: newCollab.birthday || null,
+          special_dates: newCollab.specialDates ? JSON.stringify(newCollab.specialDates) : null,
+          folga_requests: newCollab.folgaRequests ? JSON.stringify(newCollab.folgaRequests) : null
+        };
+        const upRes = await this.supabase.from('colaboradores').upsert(dbRow);
+        if (upRes.error) throw upRes.error;
+
+        const scaleRows = [];
+        for (let d = 1; d <= 31; d++) {
+          scaleRows.push({
+            collaborator_id: newCollab.id,
+            day: d,
+            month: 7,
+            year: 2026,
+            value: newCollab.scale[d] || 'F'
+          });
+        }
+        const upScaleRes = await this.supabase.from('escala_diaria').upsert(scaleRows);
+        if (upScaleRes.error) throw upScaleRes.error;
+
+        this.syncSupabase();
+        this.addAuditHistory('CADASTRO_COLABORADOR', `Colaborador ${name} cadastrado no Supabase.`);
+      } catch (err: any) {
+        console.error(err);
+        this.databaseError.set(`Falha ao salvar no Supabase: ${err.message || err}`);
+      }
     } else {
       setDoc(doc(this.db, 'collaborators', id), newCollab).catch((err) => {
         handleFirestoreError(err, OperationType.WRITE, `collaborators/${id}`);
@@ -726,64 +719,94 @@ export class ScaleService {
     }
   }
 
-  removeCollaborator(id: string) {
+  async removeCollaborator(id: string) {
     const target = this.collaborators().find(c => c.id === id);
     if (!target) return;
 
+    // Update local state optimistically
+    const list = this.collaborators();
+    this.collaborators.set(list.filter(c => c.id !== id));
+
     if (this.activeDb() === 'supabase' && this.supabase) {
-      Promise.all([
-        Promise.resolve(this.supabase.from('escala_diaria').delete().eq('collaborator_id', id)),
-        Promise.resolve(this.supabase.from('colaboradores').delete().eq('id', id))
-      ])
-        .then(() => {
-          this.syncSupabase();
-          this.addAuditHistory('REMOCAO_COLABORADOR', `Colaborador ${target.name} removido do Supabase.`);
-        })
-        .catch((err: any) => console.error(err));
+      try {
+        const delScaleRes = await this.supabase.from('escala_diaria').delete().eq('collaborator_id', id);
+        if (delScaleRes.error) throw delScaleRes.error;
+
+        const delCollabRes = await this.supabase.from('colaboradores').delete().eq('id', id);
+        if (delCollabRes.error) throw delCollabRes.error;
+
+        this.syncSupabase();
+        this.addAuditHistory('REMOCAO_COLABORADOR', `Colaborador ${target.name} removido do Supabase.`);
+      } catch (err: any) {
+        console.error(err);
+        // Rollback on error
+        this.collaborators.set(list);
+        this.databaseError.set(`Falha ao remover colaborador: ${err.message || err}`);
+      }
     } else {
-      deleteDoc(doc(this.db, 'collaborators', id)).catch((err) => {
-        handleFirestoreError(err, OperationType.DELETE, `collaborators/${id}`);
-      });
-      this.addAuditHistory('REMOCAO_COLABORADOR', `Colaborador ${target.name} removido do Firebase.`);
+      deleteDoc(doc(this.db, 'collaborators', id))
+        .then(() => {
+          this.addAuditHistory('REMOCAO_COLABORADOR', `Colaborador ${target.name} removido do Firebase.`);
+        })
+        .catch((err) => {
+          // Rollback on error
+          this.collaborators.set(list);
+          handleFirestoreError(err, OperationType.DELETE, `collaborators/${id}`);
+        });
     }
   }
 
-  updateCollaborator(col: Collaborator) {
+  async updateCollaborator(col: Collaborator) {
     const refreshedCol = this.refreshPreSelectedFolgas(col);
 
+    // Optimistically update local state to make the UI instant and prevent concurrent click race conditions
+    const list = this.collaborators();
+    const index = list.findIndex(c => c.id === col.id);
+    if (index !== -1) {
+      const updated = [...list];
+      updated[index] = refreshedCol;
+      this.collaborators.set(updated);
+    }
+
     if (this.activeDb() === 'supabase' && this.supabase) {
-      const dbRow = {
-        id: refreshedCol.id,
-        name: refreshedCol.name,
-        role: refreshedCol.role,
-        schedule: refreshedCol.hours,
-        grupo: refreshedCol.group,
-        shift: refreshedCol.shift,
-        sector: refreshedCol.sector,
-        bh_balance: refreshedCol.bhBalance,
-        score: refreshedCol.score,
-        birthday: refreshedCol.birthday || null,
-        special_dates: refreshedCol.specialDates ? JSON.stringify(refreshedCol.specialDates) : null,
-        folga_requests: refreshedCol.folgaRequests ? JSON.stringify(refreshedCol.folgaRequests) : null
-      };
-      Promise.resolve(this.supabase.from('colaboradores').upsert(dbRow))
-        .then(() => {
-          const scaleRows = [];
-          for (let d = 1; d <= 31; d++) {
-            scaleRows.push({
-              collaborator_id: refreshedCol.id,
-              day: d,
-              month: 7,
-              year: 2026,
-              value: refreshedCol.scale[d] || 'F'
-            });
-          }
-          return Promise.resolve(this.supabase.from('escala_diaria').upsert(scaleRows));
-        })
-        .then(() => {
-          this.syncSupabase();
-        })
-        .catch((err: any) => console.error(err));
+      try {
+        const dbRow = {
+          id: refreshedCol.id,
+          name: refreshedCol.name,
+          role: refreshedCol.role,
+          schedule: refreshedCol.hours,
+          grupo: refreshedCol.group,
+          shift: refreshedCol.shift,
+          sector: refreshedCol.sector,
+          bh_balance: refreshedCol.bhBalance,
+          score: refreshedCol.score,
+          birthday: refreshedCol.birthday || null,
+          special_dates: refreshedCol.specialDates ? JSON.stringify(refreshedCol.specialDates) : null,
+          folga_requests: refreshedCol.folgaRequests ? JSON.stringify(refreshedCol.folgaRequests) : null
+        };
+        const upRes = await this.supabase.from('colaboradores').upsert(dbRow);
+        if (upRes.error) throw upRes.error;
+
+        const scaleRows = [];
+        for (let d = 1; d <= 31; d++) {
+          scaleRows.push({
+            collaborator_id: refreshedCol.id,
+            day: d,
+            month: 7,
+            year: 2026,
+            value: refreshedCol.scale[d] || 'F'
+          });
+        }
+        const upScaleRes = await this.supabase.from('escala_diaria').upsert(scaleRows);
+        if (upScaleRes.error) throw upScaleRes.error;
+
+        this.syncSupabase();
+      } catch (err: any) {
+        console.error('Error in updateCollaborator:', err);
+        this.databaseError.set(`Falha ao atualizar colaborador: ${err.message || err.details || err.hint || JSON.stringify(err)}`);
+        // Rollback state on error
+        this.syncSupabase();
+      }
     } else {
       setDoc(doc(this.db, 'collaborators', refreshedCol.id), refreshedCol).catch((err) => {
         handleFirestoreError(err, OperationType.WRITE, `collaborators/${refreshedCol.id}`);
@@ -791,63 +814,56 @@ export class ScaleService {
     }
   }
 
-  clearAllScales() {
+  async clearAllScales() {
     const list = this.collaborators();
-    if (this.activeDb() === 'supabase' && this.supabase) {
-      const scaleRows: any[] = [];
-      const collabRows: any[] = [];
-      
-      list.forEach(collab => {
-        const emptyScale: { [day: number]: string } = {};
-        for (let d = 1; d <= 31; d++) {
-          emptyScale[d] = '-';
-        }
-        const refreshed = this.refreshPreSelectedFolgas({ ...collab, scale: emptyScale });
-        
-        for (let d = 1; d <= 31; d++) {
-          scaleRows.push({
-            collaborator_id: refreshed.id,
-            day: d,
-            month: 7,
-            year: 2026,
-            value: refreshed.scale[d] || '-'
-          });
-        }
-        
-        collabRows.push({
-          id: refreshed.id,
-          name: refreshed.name,
-          role: refreshed.role,
-          schedule: refreshed.hours,
-          grupo: refreshed.group,
-          shift: refreshed.shift,
-          sector: refreshed.sector,
-          bh_balance: refreshed.bhBalance,
-          score: refreshed.score,
-          birthday: refreshed.birthday || null,
-          special_dates: refreshed.specialDates ? JSON.stringify(refreshed.specialDates) : null,
-          folga_requests: refreshed.folgaRequests ? JSON.stringify(refreshed.folgaRequests) : null
-        });
-      });
+    if (!list || list.length === 0) return;
 
-      Promise.all([
-        Promise.resolve(this.supabase.from('colaboradores').upsert(collabRows)),
-        Promise.resolve(this.supabase.from('escala_diaria').upsert(scaleRows))
-      ])
-      .then(() => {
+    const updatedList = list.map(collab => {
+      const emptyScale: { [day: number]: string } = {};
+      for (let d = 1; d <= 31; d++) {
+        emptyScale[d] = '-';
+      }
+      return { ...collab, folgaRequests: [], scale: emptyScale };
+    });
+    this.collaborators.set(updatedList);
+
+    if (this.activeDb() === 'supabase' && this.supabase) {
+      try {
+        const collabRows: any[] = [];
+        
+        updatedList.forEach(refreshed => {
+          collabRows.push({
+            id: refreshed.id,
+            name: refreshed.name,
+            role: refreshed.role,
+            schedule: refreshed.hours,
+            grupo: refreshed.group,
+            shift: refreshed.shift,
+            sector: refreshed.sector,
+            bh_balance: refreshed.bhBalance,
+            score: refreshed.score,
+            birthday: refreshed.birthday || null,
+            special_dates: refreshed.specialDates ? JSON.stringify(refreshed.specialDates) : null,
+            folga_requests: JSON.stringify([])
+          });
+        });
+
+        const upRes = await this.supabase.from('colaboradores').upsert(collabRows);
+        if (upRes.error) throw upRes.error;
+
+        // Physically delete all scale rows for month 7 and year 2026 in the database to completely wipe the records.
+        // This ensures the data is truly deleted from the database!
+        const delScaleRes = await this.supabase.from('escala_diaria').delete().eq('month', 7).eq('year', 2026);
+        if (delScaleRes.error) throw delScaleRes.error;
+
         this.syncSupabase();
         this.addAuditHistory('LIMPAR_ESCALA', 'Toda a escala mensal de trabalho foi redefinida para Sem Definição (-).');
-      })
-      .catch((err: any) => {
+      } catch (err: any) {
         console.error('Error in clearAllScales:', err);
-      });
+        this.databaseError.set(`Falha ao limpar escala: ${err.message || err.details || err.hint || JSON.stringify(err)}`);
+      }
     } else {
-      const promises = list.map(collab => {
-        const emptyScale: { [day: number]: string } = {};
-        for (let d = 1; d <= 31; d++) {
-          emptyScale[d] = '-';
-        }
-        const refreshed = this.refreshPreSelectedFolgas({ ...collab, scale: emptyScale });
+      const promises = updatedList.map(refreshed => {
         return setDoc(doc(this.db, 'collaborators', refreshed.id), refreshed);
       });
 
@@ -861,81 +877,75 @@ export class ScaleService {
     }
   }
 
-  generateAutoScale() {
+  async generateAutoScale() {
     const list = this.collaborators();
-    if (this.activeDb() === 'supabase' && this.supabase) {
-      const scaleRows: any[] = [];
-      const collabRows: any[] = [];
-      
-      list.forEach(collab => {
-        const generatedScale: { [day: number]: string } = {};
-        const baseShift = collab.shift === 'MADRUGADA' ? 'N' : collab.shift === 'TARDE' ? 'T' : collab.shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
-        
-        for (let d = 1; d <= 31; d++) {
-          const dayOfWeek = (d + 2) % 7; // July 1st, 2026 is a Wednesday (Index 3)
-          const isWeekend = (dayOfWeek === 6 || dayOfWeek === 0);
-          if (isWeekend) {
-            generatedScale[d] = 'F';
-          } else {
-            generatedScale[d] = baseShift;
-          }
-        }
-        
-        const refreshed = this.refreshPreSelectedFolgas({ ...collab, scale: generatedScale });
-        
-        for (let d = 1; d <= 31; d++) {
-          scaleRows.push({
-            collaborator_id: refreshed.id,
-            day: d,
-            month: 7,
-            year: 2026,
-            value: refreshed.scale[d] || 'F'
-          });
-        }
-        
-        collabRows.push({
-          id: refreshed.id,
-          name: refreshed.name,
-          role: refreshed.role,
-          schedule: refreshed.hours,
-          grupo: refreshed.group,
-          shift: refreshed.shift,
-          sector: refreshed.sector,
-          bh_balance: refreshed.bhBalance,
-          score: refreshed.score,
-          birthday: refreshed.birthday || null,
-          special_dates: refreshed.specialDates ? JSON.stringify(refreshed.specialDates) : null,
-          folga_requests: refreshed.folgaRequests ? JSON.stringify(refreshed.folgaRequests) : null
-        });
-      });
+    if (!list || list.length === 0) return;
 
-      Promise.all([
-        Promise.resolve(this.supabase.from('colaboradores').upsert(collabRows)),
-        Promise.resolve(this.supabase.from('escala_diaria').upsert(scaleRows))
-      ])
-      .then(() => {
+    const updatedList = list.map(collab => {
+      const generatedScale: { [day: number]: string } = {};
+      const baseShift = collab.shift === 'MADRUGADA' ? 'N' : collab.shift === 'TARDE' ? 'T' : collab.shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
+      
+      for (let d = 1; d <= 31; d++) {
+        const dayOfWeek = (d + 2) % 7; // July 1st, 2026 is a Wednesday (Index 3)
+        const isWeekend = (dayOfWeek === 6 || dayOfWeek === 0);
+        if (isWeekend) {
+          generatedScale[d] = 'F';
+        } else {
+          generatedScale[d] = baseShift;
+        }
+      }
+      
+      return this.refreshPreSelectedFolgas({ ...collab, scale: generatedScale }, true);
+    });
+    this.collaborators.set(updatedList);
+
+    if (this.activeDb() === 'supabase' && this.supabase) {
+      try {
+        const scaleRows: any[] = [];
+        const collabRows: any[] = [];
+        
+        updatedList.forEach(refreshed => {
+          for (let d = 1; d <= 31; d++) {
+            scaleRows.push({
+              collaborator_id: refreshed.id,
+              day: d,
+              month: 7,
+              year: 2026,
+              value: refreshed.scale[d] || 'F'
+            });
+          }
+          
+          collabRows.push({
+            id: refreshed.id,
+            name: refreshed.name,
+            role: refreshed.role,
+            schedule: refreshed.hours,
+            grupo: refreshed.group,
+            shift: refreshed.shift,
+            sector: refreshed.sector,
+            bh_balance: refreshed.bhBalance,
+            score: refreshed.score,
+            birthday: refreshed.birthday || null,
+            special_dates: refreshed.specialDates ? JSON.stringify(refreshed.specialDates) : null,
+            folga_requests: refreshed.folgaRequests ? JSON.stringify(refreshed.folgaRequests) : null
+          });
+        });
+
+        const upRes = await this.supabase.from('colaboradores').upsert(collabRows);
+        if (upRes.error) throw upRes.error;
+
+        // Perform a single atomic bulk upsert for all scale rows.
+        const upScaleRes = await this.supabase.from('escala_diaria').upsert(scaleRows);
+        if (upScaleRes.error) throw upScaleRes.error;
+
         this.syncSupabase();
         this.addAuditHistory('GERAR_AUTO', 'Escala mensal gerada com sucesso via algoritmo IA.');
-      })
-      .catch((err: any) => {
+      } catch (err: any) {
         console.error('Error in generateAutoScale:', err);
-      });
+        this.databaseError.set(`Falha ao gerar escala: ${err.message || err.details || err.hint || JSON.stringify(err)}`);
+      }
     } else {
-      const promises = list.map(collab => {
-        const generatedScale: { [day: number]: string } = {};
-        const baseShift = collab.shift === 'MADRUGADA' ? 'N' : collab.shift === 'TARDE' ? 'T' : collab.shift === 'ADMINISTRATIVO' ? 'ADM' : 'M';
-        
-        for (let d = 1; d <= 31; d++) {
-          const dayOfWeek = (d + 2) % 7; // July 1st, 2026 is a Wednesday (Index 3)
-          const isWeekend = (dayOfWeek === 6 || dayOfWeek === 0);
-          if (isWeekend) {
-            generatedScale[d] = 'F';
-          } else {
-            generatedScale[d] = baseShift;
-          }
-        }
-        
-        const refreshed = this.refreshPreSelectedFolgas({ ...collab, scale: generatedScale });
+      const promises = updatedList.map(refreshed => {
         return setDoc(doc(this.db, 'collaborators', refreshed.id), refreshed);
       });
 
@@ -949,7 +959,7 @@ export class ScaleService {
     }
   }
 
-  addSiglaType(code: string, label: string, color: string, description: string) {
+  async addSiglaType(code: string, label: string, color: string, description: string) {
     if (!code || !label) return;
     const upperCode = code.toUpperCase().trim();
     const newSigla: SiglaType = {
@@ -960,12 +970,14 @@ export class ScaleService {
     };
 
     if (this.activeDb() === 'supabase' && this.supabase) {
-      Promise.resolve(this.supabase.from('sigla_types').upsert(newSigla))
-        .then(() => {
-          this.syncSupabase();
-          this.addAuditHistory('CADASTRO_SIGLA', `Nova sigla ${upperCode} cadastrada no Supabase.`);
-        })
-        .catch((err: any) => console.error(err));
+      try {
+        const res = await this.supabase.from('sigla_types').upsert(newSigla);
+        if (res.error) throw res.error;
+        this.syncSupabase();
+        this.addAuditHistory('CADASTRO_SIGLA', `Nova sigla ${upperCode} cadastrada no Supabase.`);
+      } catch (err: any) {
+        console.error(err);
+      }
     } else {
       setDoc(doc(this.db, 'siglaTypes', upperCode), newSigla).catch((err) => {
         handleFirestoreError(err, OperationType.WRITE, `siglaTypes/${upperCode}`);
@@ -974,14 +986,16 @@ export class ScaleService {
     }
   }
 
-  removeSiglaType(code: string) {
+  async removeSiglaType(code: string) {
     if (this.activeDb() === 'supabase' && this.supabase) {
-      Promise.resolve(this.supabase.from('sigla_types').delete().eq('code', code))
-        .then(() => {
-          this.syncSupabase();
-          this.addAuditHistory('REMOCAO_SIGLA', `Sigla ${code} removida do Supabase.`);
-        })
-        .catch((err: any) => console.error(err));
+      try {
+        const res = await this.supabase.from('sigla_types').delete().eq('code', code);
+        if (res.error) throw res.error;
+        this.syncSupabase();
+        this.addAuditHistory('REMOCAO_SIGLA', `Sigla ${code} removida do Supabase.`);
+      } catch (err: any) {
+        console.error(err);
+      }
     } else {
       deleteDoc(doc(this.db, 'siglaTypes', code)).catch((err) => {
         handleFirestoreError(err, OperationType.DELETE, `siglaTypes/${code}`);
@@ -990,11 +1004,15 @@ export class ScaleService {
     }
   }
 
-  saveSiglaType(sigla: SiglaType) {
+  async saveSiglaType(sigla: SiglaType) {
     if (this.activeDb() === 'supabase' && this.supabase) {
-      Promise.resolve(this.supabase.from('sigla_types').upsert(sigla))
-        .then(() => this.syncSupabase())
-        .catch((err: any) => console.error(err));
+      try {
+        const res = await this.supabase.from('sigla_types').upsert(sigla);
+        if (res.error) throw res.error;
+        this.syncSupabase();
+      } catch (err: any) {
+        console.error(err);
+      }
     } else {
       setDoc(doc(this.db, 'siglaTypes', sigla.code), sigla).catch((err) => {
         handleFirestoreError(err, OperationType.WRITE, `siglaTypes/${sigla.code}`);
@@ -1002,11 +1020,15 @@ export class ScaleService {
     }
   }
 
-  saveShiftType(shift: ShiftType) {
+  async saveShiftType(shift: ShiftType) {
     if (this.activeDb() === 'supabase' && this.supabase) {
-      Promise.resolve(this.supabase.from('shift_types').upsert(shift))
-        .then(() => this.syncSupabase())
-        .catch((err: any) => console.error(err));
+      try {
+        const res = await this.supabase.from('shift_types').upsert(shift);
+        if (res.error) throw res.error;
+        this.syncSupabase();
+      } catch (err: any) {
+        console.error(err);
+      }
     } else {
       setDoc(doc(this.db, 'shiftTypes', shift.code), shift).catch((err) => {
         handleFirestoreError(err, OperationType.WRITE, `shiftTypes/${shift.code}`);
@@ -1014,11 +1036,15 @@ export class ScaleService {
     }
   }
 
-  removeShiftType(code: string) {
+  async removeShiftType(code: string) {
     if (this.activeDb() === 'supabase' && this.supabase) {
-      Promise.resolve(this.supabase.from('shift_types').delete().eq('code', code))
-        .then(() => this.syncSupabase())
-        .catch((err: any) => console.error(err));
+      try {
+        const res = await this.supabase.from('shift_types').delete().eq('code', code);
+        if (res.error) throw res.error;
+        this.syncSupabase();
+      } catch (err: any) {
+        console.error(err);
+      }
     } else {
       deleteDoc(doc(this.db, 'shiftTypes', code)).catch((err) => {
         handleFirestoreError(err, OperationType.DELETE, `shiftTypes/${code}`);
@@ -1026,7 +1052,7 @@ export class ScaleService {
     }
   }
 
-  addAuditHistory(action: string, description: string) {
+  async addAuditHistory(action: string, description: string) {
     const now = new Date();
     const ts = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const id = 'bk_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
@@ -1039,9 +1065,13 @@ export class ScaleService {
     };
 
     if (this.activeDb() === 'supabase' && this.supabase) {
-      Promise.resolve(this.supabase.from('audit_history').upsert(newHistory))
-        .then(() => this.syncSupabase())
-        .catch((err: any) => console.error(err));
+      try {
+        const res = await this.supabase.from('audit_history').upsert(newHistory);
+        if (res.error) throw res.error;
+        this.syncSupabase();
+      } catch (err: any) {
+        console.error(err);
+      }
     } else {
       setDoc(doc(this.db, 'auditHistory', id), newHistory).catch((err) => {
         handleFirestoreError(err, OperationType.WRITE, `auditHistory/${id}`);

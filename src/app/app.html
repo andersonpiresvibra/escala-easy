@@ -1767,21 +1767,18 @@
 
       <!-- SECTION C: PORTAL DO COLABORADOR -->
       @if (activeSubTab() === 'portal') {
-        <div class="p-4 md:p-6 space-y-8 animate-fade-in font-sans w-full flex-1 overflow-y-auto scrollbar-thin" id="portal_tab_content">
+        <div class="p-4 md:p-6 space-y-6 animate-fade-in font-sans w-full flex-1 overflow-y-auto scrollbar-thin" id="portal_tab_content">
           <!-- SIMULATION BAR & QUICK SWITCH -->
-          <div class="w-full space-y-4">
+          <div class="bg-[#030a14] border border-[#10213b] rounded-lg p-5 shadow-xl space-y-4">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#10213b]/60">
               <div>
                 <div class="flex items-center gap-2">
                   <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                   <h3 class="font-black text-sm text-white uppercase tracking-wider">Simulador de Sessão do Colaborador</h3>
                 </div>
-                @if (getLoggedCollab()) {
-                  <button (click)="logout()" class="mt-3 px-3 py-1.5 bg-[#0b1a30] hover:bg-rose-900/50 text-slate-200 hover:text-rose-400 rounded-lg border border-[#10213b] cursor-pointer flex items-center gap-1.5 transition-all outline-none font-bold text-[10px] uppercase tracking-wider w-max">
-                    <span class="material-icons text-sm">arrow_back</span>
-                    Voltar
-                  </button>
-                }
+                <p class="text-[10px] text-slate-400 mt-1">
+                  Selecione qualquer colaborador cadastrado na frota para simular sua seção pessoal e realizar escolhas de folgas.
+                </p>
               </div>
 
               <!-- Simulated Date (Day of Month) & Rules Toggle -->
@@ -1837,7 +1834,7 @@
                     Quadro de Colaboradores de Pátio
                   </span>
                 </div>
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto scrollbar-thin pr-1">
                   @for (c of scaleService.collaborators(); track c.id) {
                     <div (click)="loginAsCollab(c.id)"
                          class="border border-[#10213b] bg-[#071426]/40 hover:border-slate-700 hover:bg-[#071426] group p-3 rounded-xl cursor-pointer transition-all flex flex-col justify-between gap-2.5 select-none text-left relative overflow-hidden">
@@ -1871,10 +1868,38 @@
                   }
                 </div>
               </div>
+            } @else {
+              @let logged = getLoggedCollab()!;
+              <div class="flex items-center justify-between p-3 bg-emerald-950/10 border border-emerald-500/20 rounded-lg">
+                <div class="flex items-center gap-3">
+                  <img [src]="getCollabPhoto(logged)" alt="Avatar" referrerpolicy="no-referrer" class="w-8 h-8 rounded-full border border-emerald-400">
+                  <div>
+                    <span class="text-[9px] font-black uppercase text-slate-400 tracking-wider">Simulando Sessão:</span>
+                    <h4 class="font-black text-sm text-emerald-400 m-0">{{ logged.name }}</h4>
+                  </div>
+                </div>
+                <button (click)="logout()" class="px-3 py-1.5 bg-rose-950/30 hover:bg-rose-900/50 hover:text-white text-rose-400 border border-rose-500/20 rounded-lg cursor-pointer flex items-center gap-1.5 transition-all outline-none font-black text-[10px] uppercase tracking-wider">
+                  <span class="material-icons text-sm">arrow_back</span>
+                  Voltar para Lista
+                </button>
+              </div>
             }
           </div>
 
-          @if (getLoggedCollab()) {
+          @if (!getLoggedCollab()) {
+            <!-- Welcome Alert State -->
+            <div class="bg-[#071426]/60 border border-[#10213b] rounded-lg p-12 text-center max-w-2xl mx-auto space-y-4">
+              <div class="w-16 h-16 bg-slate-900 border border-[#10213b] text-slate-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                <span class="material-icons text-3xl">lock</span>
+              </div>
+              <div class="space-y-1">
+                <h4 class="font-black text-sm text-white uppercase tracking-wider">Acesso Restrito ao Colaborador</h4>
+                <p class="text-[11px] text-slate-400 leading-relaxed max-w-md mx-auto">
+                  Por favor, escolha um colaborador nos cards de pátio acima para visualizar sua área de trabalho, atualizar dados de aniversário, datas especiais e gerenciar escolhas de folga mensal.
+                </p>
+              </div>
+            </div>
+          } @else {
             @let logged = getLoggedCollab()!;
             @let loggedStats = calculateStatsForCollab(logged);
             <!-- PORTAL GRID -->
